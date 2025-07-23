@@ -1,11 +1,13 @@
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import generics, status, permissions, viewsets
 from rest_framework.response import Response
-from monitor.serializers import RegisterSerializer, WebsiteSerializer
-from rest_framework.exceptions import APIException
-from .models import Website
+from rest_framework.exceptions import PermissionDenied, APIException
+from monitor.serializers import RegisterSerializer, WebsiteSerializer, NotificationPreferenceSerializer
+from .models import Website, NotificationPreference
 from django.http import Http404
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
+from rest_framework.exceptions import ValidationError
 import logging
 
 logger = logging.getLogger('monitor')
@@ -90,3 +92,27 @@ class WebsiteViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         logger.warning(f"[!] Monitor deleted: {instance.url} by {self.request.user.username}")
         return super().perform_destroy(instance)
+
+
+class NotificationPreferenceViewSet(viewsets.ModelViewSet):
+    serializer_class = NotificationPreferenceSerializer
+
+    def get_queryset(self):
+        return NotificationPreference.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        website = serializer.validated_data['website']
+        if website.user != self.request.user:
+            raise PermissionDenied("You do not own this website.")
+
+        try:
+            serializer.save(user=self.request.user)
+        except IntegrityError:
+            raise ValidationError("You already have this notification preference.")
+
+
+    def perform_update(self, serializer):
+        try:
+            serializer.save(user=self.request.user)
+        except IntegrityError:
+            raise ValidationError("You already have this notification preference.")

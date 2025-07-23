@@ -18,11 +18,28 @@ def check_single_website(self, website_id):
 
         status_code, response_time_ms = check_website_uptime(website.url)
 
+        # ✅ Save check result
         UptimeCheckResult.objects.create(
             website=website,
             status_code=status_code,
             response_time_ms=response_time_ms
         )
+
+        # 🔍 Recovery detection
+        if website.is_down and status_code == 200:
+            website.is_down = False
+            website.last_recovered_at = now()
+            logger.info(f"[✓] {website.url} RECOVERED at {website.last_recovered_at}")
+            # TODO: Send recovery alert
+        
+        # 🔍 Downtime detection
+        recent_checks = website.checks.order_by('-checked_at')[:3]
+        if all(check.status_code != 200 for check in recent_checks):
+            if not website.is_down:
+                website.is_down = True
+                website.last_downtime_at = now()
+                logger.warning(f"[!] {website.url} DOWN at {website.last_downtime_at}")
+                # TODO: Send downtime alert
 
         # 🔁 Schedule next check
         # Floor the current time to the nearest minute
@@ -30,7 +47,12 @@ def check_single_website(self, website_id):
 
         # Calculate the next aligned interval (e.g., if interval=1 and it's 00:02:32 → next_check = 00:03:00)
         website.next_check_at = current_time + timedelta(minutes=website.check_interval)
-        website.save(update_fields=["next_check_at"])
+        website.save(update_fields=[
+            "is_down",
+            "last_downtime_at",
+            "last_recovered_at",
+            "next_check_at"
+        ])
 
         logger.info(f"[✓] {website.url} checked: {status_code} in {response_time_ms}ms")
 
@@ -54,3 +76,10 @@ def check_due_websites():
         count += 1
 
     return f"Queued {count} websites for checking."
+
+
+@shared_task
+def cleanup_old_logs(retention_days=90):
+    cutoff = now() - timedelta(days=retention_days)
+    deleted, _ = UptimeCheckResult.objects.filter(checked_at__lt=cutoff).delete()
+    return f"Deleted {deleted} logs older than {retention_days} days"

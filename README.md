@@ -57,6 +57,16 @@ cd uptime-monitor
 cp .env.example .env
 docker-compose up --build
 
+---
+
+## 📦 Data Retention Policy
+
+- Uptime check results are stored for a maximum of 90 days.
+- A daily cleanup job runs automatically to delete logs older than 90 days.
+- This keeps the database lean and ensures fast performance at scale.
+- You can adjust the retention duration via `--days` argument in `cleanup_uptime_logs` command.
+
+
 🙋‍♂️ Author
 Divine Chukwu
 LinkedIn • GitHub

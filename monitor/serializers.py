@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import Website, CHECK_INTERVAL_CHOICES, UptimeCheckResult
+from .models import Website, CHECK_INTERVAL_CHOICES, UptimeCheckResult, NotificationPreference
 from urllib.parse import urlparse, urlunparse
 from datetime import timezone
 from django.contrib.auth import get_user_model
@@ -86,3 +86,30 @@ class UptimeCheckResultSerializer(serializers.ModelSerializer):
         model = UptimeCheckResult
         fields = '__all__'
         read_only_fields = ['checked_at', 'status_code', 'response_time_ms']
+
+
+class NotificationPreferenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NotificationPreference
+        fields = ['id', 'user', 'website', 'method', 'target', 'is_active', 'created_at']
+        read_only_fields = ['id', 'created_at', 'user']
+
+    def validate_website(self, website):
+        if website.user != self.context['request'].user:
+            raise serializers.ValidationError("You do not own this website.")
+        return website
+
+    def validate(self, data):
+        method = data.get('method')
+        target = data.get('target')
+
+        if method == 'email' and '@' not in target:
+            raise serializers.ValidationError("Invalid email address.")
+        if method in ['slack', 'webhook'] and not target.startswith('http'):
+            raise serializers.ValidationError("Target must be a valid URL for Slack or Webhook.")
+
+        return data
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)

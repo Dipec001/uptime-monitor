@@ -24,6 +24,9 @@ class Website(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     next_check_at = models.DateTimeField(null=True, blank=True)
+    is_down = models.BooleanField(default=False)
+    last_downtime_at = models.DateTimeField(null=True, blank=True)
+    last_recovered_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         indexes = [
@@ -87,7 +90,8 @@ class NotificationPreference(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("user", "website", "method", "target")
+        unique_together = ("user", "website", "method") # just one method per site, regardless of target.
+        # unique_together = ("user", "website", "method", "target")
 
     def __str__(self):
         return f"{self.user.username} → {self.method}: {self.target}"
