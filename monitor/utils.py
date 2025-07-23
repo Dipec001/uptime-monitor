@@ -1,9 +1,7 @@
 from django.utils import timezone
-from datetime import timedelta
-from django.db.models import OuterRef, Subquery, F, Q, ExpressionWrapper, DateTimeField
 import requests
 import time
-from .models import Website, UptimeCheckResult
+from .models import Website
 
 
 def get_due_websites():

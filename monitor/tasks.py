@@ -3,7 +3,9 @@ from .utils import get_due_websites, check_website_uptime
 from .models import Website, UptimeCheckResult
 from datetime import timedelta
 from django.utils.timezone import now
+import logging
 
+logger = logging.getLogger('monitor')
 
 @shared_task(bind=True, max_retries=3)
 def check_single_website(self, website_id):
@@ -11,6 +13,7 @@ def check_single_website(self, website_id):
         website = Website.objects.get(pk=website_id)
 
         if not website.is_active:
+            logger.info(f"⏸️ Skipped inactive website {website_id}")
             return
 
         status_code, response_time_ms = check_website_uptime(website.url)
@@ -29,13 +32,15 @@ def check_single_website(self, website_id):
         website.next_check_at = current_time + timedelta(minutes=website.check_interval)
         website.save(update_fields=["next_check_at"])
 
-        print(f"[✓] {website.url} checked: {status_code} in {response_time_ms}ms")
+        logger.info(f"[✓] {website.url} checked: {status_code} in {response_time_ms}ms")
 
     except Website.DoesNotExist:
-        print(f"[!] Website {website_id} no longer exists.")
+        logger.warning(f"[!] Website {website_id} no longer exists. Skipping...")
 
     except Exception as e:
-        print(f"[!] Error checking {website_id}: {str(e)}")
+        logger.error(f"[!] Error checking {website_id}: {str(e)}", exc_info=True)
+        # Log retry attempt
+        logger.warning(f"Retrying check for website {website_id} in 10s (attempt {self.request.retries + 1})")
         self.retry(countdown=10)
 
 

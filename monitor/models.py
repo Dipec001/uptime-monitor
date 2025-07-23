@@ -28,9 +28,8 @@ class Website(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=['user']),
-            models.Index(fields=['is_active', 'check_interval']),
+            models.Index(fields=['is_active', 'next_check_at']),
             models.Index(fields=['created_at']),
-            models.Index(fields=['next_check_at']),
         ]
 
     def __str__(self):

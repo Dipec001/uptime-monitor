@@ -197,7 +197,7 @@ LOGGING = {
         'monitor': {
             'handlers': ['console', 'file'],
             'level': 'DEBUG',
-            'propagate': False,
+            'propagate': True,
         },
     },
 }
