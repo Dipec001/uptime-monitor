@@ -71,6 +71,12 @@ class Alert(models.Model):
     retry_count = models.IntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['website', 'alert_type', 'is_active']),
+            models.Index(fields=['created_at']),
+        ]
+
     def __str__(self):
         return f"{self.website.url} - {self.alert_type} - Active: {self.is_active}"
 

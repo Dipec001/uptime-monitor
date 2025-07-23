@@ -3,6 +3,7 @@ from .utils import get_due_websites, check_website_uptime
 from .models import Website, UptimeCheckResult
 from datetime import timedelta
 from django.utils.timezone import now
+from .alerts import handle_alert
 import logging
 
 logger = logging.getLogger('monitor')
@@ -30,7 +31,8 @@ def check_single_website(self, website_id):
             website.is_down = False
             website.last_recovered_at = now()
             logger.info(f"[✓] {website.url} RECOVERED at {website.last_recovered_at}")
-            # TODO: Send recovery alert
+            # Send recovery alert
+            handle_alert(website, "recovery")
         
         # 🔍 Downtime detection
         recent_checks = website.checks.order_by('-checked_at')[:3]
@@ -39,7 +41,8 @@ def check_single_website(self, website_id):
                 website.is_down = True
                 website.last_downtime_at = now()
                 logger.warning(f"[!] {website.url} DOWN at {website.last_downtime_at}")
-                # TODO: Send downtime alert
+                # Send downtime alert
+                handle_alert(website, "downtime")
 
         # 🔁 Schedule next check
         # Floor the current time to the nearest minute

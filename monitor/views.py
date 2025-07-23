@@ -102,17 +102,24 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         website = serializer.validated_data['website']
-        if website.user != self.request.user:
+        user = self.request.user
+        if website.user != user:
+            logger.warning(f"[⚠️] User {user.id} tried to add a preference to website {website.id} not owned by them.")
             raise PermissionDenied("You do not own this website.")
 
         try:
-            serializer.save(user=self.request.user)
+            serializer.save(user=user)
+            logger.info(f"[✓] Notification preference created for user {user.id} on website {website.id}.")
         except IntegrityError:
+            logger.warning(f"[!] Duplicate notification preference for user {user.id}, website {website.id}, method {serializer.validated_data.get('method')}.")
             raise ValidationError("You already have this notification preference.")
 
 
     def perform_update(self, serializer):
+        user = self.request.user
         try:
-            serializer.save(user=self.request.user)
+            serializer.save(user=user)
+            logger.info(f"[✓] Notification preference updated for user {user.id}.")
         except IntegrityError:
+            logger.warning(f"[!] Duplicate on update: user {user.id}, method {serializer.validated_data.get('method')}.")
             raise ValidationError("You already have this notification preference.")
