@@ -1,5 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
+from .models import Website, CHECK_INTERVAL_CHOICES, UptimeCheckResult
+from urllib.parse import urlparse, urlunparse
+from datetime import timezone
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -37,3 +40,49 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
+class WebsiteSerializer(serializers.ModelSerializer):
+    check_interval_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Website
+        fields = [
+            'id',
+            'name',
+            'url',
+            'check_interval',
+            'check_interval_display',
+            'is_active'
+        ]
+        read_only_fields = ['id','created_at','is_active']
+
+    def get_check_interval_display(self, obj):
+        return dict(CHECK_INTERVAL_CHOICES).get(obj.check_interval)
+
+    def validate_url(self, value):
+        user = self.context['request'].user
+
+        # Parse and normalize URL
+        parsed = urlparse(value)
+        normalized_path = parsed.path.rstrip('/')
+        normalized_url = urlunparse(parsed._replace(
+            path=normalized_path,
+            scheme=parsed.scheme.lower(),
+            netloc=parsed.netloc.lower()
+        ))
+
+        # Check for duplicate with normalized URL
+        if Website.objects.filter(user=user, url=normalized_url).exists():
+            raise serializers.ValidationError("You already have a monitor for this URL.")
+
+        return normalized_url
+    
+    def create(self, validated_data):
+        validated_data['next_check_at'] = timezone.now()  # 🔥 ensures website gets picked up immediately
+        return super().create(validated_data)
+
+
+class UptimeCheckResultSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UptimeCheckResult
+        fields = '__all__'
+        read_only_fields = ['checked_at', 'status_code', 'response_time_ms']

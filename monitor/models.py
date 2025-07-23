@@ -23,6 +23,15 @@ class Website(models.Model):
     )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    next_check_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['is_active', 'check_interval']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['next_check_at']),
+        ]
 
     def __str__(self):
         return self.name or self.url
@@ -33,6 +42,11 @@ class UptimeCheckResult(models.Model):
     status_code = models.IntegerField()
     response_time_ms = models.FloatField()
     checked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['website', 'checked_at']),
+        ]
 
     @property
     def is_passed(self):

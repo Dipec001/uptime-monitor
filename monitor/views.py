@@ -1,8 +1,10 @@
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework import generics, status, permissions
+from rest_framework import generics, status, permissions, viewsets
 from rest_framework.response import Response
-from monitor.serializers import RegisterSerializer
+from monitor.serializers import RegisterSerializer, WebsiteSerializer
 from rest_framework.exceptions import APIException
+from .models import Website
+from django.http import Http404
 from django.contrib.auth import get_user_model
 import logging
 
@@ -27,7 +29,7 @@ class RegisterView(generics.CreateAPIView):
                 user = serializer.save()
                 refresh = RefreshToken.for_user(user)
 
-                logger.info("✅ User registered: %s", user.email)
+                logger.info("[✓] User registered: %s", user.email)
 
                 return Response({
                     "message": "User registered successfully",
@@ -41,9 +43,50 @@ class RegisterView(generics.CreateAPIView):
                     }
                 }, status=status.HTTP_201_CREATED)
 
-            logger.warning("❌ Registration failed with errors: %s", serializer.errors)
+            logger.warning("[!] Registration failed with errors: %s", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
             logger.exception("🔥 Unexpected error during registration: %s", str(e))
             raise APIException("Something went wrong. Please try again later.")
+
+class WebsiteViewSet(viewsets.ModelViewSet):
+    serializer_class = WebsiteSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Website.objects.filter(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            logger.warning(f"[!] Website validation failed: {serializer.errors} by {request.user.username}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        website = serializer.save(user=request.user)
+        logger.info(f"[✓] Monitor created: {website.url} by {request.user.username}")
+        return Response(self.get_serializer(website).data, status=status.HTTP_201_CREATED)
+    
+    def update(self, request, *args, **kwargs):
+        logger.debug(f"Update attempt with data: {request.data} by {request.user.username}")
+
+        try:
+            partial = kwargs.pop('partial', False)
+            instance = self.get_object()
+        except Http404:
+            logger.warning(f"[!] Update failed: Monitor not found for ID {kwargs.get('pk')} by {request.user.username}")
+            return Response({"detail": "Monitor not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+
+        if not serializer.is_valid():
+            logger.warning(f"[!] Update validation failed: {serializer.errors} by {request.user.username}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        website = serializer.save()
+        logger.info(f"[✓] Monitor updated: {website.url} by {request.user.username}")
+        return Response(serializer.data)
+
+    def perform_destroy(self, instance):
+        logger.warning(f"[!] Monitor deleted: {instance.url} by {self.request.user.username}")
+        return super().perform_destroy(instance)

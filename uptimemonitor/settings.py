@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'drf_yasg',
+    'django_celery_beat',
 
 ]
 
@@ -200,3 +201,8 @@ LOGGING = {
         },
     },
 }
+
+CELERY_BROKER_URL = 'redis://localhost:6379/0'  # or your Redis instance
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_TASK_DEFAULT_QUEUE = 'uptimemonitor'
