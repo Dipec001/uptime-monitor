@@ -1,0 +1,11 @@
+groups:
+  - name: UptimeMonitoringRules
+    rules:
+      - alert: WebsiteDown
+        expr: up{job="django-uptime-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Website is down!"
+          description: "The monitored website {{ $labels.instance }} has been down for 1 minute."

@@ -41,8 +41,9 @@ def check_single_website(self, website_id):
                 website.is_down = True
                 website.last_downtime_at = now()
                 logger.warning(f"[!] {website.url} DOWN at {website.last_downtime_at}")
-                # Send downtime alert
-                handle_alert(website, "downtime")
+                
+            # Send downtime alert. Always call handle_alert — even if already marked down
+            handle_alert(website, "downtime")
 
         # 🔁 Schedule next check
         # Floor the current time to the nearest minute
