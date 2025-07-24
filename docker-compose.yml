@@ -15,8 +15,8 @@ services:
     
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    # ports:
+      # - "6379:6379"
     restart: always
   
   prometheus:
@@ -28,6 +28,13 @@ services:
     ports:
       - "9090:9090"
     restart: always
+  
+  alertmanager:
+    image: prom/alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
 
   grafana:
     image: grafana/grafana
@@ -41,7 +48,10 @@ services:
 
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
+    command: >
+      sh -c "python wait-for-db.py &&
+            python manage.py migrate &&
+            python manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/app
     ports:
@@ -57,7 +67,9 @@ services:
 
   celery:
     build: .
-    command: celery -A uptime_monitor worker -l info --pool=solo
+    command: >
+      sh -c "python wait-for-db.py &&
+            celery -A uptimemonitor worker -l info --pool=solo"
     depends_on:
       - db
       - redis
@@ -69,7 +81,9 @@ services:
 
   beat:
     build: .
-    command: celery -A uptime_monitor beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: >
+      sh -c "python wait-for-db.py &&
+            celery -A uptimemonitor beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
     depends_on:
       - db
       - redis

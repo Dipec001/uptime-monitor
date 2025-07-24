@@ -57,7 +57,10 @@ class WebsiteViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Website.objects.filter(user=self.request.user)
+        user = self.request.user
+        if not user.is_authenticated:
+            return Website.objects.none()
+        return Website.objects.filter(user=user)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -98,7 +101,10 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
     serializer_class = NotificationPreferenceSerializer
 
     def get_queryset(self):
-        return NotificationPreference.objects.filter(user=self.request.user)
+        user = self.request.user
+        if not user.is_authenticated:
+            return NotificationPreference.objects.none()
+        return NotificationPreference.objects.filter(user=user)
 
     def perform_create(self, serializer):
         website = serializer.validated_data['website']

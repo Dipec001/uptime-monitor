@@ -1,0 +1,12 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: 'slack-notifications'
+
+receivers:
+  - name: 'slack-notifications'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/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'
+        channel: '#all-new-workspace'
+        send_resolved: true

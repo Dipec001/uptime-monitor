@@ -3,6 +3,12 @@ global:
 
 rule_files:
   - prometheus-alerts.yml  # 👈 This tells Prometheus to load your alert rules
+  - alert.rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
 
 scrape_configs:
   - job_name: 'django-uptime-api'

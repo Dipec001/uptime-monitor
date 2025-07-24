@@ -30,7 +30,11 @@ SECRET_KEY = "django-insecure-gy_2+ww%ubs4q0@8rzgzx(7y=$eprl!-2v)b*2-l0^0(wc#x9u
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "web",  # internal Docker hostname
+]
 
 
 # Application definition
@@ -63,7 +67,7 @@ REST_FRAMEWORK = {
 }
 
 MIDDLEWARE = [
-    'django_prometheus.middlewares.PrometheusBeforeMiddleware',
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -72,7 +76,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    'django_prometheus.middlewares.PrometheusAfterMiddleware',
+    'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
 ROOT_URLCONF = "uptimemonitor.urls"
@@ -212,7 +216,8 @@ LOGGING = {
     },
 }
 
-CELERY_BROKER_URL = 'redis://localhost:6379/0'  # or your Redis instance
+# CELERY_BROKER_URL = 'redis://localhost:6379/0'  # locally undockerized
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL") # or your Redis instance
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_TASK_DEFAULT_QUEUE = 'uptimemonitor'
