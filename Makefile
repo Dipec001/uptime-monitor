@@ -27,3 +27,6 @@ celery-worker:
 
 celery-beat:
 	docker-compose exec web celery -A uptime_monitor beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+generate-alertmanager-config:
+	envsubst < alertmanager/alertmanager.yml.template > alertmanager/alertmanager.yml

@@ -34,10 +34,11 @@ services:
       - alertmanager
   
   alertmanager:
-    build:
-      context: ./alertmanager
+    image: prom/alertmanager
     ports:
       - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
     env_file:
       - .env
 
