@@ -7,6 +7,6 @@ route:
 receivers:
   - name: 'slack-notifications'
     slack_configs:
-      - api_url: '{{ env "SLACK_WEBHOOK_URL" }}'
+      - api_url: "${SLACK_WEBHOOK_URL}"
         channel: '#all-new-workspace'
         send_resolved: true

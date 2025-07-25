@@ -24,17 +24,20 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - ./prometheus-alerts.yml:/etc/prometheus/prometheus-alerts.yml
+      - ./alert.rules.yml:/etc/prometheus/alert.rules.yml
       - prometheus-data:/prometheus
     ports:
       - "9090:9090"
     restart: always
+    depends_on:
+      - web
+      - alertmanager
   
   alertmanager:
-    image: prom/alertmanager
+    build:
+      context: ./alertmanager
     ports:
       - "9093:9093"
-    volumes:
-      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
     env_file:
       - .env
 

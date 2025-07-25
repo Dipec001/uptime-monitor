@@ -1,16 +1,4 @@
 groups:
-  - name: uptime_alerts
-    rules:
-      - alert: HighErrorRate
-        expr: rate(django_http_requests_total_by_method_total{method="GET"}[5m]) > 100
-        for: 1m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High traffic on GET endpoints"
-          description: "More than 100 GET requests/minute"
-          
-groups:
   - name: test-alerts
     rules:
       - alert: AlwaysFires
@@ -19,6 +7,5 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Test alert from Divine"
-          description: "This is a test alert that always fires to verify Slack integration."
-
+          summary: "🔥 {{ .Labels.alertname }} - {{ .Labels.severity }}"
+          description: "{{ .Labels.alertname }} has fired at {{ .StartsAt }}"
