@@ -1,6 +1,7 @@
 from celery import shared_task
 from .utils import get_due_websites, check_website_uptime
-from .models import Website, UptimeCheckResult
+from .models import Website, UptimeCheckResult, HeartBeat
+from django.db import transaction
 from datetime import timedelta
 from django.utils.timezone import now
 from .alerts import handle_alert
@@ -87,3 +88,40 @@ def cleanup_old_logs(retention_days=90):
     cutoff = now() - timedelta(days=retention_days)
     deleted, _ = UptimeCheckResult.objects.filter(checked_at__lt=cutoff).delete()
     return f"Deleted {deleted} logs older than {retention_days} days"
+
+
+@shared_task
+def process_ping(key, metadata=None):
+    try:
+        hb = HeartBeat.objects.get(key=key)
+    except HeartBeat.DoesNotExist:
+        return "Invalid key"
+
+    min_gap = hb.interval // 2  # allow 2x frequency
+
+    if hb.last_ping and (now - hb.last_ping).total_seconds() < min_gap:
+        # Too many pings → log it, don’t update
+        return f"Rate limited: {hb.name}"
+
+    # Update safely inside transaction
+    with transaction.atomic():
+        hb.last_ping = now
+        hb.status = "up"
+        hb.save(update_fields=["last_ping", "status", "updated_at"])
+
+    # Optionally log metadata (if you add a PingLog model)
+    return f"Ping accepted: {hb.name}"
+
+
+@shared_task
+def check_heartbeats():
+    """Check all heartbeats to see if any have missed their expected ping."""
+
+    for hb in HeartBeat.objects.all():
+        if hb.last_ping:
+            expected_next = hb.last_ping + timedelta(seconds=hb.interval + hb.grace_period)
+            if now() > expected_next and hb.status != "down":
+                hb.status = "down"
+                hb.save(update_fields=["status", "updated_at"])
+                # TODO: fire alert here
+                logger.warning(f"[!] Heartbeat DOWN: {hb.name}")

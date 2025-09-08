@@ -9,5 +9,6 @@ router.register(r'preferences', views.NotificationPreferenceViewSet, basename='p
 
 urlpatterns = [
     path('register/', views.RegisterView.as_view(), name='register'),
+    path('ping/<uuid:key>/', views.ping_heartbeat, name='ping_heartbeat'),
     path('', include(router.urls)),
 ]

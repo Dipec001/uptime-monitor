@@ -47,12 +47,36 @@ def send_webhook_alert_task(self, webhook_url, payload):
 
 def notify_users(website, alert_type):
     preferences = website.notificationpreference_set.filter(is_active=True)
-    message = f"{website.url} is {'DOWN' if alert_type == 'downtime' else 'BACK UP'}."
+    # message = f"{website.url} is {'DOWN' if alert_type == 'downtime' else 'BACK UP'}."
 
     for pref in preferences:
         if pref.method == "email":
-            send_email_alert_task.delay(pref.target, f"[{alert_type.upper()}] {website.url}", message)
+            subject = f"🔴 Website Down Alert – {website.url}"
+
+            message = f"""
+                🚨 Your website is DOWN!
+
+                URL: {website.url}
+                Time: {now().strftime('%Y-%m-%d %H:%M:%S')}
+                Status: ❌ Unreachable
+                Retry Count: 2/3
+
+                We’ll try again in 10 minutes.
+                You’ll receive up to 3 alerts, then pause until it's back online.
+
+                – Uptime Monitor
+                """
+
+            send_email_alert_task.delay(pref.target, f"[{alert_type.upper()}] {website.url}", message, subject)
         elif pref.method == "slack":
+            message = (
+                f"*🔴 Website Down Alert!*\n"
+                f"*URL:* {website.url}\n"
+                f"*Time:* {now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                f"*Status:* ❌ Down\n"
+                f"*Retry:* 1/3\n\n"
+                f"_We'll retry every 10 minutes, up to 3 times._"
+            )
             send_slack_alert_task.delay(pref.target, message)
         elif pref.method == "webhook":
             send_webhook_alert_task.delay(pref.target, {"status": alert_type, "url": website.url})

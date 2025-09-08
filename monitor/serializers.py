@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from .models import Website, CHECK_INTERVAL_CHOICES, UptimeCheckResult, NotificationPreference
 from urllib.parse import urlparse, urlunparse
-from datetime import timezone
+from django.utils import timezone
 from django.contrib.auth import get_user_model
 
 User = get_user_model()

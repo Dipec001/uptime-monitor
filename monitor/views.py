@@ -3,7 +3,9 @@ from rest_framework import generics, status, permissions, viewsets
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied, APIException
 from monitor.serializers import RegisterSerializer, WebsiteSerializer, NotificationPreferenceSerializer
-from .models import Website, NotificationPreference
+from .models import Website, NotificationPreference, HeartBeat
+from django.utils import timezone
+from django.http import JsonResponse
 from django.http import Http404
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
@@ -129,3 +131,27 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
         except IntegrityError:
             logger.warning(f"[!] Duplicate on update: user {user.id}, method {serializer.validated_data.get('method')}.")
             raise ValidationError("You already have this notification preference.")
+
+
+# def ping_heartbeat(request, key):
+#     """Endpoint to receive heartbeat pings."""
+#     try:
+#         hb = HeartBeat.objects.get(key=key)
+#     except HeartBeat.DoesNotExist:
+#         raise Http404("Invalid heartbeat key")
+
+#     # Update heartbeat
+#     hb.last_ping = timezone.now()
+#     hb.status = "up"
+#     hb.save(update_fields=["last_ping", "status", "updated_at"])
+
+#     return JsonResponse({"message": "Ping received", "status": hb.status})
+
+def ping_heartbeat(request, key):
+    """Endpoint to receive heartbeat pings."""
+    metadata = {
+        "ip": request.META.get("REMOTE_ADDR"),
+        "user_agent": request.META.get("HTTP_USER_AGENT"),
+    }
+    process_ping.delay(str(key), metadata)
+    return JsonResponse({"message": "Ping queued"})

@@ -5,6 +5,7 @@ from .models import Website
 
 
 def get_due_websites():
+    """Return a queryset of active websites that are due for a check."""
     now = timezone.now()
     return Website.objects.filter(
         is_active=True,
@@ -13,6 +14,7 @@ def get_due_websites():
 
 
 def check_website_uptime(url: str, timeout=5):
+    """Check the uptime of a website by sending an HTTP GET request."""
     start = time.time()
     try:
         response = requests.get(url, timeout=timeout)

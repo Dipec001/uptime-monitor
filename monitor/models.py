@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
-
+import uuid
 
 # For now, we'll use this fixed set of check intervals
 CHECK_INTERVAL_CHOICES = [
@@ -12,6 +12,12 @@ CHECK_INTERVAL_CHOICES = [
     (60, '1 hour'),
 ]
 
+CRON_STATUS_CHOICES = [
+    ("unknown", "Unknown"),  # never pinged
+    ("up", "Up"),
+    ("down", "Down"),
+]
+
 class Website(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='websites')
     name = models.CharField(max_length=100, blank=True, null=True)
@@ -20,6 +26,11 @@ class Website(models.Model):
         choices=CHECK_INTERVAL_CHOICES,
         default=5,
         help_text="How often (in minutes) to check the website."
+    )
+    expected_status = models.IntegerField(default=200) # some users expect 301/302.
+    timeout_ms = models.IntegerField(default=5000, 
+        help_text="Maximum wait time (in milliseconds) for the request to respond," \
+        " before you give up and mark it as failed."
     )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -42,6 +53,8 @@ class Website(models.Model):
 class UptimeCheckResult(models.Model):
     website = models.ForeignKey(Website, on_delete=models.CASCADE, related_name='checks')
     status_code = models.IntegerField()
+    error_message = models.TextField(blank=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
     response_time_ms = models.FloatField()
     checked_at = models.DateTimeField(auto_now_add=True)
 
@@ -101,3 +114,41 @@ class NotificationPreference(models.Model):
 
     def __str__(self):
         return f"{self.user.username} → {self.method}: {self.target}"
+    
+
+class HeartBeat(models.Model):
+    """A heartbeat is a periodic signal sent by a service to indicate normal operation."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="heartbeats")
+    name = models.CharField(max_length=100)  # e.g. "Daily Backup"
+    key = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    interval = models.IntegerField(
+        help_text="Expected interval in seconds (e.g. 86400 for daily)"
+    )
+    grace_period = models.IntegerField( default=60, help_text="Extra time buffer in seconds")
+    last_ping = models.DateTimeField(null=True, blank=True, db_index=True)
+    status = models.CharField(max_length=20, choices=CRON_STATUS_CHOICES, default="unknown")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)  # optional, but useful
+
+    def __str__(self):
+        return f"{self.name} ({self.status})"
+
+
+class PingLog(models.Model):
+    heartbeat = models.ForeignKey("HeartBeat", on_delete=models.CASCADE, related_name="pings")
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    status = models.CharField(max_length=20, choices=[("success", "Success"), ("fail", "Fail")])
+    runtime = models.FloatField(null=True, blank=True, help_text="Runtime in seconds")
+    exit_code = models.IntegerField(null=True, blank=True)
+    notes = models.TextField(blank=True)  # e.g., error message or logs snippet
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        return f"{self.heartbeat.name} @ {self.timestamp} - {self.status}"
+    class Meta:
+        indexes = [
+            models.Index(fields=['heartbeat', 'timestamp']),
+            models.Index(fields=['status']),
+        ]
