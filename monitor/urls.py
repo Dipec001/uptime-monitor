@@ -6,6 +6,7 @@ from . import views
 router = DefaultRouter()
 router.register(r'websites', views.WebsiteViewSet, basename='website')
 router.register(r'preferences', views.NotificationPreferenceViewSet, basename='preferences')
+router.register(r'heartbeats', views.HeartBeatViewSet, basename='heartbeat')
 
 urlpatterns = [
     path('register/', views.RegisterView.as_view(), name='register'),

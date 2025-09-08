@@ -2,14 +2,18 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import generics, status, permissions, viewsets
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied, APIException
-from monitor.serializers import RegisterSerializer, WebsiteSerializer, NotificationPreferenceSerializer
-from .models import Website, NotificationPreference
+from monitor.serializers import (
+    RegisterSerializer, WebsiteSerializer, NotificationPreferenceSerializer, HeartBeatSerializer
+)
+from .models import Website, NotificationPreference, HeartBeat
 from .tasks import process_ping
 from django.http import JsonResponse
 from django.http import Http404
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from rest_framework.exceptions import ValidationError
+from rest_framework.decorators import permission_classes, api_view
+import uuid
 import logging
 
 logger = logging.getLogger('monitor')
@@ -133,11 +137,49 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
             raise ValidationError("You already have this notification preference.")
 
 
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
 def ping_heartbeat(request, key):
     """Endpoint to receive heartbeat pings asynchronously."""
+    try:
+        uuid_key = uuid.UUID(str(key))
+    except ValueError:
+        return Response({"error": "Invalid key format"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Check if heartbeat exists
+    heartbeat = HeartBeat.objects.filter(key=uuid_key).first()
+    if not heartbeat:
+        return Response({"error": "Heartbeat not found"}, status=status.HTTP_404_NOT_FOUND)
+    
     metadata = {
         "ip": request.META.get("REMOTE_ADDR"),
         "user_agent": request.META.get("HTTP_USER_AGENT"),
     }
-    process_ping.delay(str(key), metadata)
-    return JsonResponse({"message": "Ping queued"})
+    
+    try:
+        process_ping.delay(str(uuid_key), metadata)
+        logger.info(f"Ping queued for heartbeat {heartbeat.name} (User: {heartbeat.user.username})")
+        return Response({"message": "Ping queued"})
+    except Exception as e:
+        logger.error(f"Error queueing ping for heartbeat {heartbeat.name}: {e}")
+        return Response({"error": "Failed to queue ping"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class HeartBeatViewSet(viewsets.ModelViewSet):
+    """
+    Full CRUD for HeartBeat objects.
+    Only authenticated users can create/list/edit/delete their own heartbeats.
+    """
+    serializer_class = HeartBeatSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Only return heartbeats belonging to current user
+        return HeartBeat.objects.filter(user=self.request.user).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        # Ensure user cannot change heartbeat ownership
+        serializer.save(user=self.request.user)

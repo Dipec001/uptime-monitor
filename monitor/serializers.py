@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import Website, CHECK_INTERVAL_CHOICES, UptimeCheckResult, NotificationPreference
+from .models import Website, CHECK_INTERVAL_CHOICES, UptimeCheckResult, NotificationPreference, HeartBeat
 from urllib.parse import urlparse, urlunparse
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -113,3 +113,23 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
         return super().create(validated_data)
+
+
+class HeartBeatSerializer(serializers.ModelSerializer):
+    ping_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HeartBeat
+        fields = ['id', 'name', 'key', 'interval', 'grace_period', 'status', 'last_ping', 'created_at', 'ping_url']
+        read_only_fields = ['id', 'key', 'status', 'last_ping', 'created_at', 'ping_url']
+
+    def get_ping_url(self, obj):
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(f'/api/heartbeat/ping/{obj.key}/')
+        return f'/api/heartbeat/ping/{obj.key}/'
+
+    def validate_interval(self, value):
+        if value < 10:
+            raise serializers.ValidationError("Interval must be at least 10 seconds.")
+        return value
