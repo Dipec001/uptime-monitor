@@ -136,19 +136,21 @@ class HeartBeat(models.Model):
 
 
 class PingLog(models.Model):
+    """Log each heartbeat ping for auditing and debugging."""
+
     heartbeat = models.ForeignKey("HeartBeat", on_delete=models.CASCADE, related_name="pings")
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
     status = models.CharField(max_length=20, choices=[("success", "Success"), ("fail", "Fail")])
     runtime = models.FloatField(null=True, blank=True, help_text="Runtime in seconds")
-    exit_code = models.IntegerField(null=True, blank=True)
     notes = models.TextField(blank=True)  # e.g., error message or logs snippet
     ip = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=255, blank=True)
 
-    def __str__(self):
-        return f"{self.heartbeat.name} @ {self.timestamp} - {self.status}"
     class Meta:
         indexes = [
             models.Index(fields=['heartbeat', 'timestamp']),
             models.Index(fields=['status']),
         ]
+    
+    def __str__(self):
+        return f"{self.heartbeat.name} @ {self.timestamp} - {self.status}"

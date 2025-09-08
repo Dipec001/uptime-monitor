@@ -1,10 +1,11 @@
 from celery import shared_task
 from .utils import get_due_websites, check_website_uptime
-from .models import Website, UptimeCheckResult, HeartBeat
+from .models import Website, UptimeCheckResult, HeartBeat, PingLog
 from django.db import transaction
 from datetime import timedelta
 from django.utils.timezone import now
 from .alerts import handle_alert
+from .redis_utils import allow_ping_sliding
 import logging
 
 logger = logging.getLogger('monitor')
@@ -90,38 +91,62 @@ def cleanup_old_logs(retention_days=90):
     return f"Deleted {deleted} logs older than {retention_days} days"
 
 
+
 @shared_task
 def process_ping(key, metadata=None):
+    """Process a heartbeat ping asynchronously with rate limiting and logging."""
+    if metadata is None:
+        metadata = {}
+
     try:
         hb = HeartBeat.objects.get(key=key)
     except HeartBeat.DoesNotExist:
+        logger.warning(f"Invalid heartbeat ping received: {key}")
         return "Invalid key"
 
-    min_gap = hb.interval // 2  # allow 2x frequency
-
-    if hb.last_ping and (now - hb.last_ping).total_seconds() < min_gap:
-        # Too many pings → log it, don’t update
+    # Apply rate limiting (per heartbeat & user)
+    # Sliding-window rate limiting
+    if not allow_ping_sliding(hb.id, user_id=hb.user_id, interval_seconds=hb.interval, max_calls=1):
+        logger.info(f"Heartbeat {hb.name} rate limited for user {hb.user.username}")
         return f"Rate limited: {hb.name}"
 
-    # Update safely inside transaction
+    # Safe DB update
     with transaction.atomic():
         hb.last_ping = now
         hb.status = "up"
         hb.save(update_fields=["last_ping", "status", "updated_at"])
 
-    # Optionally log metadata (if you add a PingLog model)
+    # Log the successful ping
+    PingLog.objects.create(
+        heartbeat=hb,
+        timestamp=now,
+        status="success",
+        ip=metadata.get("ip"),
+        user_agent=metadata.get("user_agent"),
+        notes=metadata.get("notes", "")
+    )
+
+    logger.info(f"Heartbeat {hb.name} ping accepted for user {hb.user.username}")
     return f"Ping accepted: {hb.name}"
 
 
 @shared_task
 def check_heartbeats():
-    """Check all heartbeats to see if any have missed their expected ping."""
+    """Check all heartbeats and mark as down if overdue."""
 
-    for hb in HeartBeat.objects.all():
+    heartbeats = HeartBeat.objects.all()
+    for hb in heartbeats:
         if hb.last_ping:
             expected_next = hb.last_ping + timedelta(seconds=hb.interval + hb.grace_period)
             if now() > expected_next and hb.status != "down":
                 hb.status = "down"
                 hb.save(update_fields=["status", "updated_at"])
-                # TODO: fire alert here
-                logger.warning(f"[!] Heartbeat DOWN: {hb.name}")
+                logger.warning(f"[!] Heartbeat DOWN: {hb.name} for user {hb.user.username}")
+
+                # Optional: log downtime event
+                PingLog.objects.create(
+                    heartbeat=hb,
+                    timestamp=now(),
+                    status="fail",
+                    notes="Heartbeat missed expected interval"
+                )
