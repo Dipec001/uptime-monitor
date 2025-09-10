@@ -232,3 +232,6 @@ EMAIL_USE_SSL = True
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# Redis Config for rate limiting
+REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')

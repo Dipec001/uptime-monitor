@@ -116,6 +116,7 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
 
 
 class HeartBeatSerializer(serializers.ModelSerializer):
+    """Serializer for HeartBeat model with ping URL generation."""
     ping_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -126,8 +127,8 @@ class HeartBeatSerializer(serializers.ModelSerializer):
     def get_ping_url(self, obj):
         request = self.context.get('request')
         if request:
-            return request.build_absolute_uri(f'/api/heartbeat/ping/{obj.key}/')
-        return f'/api/heartbeat/ping/{obj.key}/'
+            return request.build_absolute_uri(f'/api/ping/{obj.key}/')
+        return f'/api/ping/{obj.key}/'
 
     def validate_interval(self, value):
         if value < 10:

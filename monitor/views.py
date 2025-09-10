@@ -141,6 +141,7 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
 @permission_classes([permissions.AllowAny])
 def ping_heartbeat(request, key):
     """Endpoint to receive heartbeat pings asynchronously."""
+    
     try:
         uuid_key = uuid.UUID(str(key))
     except ValueError:

@@ -117,17 +117,20 @@ def process_ping(key, metadata=None):
         hb.save(update_fields=["last_ping", "status", "updated_at"])
 
     # Log the successful ping
-    PingLog.objects.create(
-        heartbeat=hb,
-        timestamp=now,
-        status="success",
-        ip=metadata.get("ip"),
-        user_agent=metadata.get("user_agent"),
-        notes=metadata.get("notes", "")
-    )
+    try:
+        PingLog.objects.create(
+            heartbeat=hb,
+            timestamp=now(),
+            status="success",
+            ip=metadata.get("ip"),
+            user_agent=metadata.get("user_agent"),
+            notes=metadata.get("notes", "")
+        )
+    except Exception as e:
+        logger.error(f"Failed to log ping for {hb.name}: {e}")
 
     logger.info(f"Heartbeat {hb.name} ping accepted for user {hb.user.username}")
-    return f"Ping accepted: {hb.name}"
+    return {"heartbeat": hb.name, "status": "accepted"}
 
 
 @shared_task
