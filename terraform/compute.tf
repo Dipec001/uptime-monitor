@@ -1,4 +1,6 @@
-# IAM role for EC2 to push logs to S3 Glacier
+# --------------------------
+# IAM Role for EC2 to push logs to S3 Glacier
+# --------------------------
 resource "aws_iam_role" "ec2_logs_role" {
   name = "${var.project_name}-ec2-logs-role"
   assume_role_policy = jsonencode({
@@ -34,16 +36,26 @@ resource "aws_iam_instance_profile" "ec2_logs_profile" {
   role = aws_iam_role.ec2_logs_role.name
 }
 
-resource "aws_instance" "app" {
-  ami                    = "ami-0c02fb55956c7d316" # Ubuntu 22.04 LTS (us-east-1)
-  instance_type          = var.instance_type
-  subnet_id              = aws_subnet.private.id
-  vpc_security_group_ids = [aws_security_group.ec2_private_sg.id]
-  key_name               = var.key_pair_name
-  iam_instance_profile   = aws_iam_instance_profile.ec2_logs_profile.name
-  associate_public_ip_address = false
+# --------------------------
+# Launch Template
+# --------------------------
+resource "aws_launch_template" "app_lt" {
+  name_prefix   = "${var.project_name}-lt-"
+  image_id      = "ami-0c02fb55956c7d316" # Ubuntu 22.04 LTS
+  instance_type = var.instance_type
 
-  user_data = <<-EOF
+  key_name = var.key_pair_name
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ec2_logs_profile.name
+  }
+
+  network_interfaces {
+    associate_public_ip_address = false
+    security_groups             = [aws_security_group.ec2_private_sg.id]
+  }
+
+  user_data = base64encode(<<-EOF
               #!/bin/bash
               apt update -y
               apt install -y docker.io docker-compose
@@ -51,11 +63,45 @@ resource "aws_instance" "app" {
               mkdir -p /app
               # Code copy/deploy handled via CI/CD
               EOF
+  )
 
-  tags = { Name = "${var.project_name}-app" }
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "${var.project_name}-app"
+    }
+  }
 }
 
+# --------------------------
+# Auto Scaling Group
+# --------------------------
+resource "aws_autoscaling_group" "app_asg" {
+  desired_capacity     = 2
+  min_size             = 1
+  max_size             = 3
+  vpc_zone_identifier  = [aws_subnet.private.id]
+  health_check_type    = "EC2"
+  health_check_grace_period = 60
+  force_delete         = true
+
+  launch_template {
+    id      = aws_launch_template.app_lt.id
+    version = "$Latest"
+  }
+
+  target_group_arns = [aws_lb_target_group.app_tg.arn]
+
+  tag {
+    key                 = "Name"
+    value               = "${var.project_name}-app"
+    propagate_at_launch = true
+  }
+}
+
+# --------------------------
 # ALB
+# --------------------------
 resource "aws_lb" "alb" {
   name               = "${var.project_name}-alb"
   internal           = false
@@ -69,6 +115,7 @@ resource "aws_lb_target_group" "app_tg" {
   port     = 8000
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
+
   health_check {
     path                = "/health/"
     interval            = 30

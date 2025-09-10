@@ -25,6 +25,7 @@ variable "private_subnet_cidr" {
 
 variable "key_pair_name" {
   type = string
+  default = ""
 }
 
 variable "instance_type" {
