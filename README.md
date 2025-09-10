@@ -66,7 +66,7 @@ The platform aims to be a **DevOps-focused tool** that:
 
 **ER Diagram:**  
 
-![ER Diagram](docs/uptime_monitor_model.png)
+![ER Diagram](docs/uptime_monitor_model_new.png)
 
 **Components:**
 
