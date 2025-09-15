@@ -45,6 +45,7 @@ class Website(models.Model):
             models.Index(fields=['is_active', 'next_check_at']),
             models.Index(fields=['created_at']),
         ]
+        ordering = ['-created_at'] # default ordering
 
     def __str__(self):
         return self.name or self.url

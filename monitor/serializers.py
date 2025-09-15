@@ -1,6 +1,12 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import Website, CHECK_INTERVAL_CHOICES, UptimeCheckResult, NotificationPreference, HeartBeat
+from .models import (
+    Website, 
+    CHECK_INTERVAL_CHOICES, 
+    UptimeCheckResult, 
+    NotificationPreference, 
+    HeartBeat 
+)
 from urllib.parse import urlparse, urlunparse
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -40,9 +46,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
+
 class WebsiteSerializer(serializers.ModelSerializer):
     check_interval_display = serializers.SerializerMethodField()
-
     class Meta:
         model = Website
         fields = [
@@ -77,7 +83,8 @@ class WebsiteSerializer(serializers.ModelSerializer):
         return normalized_url
     
     def create(self, validated_data):
-        validated_data['next_check_at'] = timezone.now()  # 🔥 ensures website gets picked up immediately
+        # ensures website gets picked up immediately
+        validated_data['next_check_at'] = timezone.now()
         return super().create(validated_data)
 
 
@@ -106,7 +113,9 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
         if method == 'email' and '@' not in target:
             raise serializers.ValidationError("Invalid email address.")
         if method in ['slack', 'webhook'] and not target.startswith('http'):
-            raise serializers.ValidationError("Target must be a valid URL for Slack or Webhook.")
+            raise serializers.ValidationError(
+                "Target must be a valid URL for Slack or Webhook."
+            )
 
         return data
 
@@ -121,7 +130,17 @@ class HeartBeatSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = HeartBeat
-        fields = ['id', 'name', 'key', 'interval', 'grace_period', 'status', 'last_ping', 'created_at', 'ping_url']
+        fields = [
+            'id', 
+            'name', 
+            'key', 
+            'interval', 
+            'grace_period', 
+            'status', 
+            'last_ping', 
+            'created_at', 
+            'ping_url'
+        ]
         read_only_fields = ['id', 'key', 'status', 'last_ping', 'created_at', 'ping_url']
 
     def get_ping_url(self, obj):

@@ -125,7 +125,6 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
             logger.warning(f"[!] Duplicate notification preference for user {user.id}, website {website.id}, method {serializer.validated_data.get('method')}.")
             raise ValidationError("You already have this notification preference.")
 
-
     def perform_update(self, serializer):
         user = self.request.user
         try:
