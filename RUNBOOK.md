@@ -81,7 +81,7 @@ Workers handle tasks such as website checks, heartbeats, and sending notificatio
 ```bash
 docker-compose up --build
 ```
-## Or you can use the differrent make commands in the Makefile to get docker setup
+**Or you can use the different make commands in the Makefile to get docker environment setup**
 
 ### Step 2: Service overview
 
