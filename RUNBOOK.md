@@ -30,28 +30,30 @@ This document explains how to **set up, run, and test** the system locally or us
 ```bash
 # Windows
 venv\Scripts\activate
-```
 
 # Mac/Linux
 source venv/bin/activate
-### Step 2: Install dependencies
-```bash
+```
 
+### Step 2: Install dependencies
+
+```bash
 pip install -r requirements.txt
 ```
-### Step 3: Apply database migrations
-```bash
 
+### Step 3: Apply database migrations
+
+```bash
 python manage.py migrate
 ```
 ### Step 4: Create superuser
-```bash
 
+```bash
 python manage.py createsuperuser
 ```
 ### Step 5: Run development server
-```bash
 
+```bash
 python manage.py runserver
 ```
 API available at http://127.0.0.1:8000/
@@ -70,6 +72,7 @@ celery -A uptimemonitor worker -l info
 ```bash
 celery -A uptimemonitor beat -l info
 ```
+
 Workers handle tasks such as website checks, heartbeats, and sending notifications.
 
 ## 5. Docker Setup (Optional)
@@ -78,6 +81,8 @@ Workers handle tasks such as website checks, heartbeats, and sending notificatio
 ```bash
 docker-compose up --build
 ```
+## Or you can use the differrent make commands in the Makefile to get docker setup
+
 ### Step 2: Service overview
 
 - db → PostgreSQL
