@@ -7,7 +7,6 @@ from monitor.serializers import (
 )
 from .models import Website, NotificationPreference, HeartBeat
 from .tasks import process_ping
-from django.http import JsonResponse
 from django.http import Http404
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError

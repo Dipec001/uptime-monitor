@@ -235,3 +235,5 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # Redis Config for rate limiting
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+
+SWAGGER_USE_COMPAT_RENDERERS = False
