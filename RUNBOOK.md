@@ -14,7 +14,7 @@ This document explains how to **set up, run, and test** the system locally or us
 ---
 
 ## 2. Prerequisites
-- Python 3.11+
+- Python 3.12+
 - pip
 - virtualenv
 - PostgreSQL (or via Docker)
@@ -56,9 +56,9 @@ python manage.py createsuperuser
 ```bash
 python manage.py runserver
 ```
-API available at http://127.0.0.1:8000/
+- API available at http://127.0.0.1:8000/
 
-Admin available at http://127.0.0.1:8000/admin/
+- Admin available at http://127.0.0.1:8000/admin/
 
 ## 4. Celery Setup (Background Tasks)
 
@@ -67,6 +67,12 @@ Admin available at http://127.0.0.1:8000/admin/
 ```bash
 celery -A uptimemonitor worker -l info
 ```
+or if you're on windows 👇
+
+```bash
+celery -A uptimemonitor worker -l info --pool=solo
+```
+
 ### Step 2: Start Celery beat (scheduler)
 
 ```bash

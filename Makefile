@@ -1,4 +1,7 @@
 up:
+	docker-compose up
+
+up-build:
 	docker-compose up --build
 
 down:
@@ -23,10 +26,10 @@ createsuperuser:
 	docker-compose exec web python manage.py createsuperuser
 
 celery-worker:
-	docker-compose exec web celery -A uptime_monitor worker -l info --pool=solo
+	docker-compose exec web celery -A uptimemonitor worker -l info
 
 celery-beat:
-	docker-compose exec web celery -A uptime_monitor beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+	docker-compose exec web celery -A uptimemonitor beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
 
 generate-alertmanager-config:
 	envsubst < alertmanager/alertmanager.yml.template > alertmanager/alertmanager.yml

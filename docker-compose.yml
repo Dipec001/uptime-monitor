@@ -2,7 +2,7 @@ services:
   db:
     image: postgres:15
     env_file:
-      - .env
+      - .env.docker
     ports:
       - "5432:5432"
     volumes:
@@ -11,7 +11,7 @@ services:
       test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
     
   redis:
     image: redis:7-alpine
@@ -40,7 +40,7 @@ services:
     volumes:
       - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
     env_file:
-      - .env
+      - .env.docker
 
   grafana:
     image: grafana/grafana
@@ -55,8 +55,7 @@ services:
   web:
     build: .
     command: >
-      sh -c "python wait-for-db.py &&
-            python manage.py migrate &&
+      sh -c "python manage.py migrate &&
             python manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/app
@@ -68,33 +67,29 @@ services:
       redis:
         condition: service_started
     env_file:
-      - .env
+      - .env.docker
     restart: always
 
   celery:
     build: .
-    command: >
-      sh -c "python wait-for-db.py &&
-            celery -A uptimemonitor worker -l info --pool=solo"
+    command: celery -A uptimemonitor worker -l info
     depends_on:
       - db
       - redis
     env_file:
-      - .env
+      - .env.docker
     volumes:
       - .:/app
     restart: always
 
   beat:
     build: .
-    command: >
-      sh -c "python wait-for-db.py &&
-            celery -A uptimemonitor beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+    command: celery -A uptimemonitor beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     depends_on:
       - db
       - redis
     env_file:
-      - .env
+      - .env.docker
     volumes:
       - .:/app
     restart: always

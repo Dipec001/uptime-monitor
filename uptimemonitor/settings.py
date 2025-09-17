@@ -116,7 +116,7 @@ DATABASES = {
         'NAME': os.getenv('POSTGRES_DB', 'monitor_db'),
         'USER': os.getenv('POSTGRES_USER', 'postgres'),
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
-        'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
+        'HOST': os.getenv('POSTGRES_HOST', 'db'),
         'PORT': os.getenv('POSTGRES_PORT', '5432'),
     }
 }
@@ -217,7 +217,7 @@ LOGGING = {
 }
 
 # CELERY_BROKER_URL = 'redis://localhost:6379/0'  # locally undockerized
-CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL") # or your Redis instance
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") # or your Redis instance
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_TASK_DEFAULT_QUEUE = 'uptimemonitor'
