@@ -3,7 +3,7 @@ import time
 import psycopg2
 from psycopg2 import OperationalError
 
-DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_HOST = os.getenv("DB_HOST", "db")
 DB_PORT = os.getenv("DB_PORT", 5432)
 DB_NAME = os.getenv("POSTGRES_DB", "monitor_db")
 DB_USER = os.getenv("POSTGRES_USER", "postgres")

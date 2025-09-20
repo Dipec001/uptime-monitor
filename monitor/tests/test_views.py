@@ -1,0 +1,335 @@
+# Views tests.
+import pytest
+from rest_framework.test import APIClient
+from rest_framework import status
+from django.contrib.auth.models import User
+from django.urls import reverse
+from monitor.models import Website, NotificationPreference
+
+@pytest.mark.django_db
+def test_register_view_success():
+    """
+    Test that a user can successfully register via RegisterView.
+    """
+    client = APIClient()
+    url = reverse("register")
+    data = {
+        "username": "testuser",
+        "email": "test@example.com",
+        "password": "StrongPassw0rd!"
+    }
+
+    response = client.post(url, data, format="json")
+
+    # Assert HTTP 201 Created
+    assert response.status_code == status.HTTP_201_CREATED
+
+    # Assert user is created in DB
+    user = User.objects.get(username="testuser")
+    assert user.email == "test@example.com"
+
+    # Assert response contains user info
+    assert "user" in response.data
+    assert response.data["user"]["email"] == "test@example.com"
+
+    # Assert response contains JWT tokens
+    assert "token" in response.data
+    assert "access" in response.data["token"]
+    assert "refresh" in response.data["token"]
+
+@pytest.mark.django_db
+def test_register_view_failure_existing_email():
+    """
+    Test registration fails when the email already exists.
+    """
+    # Create existing user
+    User.objects.create_user(username="existing", email="test@example.com", password="password123")
+
+    client = APIClient()
+    url = reverse("register")
+    data = {
+        "username": "newuser",
+        "email": "test@example.com",  # duplicate email
+        "password": "StrongPassw0rd!"
+    }
+
+    response = client.post(url, data, format="json")
+
+    # Assert HTTP 400 Bad Request
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "email" in response.data
+
+@pytest.mark.django_db
+def test_register_view_failure_invalid_password():
+    """
+    Test registration fails when password does not meet validation rules.
+    """
+    client = APIClient()
+    url = reverse("register")
+    data = {
+        "username": "testuser2",
+        "email": "test2@example.com",
+        "password": "123"  # too weak
+    }
+
+    response = client.post(url, data, format="json")
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "password" in response.data
+
+
+@pytest.mark.django_db
+def test_register_view_failure_existing_username():
+    """
+    Test registration fails when the username already exists.
+    """
+    # Create existing user
+    User.objects.create_user(username="existing", email="test@example.com", password="password123")
+
+    client = APIClient()
+    url = reverse("register")
+    data = {
+        "username": "newuser",
+        "email": "test@example.com",  # duplicate email
+        "password": "StrongPassw0rd!"
+    }
+
+    response = client.post(url, data, format="json")
+
+    # Assert HTTP 400 Bad Request
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "email" in response.data
+
+
+@pytest.mark.django_db
+def test_register_view_failure_existing_username():
+    """
+    Test registration fails when the username already exists.
+    """
+    # Create existing user
+    User.objects.create_user(username="existing", email="existing@example.com", password="password123")
+
+    client = APIClient()
+    url = reverse("register")
+    data = {
+        "username": "existing",  # duplicate username
+        "email": "new@example.com",
+        "password": "StrongPassw0rd!"
+    }
+
+    response = client.post(url, data, format="json")
+
+    # Assert HTTP 400 Bad Request
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "username" in response.data
+
+
+# ---------------------------------------------------
+# Website Views Tests
+# ---------------------------------------------------
+
+@pytest.fixture
+def user():
+    """Create a test user."""
+    return User.objects.create_user(username="tester", email="tester@example.com", password="StrongPassw0rd!")
+
+@pytest.fixture
+def api_client(user):
+    """Authenticated APIClient fixture."""
+    client = APIClient()
+    client.force_authenticate(user=user)
+    return client
+
+@pytest.fixture
+def website(user):
+    """Create a sample Website instance for the user."""
+    return Website.objects.create(
+        user=user,
+        name="My Site",
+        url="https://example.com",
+        check_interval=5
+    )
+
+# ----------------- Tests -----------------
+
+@pytest.mark.django_db
+def test_website_list(api_client, website):
+    """Test that authenticated user can list their websites."""
+    # Use the DRF router name
+    url = reverse("website-list")
+    response = api_client.get(url)
+    print(response.data)
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.data["results"]) == 1
+    assert response.data["results"][0]["url"] == website.url
+
+@pytest.mark.django_db
+def test_website_create_success(api_client):
+    """Test successful website creation."""
+    url = reverse("website-list")
+    data = {
+        "name": "New Site",
+        "url": "https://newsite.com",
+        "check_interval": 5
+    }
+    response = api_client.post(url, data, format="json")
+    assert response.status_code == status.HTTP_201_CREATED
+    assert Website.objects.filter(url="https://newsite.com").exists()
+
+@pytest.mark.django_db
+def test_website_create_duplicate_url(api_client, website):
+    """Test creating a website with duplicate URL fails."""
+    url = reverse("website-list")
+    data = {
+        "name": "Duplicate Site",
+        "url": website.url,  # duplicate
+        "check_interval": 5
+    }
+    response = api_client.post(url, data, format="json")
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "url" in response.data
+
+@pytest.mark.django_db
+def test_website_update(api_client, website):
+    """Test updating a website's name."""
+    url = reverse("website-detail", args=[website.id])
+    data = {"name": "Updated Name"}
+    response = api_client.patch(url, data, format="json")
+    assert response.status_code == status.HTTP_200_OK
+    website.refresh_from_db()
+    assert website.name == "Updated Name"
+
+@pytest.mark.django_db
+def test_website_delete(api_client, website):
+    """Test deleting a website."""
+    url = reverse("website-detail", args=[website.id])
+    response = api_client.delete(url)
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert not Website.objects.filter(id=website.id).exists()
+
+# ---------------------------------------------------
+# NotificationPreference Views Tests
+# ---------------------------------------------------
+
+
+@pytest.fixture
+def user():
+    """Create a test user."""
+    return User.objects.create_user(username="tester", email="tester@example.com", password="StrongPassw0rd!")
+
+@pytest.fixture
+def another_user():
+    """Another user for ownership tests."""
+    return User.objects.create_user(username="other", email="other@example.com", password="StrongPassw0rd!")
+
+@pytest.fixture
+def api_client(user):
+    """Authenticated APIClient fixture."""
+    client = APIClient()
+    client.force_authenticate(user=user)
+    return client
+
+@pytest.fixture
+def website(user):
+    """Website owned by the authenticated user."""
+    return Website.objects.create(
+        user=user,
+        name="My Site",
+        url="https://example.com",
+        check_interval=5
+    )
+
+@pytest.fixture
+def other_website(another_user):
+    """Website owned by another user."""
+    return Website.objects.create(
+        user=another_user,
+        name="Other Site",
+        url="https://other.com",
+        check_interval=5
+    )
+
+# ----------------- Tests -----------------
+
+@pytest.mark.django_db
+def test_create_notification_preference_success(api_client, website):
+    """Test successful creation of a notification preference."""
+    url = reverse("preferences-list")
+    data = {
+        "website": website.id,
+        "method": "email",
+        "target": "user@example.com"
+    }
+    response = api_client.post(url, data, format="json")
+    assert response.status_code == status.HTTP_201_CREATED
+    assert NotificationPreference.objects.filter(user=website.user, website=website).exists()
+
+@pytest.mark.django_db
+def test_create_preference_unauthorized_website(api_client, other_website):
+    """Test that creating a preference on a website not owned by user fails."""
+    url = reverse("preferences-list")
+    data = {
+        "website": other_website.id,
+        "method": "email",
+        "target": "user@example.com"
+    }
+    response = api_client.post(url, data, format="json")
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "do not own" in str(response.data).lower()
+
+@pytest.mark.django_db
+def test_create_duplicate_preference(api_client, website):
+    """Test that duplicate preferences are prevented."""
+    # First creation
+    NotificationPreference.objects.create(
+        user=website.user,
+        website=website,
+        method="email",
+        target="user@example.com"
+    )
+
+    # Attempt duplicate
+    url = reverse("preferences-list")
+    data = {
+        "website": website.id,
+        "method": "email",
+        "target": "user@example.com"
+    }
+    response = api_client.post(url, data, format="json")
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "already have" in str(response.data).lower()
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("method,target", [
+    ("email", "not-an-email"),
+    ("slack", "not-a-url"),
+    ("webhook", "ftp://invalid.com")
+])
+def test_create_invalid_target(api_client, website, method, target):
+    """Test validation errors for invalid email or URL targets."""
+    url = reverse("preferences-list")
+    data = {
+        "website": website.id,
+        "method": method,
+        "target": target
+    }
+    response = api_client.post(url, data, format="json")
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.data
+
+@pytest.mark.django_db
+def test_update_preference(api_client, website):
+    """Test updating a notification preference."""
+    preference = NotificationPreference.objects.create(
+        user=website.user,
+        website=website,
+        method="email",
+        target="old@example.com"
+    )
+
+    url = reverse("preferences-detail", args=[preference.id])
+    data = {"target": "new@example.com"}
+    response = api_client.patch(url, data, format="json")
+    assert response.status_code == status.HTTP_200_OK
+    preference.refresh_from_db()
+    assert preference.target == "new@example.com"

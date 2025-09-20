@@ -2,7 +2,7 @@ venv/
 __pycache__/
 *.pyc
 *.sqlite3
-.env
+.env*
 *.log
 .idea/
 *.DS_Store
@@ -13,3 +13,4 @@ celerybeat-schedule*
 node_modules/
 dist/
 build/
+staticfiles/

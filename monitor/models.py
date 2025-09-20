@@ -45,6 +45,7 @@ class Website(models.Model):
             models.Index(fields=['is_active', 'next_check_at']),
             models.Index(fields=['created_at']),
         ]
+        ordering = ['-created_at'] # default ordering
 
     def __str__(self):
         return self.name or self.url
@@ -154,3 +155,24 @@ class PingLog(models.Model):
     
     def __str__(self):
         return f"{self.heartbeat.name} @ {self.timestamp} - {self.status}"
+
+
+class HeartbeatNotificationPreference(models.Model):
+    METHOD_CHOICES = [
+        ("email", "Email"), 
+        ("slack", "Slack"), 
+        ("webhook", "Webhook")
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    heartbeat = models.ForeignKey(HeartBeat, on_delete=models.CASCADE)
+    method = models.CharField(max_length=20, choices=METHOD_CHOICES, default="email")
+    target = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "heartbeat", "method")
+
+    def __str__(self):
+        return f"{self.user.username} → {self.method}: {self.target}"

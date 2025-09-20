@@ -3,11 +3,13 @@ from rest_framework import generics, status, permissions, viewsets
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied, APIException
 from monitor.serializers import (
-    RegisterSerializer, WebsiteSerializer, NotificationPreferenceSerializer, HeartBeatSerializer
+    RegisterSerializer, 
+    WebsiteSerializer, 
+    NotificationPreferenceSerializer, 
+    HeartBeatSerializer
 )
 from .models import Website, NotificationPreference, HeartBeat
 from .tasks import process_ping
-from django.http import JsonResponse
 from django.http import Http404
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
@@ -71,7 +73,10 @@ class WebsiteViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
-            logger.warning(f"[!] Website validation failed: {serializer.errors} by {request.user.username}")
+            logger.warning(
+                f"[!] Website validation failed: {serializer.errors}" 
+                f"by {request.user.username}"
+            )
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         website = serializer.save(user=request.user)
@@ -85,13 +90,19 @@ class WebsiteViewSet(viewsets.ModelViewSet):
             partial = kwargs.pop('partial', False)
             instance = self.get_object()
         except Http404:
-            logger.warning(f"[!] Update failed: Monitor not found for ID {kwargs.get('pk')} by {request.user.username}")
+            logger.warning(
+                f"[!] Update failed: Monitor not found for ID {kwargs.get('pk')} "
+                f"by {request.user.username}"
+            )
             return Response({"detail": "Monitor not found."}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
 
         if not serializer.is_valid():
-            logger.warning(f"[!] Update validation failed: {serializer.errors} by {request.user.username}")
+            logger.warning(
+                f"[!] Update validation failed: {serializer.errors} "
+                f"by {request.user.username}"
+            )
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         website = serializer.save()
@@ -116,16 +127,23 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
         website = serializer.validated_data['website']
         user = self.request.user
         if website.user != user:
-            logger.warning(f"[⚠️] User {user.id} tried to add a preference to website {website.id} not owned by them.")
+            logger.warning(
+                f"[⚠️] User {user.id} tried to add a preference to "
+                f"website {website.id} not owned by them."
+            )
             raise PermissionDenied("You do not own this website.")
 
         try:
             serializer.save(user=user)
-            logger.info(f"[✓] Notification preference created for user {user.id} on website {website.id}.")
+            logger.info(
+                f"[✓] Notification preference created for user {user.id} "
+                f"on website {website.id}.")
         except IntegrityError:
-            logger.warning(f"[!] Duplicate notification preference for user {user.id}, website {website.id}, method {serializer.validated_data.get('method')}.")
+            logger.warning(
+                f"[!] Duplicate notification preference for user {user.id}, "
+                f"website {website.id}, "
+                f"method {serializer.validated_data.get('method')}.")
             raise ValidationError("You already have this notification preference.")
-
 
     def perform_update(self, serializer):
         user = self.request.user
@@ -133,7 +151,9 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
             serializer.save(user=user)
             logger.info(f"[✓] Notification preference updated for user {user.id}.")
         except IntegrityError:
-            logger.warning(f"[!] Duplicate on update: user {user.id}, method {serializer.validated_data.get('method')}.")
+            logger.warning(
+                f"[!] Duplicate on update: user {user.id}, "
+                f"method {serializer.validated_data.get('method')}.")
             raise ValidationError("You already have this notification preference.")
 
 
@@ -159,11 +179,16 @@ def ping_heartbeat(request, key):
     
     try:
         process_ping.delay(str(uuid_key), metadata)
-        logger.info(f"Ping queued for heartbeat {heartbeat.name} (User: {heartbeat.user.username})")
+        logger.info(
+            f"Ping queued for heartbeat {heartbeat.name} (User: {heartbeat.user.username})"
+        )
         return Response({"message": "Ping queued"})
     except Exception as e:
         logger.error(f"Error queueing ping for heartbeat {heartbeat.name}: {e}")
-        return Response({"error": "Failed to queue ping"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": "Failed to queue ping"}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 class HeartBeatViewSet(viewsets.ModelViewSet):
