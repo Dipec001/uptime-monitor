@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import Website, UptimeCheckResult, Alert, NotificationPreference
+from .models import (
+    Website, UptimeCheckResult, Alert, NotificationPreference,
+    HeartBeat, PingLog, HeartbeatNotificationPreference
+)
 
 
 @admin.register(Website)
@@ -76,5 +79,55 @@ class NotificationPreferenceAdmin(admin.ModelAdmin):
     list_filter = ("method", "is_active", "created_at")
     search_fields = ("user__username", "user__email", "website__url", "target")
     autocomplete_fields = ("user", "website")
+    ordering = ("-created_at",)
+    readonly_fields = ("created_at",)
+
+
+@admin.register(HeartBeat)
+class HeartBeatAdmin(admin.ModelAdmin):
+    list_display = (
+        "name", 
+        "key", 
+        "user", 
+        "interval", 
+        "status", 
+        "last_ping",  
+        "created_at"
+    )
+    list_filter = ("status", "interval", "created_at")
+    search_fields = ("name", "key", "user__username", "user__email")
+    autocomplete_fields = ("user",)
+    ordering = ("-created_at",)
+    readonly_fields = ("key", "created_at", "last_ping")
+
+
+@admin.register(PingLog)
+class PingLogAdmin(admin.ModelAdmin):
+    list_display = (
+        "heartbeat", 
+        "timestamp", 
+        "status", 
+        "notes"
+    )
+    list_filter = ("status", "timestamp")
+    search_fields = ("heartbeat__name", "heartbeat__key", "notes")
+    autocomplete_fields = ("heartbeat",)
+    ordering = ("-timestamp",)
+    readonly_fields = ("heartbeat", "timestamp", "status", "notes")
+
+
+@admin.register(HeartbeatNotificationPreference)
+class HeartbeatNotificationPreferenceAdmin(admin.ModelAdmin):
+    list_display = (
+        "user", 
+        "heartbeat", 
+        "method", 
+        "target", 
+        "is_active", 
+        "created_at"
+    )
+    list_filter = ("method", "is_active", "created_at")
+    search_fields = ("user__username", "user__email", "heartbeat__name", "target")
+    autocomplete_fields = ("user", "heartbeat")
     ordering = ("-created_at",)
     readonly_fields = ("created_at",)

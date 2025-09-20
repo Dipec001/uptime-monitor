@@ -6,6 +6,8 @@ from datetime import timedelta
 from django.utils.timezone import now
 from .alerts import handle_alert
 from .redis_utils import allow_ping_sliding
+from django.core.mail import send_mail
+from django.conf import settings
 import logging
 
 logger = logging.getLogger('monitor')
@@ -91,13 +93,15 @@ def cleanup_old_logs(retention_days=90):
     return f"Deleted {deleted} logs older than {retention_days} days"
 
 
-
 @shared_task
 def process_ping(key, metadata=None):
-    """Process a heartbeat ping asynchronously with rate limiting and logging."""
+    """Process a heartbeat ping asynchronously with rate limiting and logging,
+    and recovery notification if a service comes back online.
+    """
     if metadata is None:
         metadata = {}
 
+    # look up heartbeat by it's unique key
     try:
         hb = HeartBeat.objects.get(key=key)
     except HeartBeat.DoesNotExist:
@@ -106,9 +110,17 @@ def process_ping(key, metadata=None):
 
     # Apply rate limiting (per heartbeat & user)
     # Sliding-window rate limiting
-    if not allow_ping_sliding(hb.id, user_id=hb.user_id, interval_seconds=hb.interval, max_calls=1):
+    if not allow_ping_sliding(
+        hb.id, 
+        user_id=hb.user_id, 
+        interval_seconds=hb.interval, 
+        max_calls=1
+    ):
         logger.info(f"Heartbeat {hb.name} rate limited for user {hb.user.username}")
         return f"Rate limited: {hb.name}"
+
+    # Track previous status so we can detect "recovery"
+    previous_status = hb.status
 
     # Safe DB update
     with transaction.atomic():
@@ -129,27 +141,70 @@ def process_ping(key, metadata=None):
     except Exception as e:
         logger.error(f"Failed to log ping for {hb.name}: {e}")
 
+    # If the heartbeat was DOWN before, send a recovery alert
+    if previous_status == "down":
+        logger.info(f"Heartbeat {hb.name} RECOVERED for user {hb.user.username}")
+        send_alert.delay(hb.id, "up")
+
     logger.info(f"Heartbeat {hb.name} ping accepted for user {hb.user.username}")
     return {"heartbeat": hb.name, "status": "accepted"}
 
 
 @shared_task
 def check_heartbeats():
-    """Check all heartbeats and mark as down if overdue."""
+    """
+    Periodically check all heartbeats.
+    If a heartbeat has missed its expected ping window,
+    mark it as 'down' and create a failure log entry.
+    """
 
-    heartbeats = HeartBeat.objects.all()
-    for hb in heartbeats:
-        if hb.last_ping:
-            expected_next = hb.last_ping + timedelta(seconds=hb.interval + hb.grace_period)
-            if now() > expected_next and hb.status != "down":
-                hb.status = "down"
-                hb.save(update_fields=["status", "updated_at"])
-                logger.warning(f"[!] Heartbeat DOWN: {hb.name} for user {hb.user.username}")
+    current_time = now()
 
-                # Optional: log downtime event
-                PingLog.objects.create(
-                    heartbeat=hb,
-                    timestamp=now(),
-                    status="fail",
-                    notes="Heartbeat missed expected interval"
-                )
+    # Get all heartbeats that:
+    # 1. Have a last_ping timestamp
+    # 2. Are not already marked as "down"
+    due_candidates = HeartBeat.objects.exclude(status="down").exclude(last_ping=None)
+
+    for hb in due_candidates:
+        # Calculate the time when the next ping was expected:
+        # last_ping + interval (expected frequency) + grace_period (buffer)
+        expected_next = hb.last_ping + timedelta(
+            seconds=hb.interval + hb.grace_period
+        )
+
+        # If current time has passed the expected deadline
+        if current_time > expected_next:
+            # Update the heartbeat status to "down"
+            hb.status = "down"
+            hb.save(update_fields=["status", "updated_at"])
+
+            # Log a warning for observability
+            logger.warning(
+                f"[!] Heartbeat DOWN: {hb.name} for user {hb.user.username}"
+            )
+
+            # Create a log entry in PingLog for auditing/debugging
+            PingLog.objects.create(
+                heartbeat=hb,
+                timestamp=current_time,
+                status="fail",
+                notes="Heartbeat missed expected interval",
+            )
+
+            # Trigger async alert/notification
+            send_alert.delay(hb.id, "down")
+
+
+@shared_task
+def send_alert(heartbeat_id, status):
+    """Send alert notification for heartbeat status change."""
+    hb = HeartBeat.objects.get(id=heartbeat_id)
+    user = hb.user
+    # Example: send via email
+    send_mail(
+        subject=f"[Alert] {hb.name} is {status.upper()}",
+        message=f"Heartbeat {hb.name} went {status} at {now()}",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+    )
+    # TODO: add Slack/WhatsApp here
