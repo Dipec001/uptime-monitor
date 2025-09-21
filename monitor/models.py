@@ -18,6 +18,14 @@ CRON_STATUS_CHOICES = [
     ("down", "Down"),
 ]
 
+# Notification methods
+METHOD_CHOICES = [
+        ("email", "Email"),
+        ("slack", "Slack"),
+        ("webhook", "Webhook"),
+        ("whatsapp", "WhatsApp"),
+    ]
+
 class Website(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='websites')
     name = models.CharField(max_length=100, blank=True, null=True)
@@ -70,15 +78,22 @@ class UptimeCheckResult(models.Model):
 
     def __str__(self):
         return f"{self.website.url} - {self.status_code} at {self.checked_at}"
+    
 
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 
 class Alert(models.Model):
+    """Model to track alerts sent for various entities (Website, HeartBeat, etc.)"""
     ALERT_TYPES = [
         ("downtime", "Downtime"),
         ("recovery", "Recovery"),
     ]
 
-    website = models.ForeignKey(Website, on_delete=models.CASCADE, related_name='alerts')
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    target = GenericForeignKey("content_type", "object_id")
+
     alert_type = models.CharField(max_length=20, choices=ALERT_TYPES)
     is_active = models.BooleanField(default=True)
     last_sent_at = models.DateTimeField(null=True, blank=True)
@@ -87,34 +102,37 @@ class Alert(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=['website', 'alert_type', 'is_active']),
+            models.Index(fields=['content_type', 'object_id', 'alert_type', 'is_active']),
             models.Index(fields=['created_at']),
         ]
 
     def __str__(self):
-        return f"{self.website.url} - {self.alert_type} - Active: {self.is_active}"
+        return f"{self.target} - {self.alert_type} - Active: {self.is_active}"
 
 
 class NotificationPreference(models.Model):
-    METHOD_CHOICES = [
-        ("email", "Email"),
-        ("slack", "Slack"),
-        ("webhook", "Webhook"),
-    ]
+    """
+    User's notification preferences for any monitorable object (Website, HeartBeat, etc.)
+    """
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    website = models.ForeignKey(Website, on_delete=models.CASCADE)
+
+    # Generic relation to Website or HeartBeat
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    target_object = GenericForeignKey("content_type", "object_id")
+
     method = models.CharField(max_length=20, choices=METHOD_CHOICES, default="email")
-    target = models.CharField(max_length=255)  # email address, Slack URL, or webhook URL
+    target = models.CharField(max_length=255)  # email, Slack URL, webhook, WhatsApp, etc.
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("user", "website", "method") # just one method per site, regardless of target.
-        # unique_together = ("user", "website", "method", "target")
+        unique_together = ("user", "content_type", "object_id", "method")
 
     def __str__(self):
-        return f"{self.user.username} → {self.method}: {self.target}"
+        return f"{self.user.username} → {self.method}: {self.target} ({self.target_object})"
+
     
 
 class HeartBeat(models.Model):
@@ -158,11 +176,7 @@ class PingLog(models.Model):
 
 
 class HeartbeatNotificationPreference(models.Model):
-    METHOD_CHOICES = [
-        ("email", "Email"), 
-        ("slack", "Slack"), 
-        ("webhook", "Webhook")
-    ]
+    """User's notification preferences for a heartbeat."""
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     heartbeat = models.ForeignKey(HeartBeat, on_delete=models.CASCADE)

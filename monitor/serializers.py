@@ -98,30 +98,72 @@ class UptimeCheckResultSerializer(serializers.ModelSerializer):
 class NotificationPreferenceSerializer(serializers.ModelSerializer):
     class Meta:
         model = NotificationPreference
-        fields = ['id', 'user', 'website', 'method', 'target', 'is_active', 'created_at']
-        read_only_fields = ['id', 'created_at', 'user']
-
-    def validate_website(self, website):
-        if website.user != self.context['request'].user:
-            raise serializers.ValidationError("You do not own this website.")
-        return website
+        fields = [
+            "id",
+            "user",
+            "content_type",
+            "object_id",
+            "method",
+            "target",
+            "is_active",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at", "user"]
 
     def validate(self, data):
-        method = data.get('method')
-        target = data.get('target')
+        """
+        Ensure NotificationPreference has valid content_type/object_id,
+        user owns the target, and method/target are consistent.
+        Works for both POST and PATCH.
+        """
+        instance = getattr(self, "instance", None)
 
-        if method == 'email' and '@' not in target:
+        # Pick new values if provided, else fall back to existing instance
+        content_type = data.get("content_type") or getattr(instance, "content_type", None)
+        object_id = data.get("object_id") or getattr(instance, "object_id", None)
+        method = data.get("method") or getattr(instance, "method", None)
+        target = data.get("target") or getattr(instance, "target", None)
+
+        user = self.context["request"].user
+
+        # 1. Ensure content_type is valid and points to Website or HeartBeat
+        if not content_type:
+            raise serializers.ValidationError("content_type is required.")
+        model_class = content_type.model_class()
+        if model_class not in [Website, HeartBeat]:
+            raise serializers.ValidationError("Invalid content type.")
+
+        # 2. Ensure object_id exists
+        if not object_id:
+            raise serializers.ValidationError("object_id is required.")
+        try:
+            target_object = model_class.objects.get(id=object_id)
+        except model_class.DoesNotExist:
+            raise serializers.ValidationError("Target object does not exist.")
+
+        # 3. Ownership check (Website/HeartBeat must belong to user)
+        if hasattr(target_object, "user") and target_object.user != user:
+            raise serializers.ValidationError("You do not own this target object.")
+
+        # 4. Ensure method/target combo makes sense
+        if not method:
+            raise serializers.ValidationError("method is required.")
+        if not target:
+            raise serializers.ValidationError("target is required.")
+
+        if method == "email" and "@" not in target:
             raise serializers.ValidationError("Invalid email address.")
-        if method in ['slack', 'webhook'] and not target.startswith('http'):
-            raise serializers.ValidationError(
-                "Target must be a valid URL for Slack or Webhook."
-            )
+        if method in ["slack", "webhook"]:
+            if not (target.startswith("http://") or target.startswith("https://")):
+                raise serializers.ValidationError("Target must be a valid URL for Slack/Webhook.")
 
         return data
 
     def create(self, validated_data):
-        validated_data['user'] = self.context['request'].user
+        validated_data["user"] = self.context["request"].user
         return super().create(validated_data)
+
+
 
 
 class HeartBeatSerializer(serializers.ModelSerializer):

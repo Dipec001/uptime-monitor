@@ -52,35 +52,57 @@ class UptimeCheckResultAdmin(admin.ModelAdmin):
 @admin.register(Alert)
 class AlertAdmin(admin.ModelAdmin):
     list_display = (
-        "website", 
-        "alert_type", 
-        "is_active", 
-        "retry_count", 
-        "last_sent_at", 
-        "created_at"
+        "target_object_display",
+        "alert_type",
+        "is_active",
+        "retry_count",
+        "last_sent_at",
+        "created_at",
     )
-    list_filter = ("alert_type", "is_active", "created_at")
-    search_fields = ("website__url",)
-    autocomplete_fields = ("website",)
+    list_filter = ("alert_type", "is_active", "created_at", "content_type")
+    search_fields = (
+        "target_object_display",
+        "alert_type",
+    )
     ordering = ("-created_at",)
     readonly_fields = ("created_at", "last_sent_at")
+
+    def target_object_display(self, obj):
+        """Show Website URL or Heartbeat name in the admin."""
+        if obj.target_object:
+            return str(obj.target_object)
+        return f"{obj.content_type} {obj.object_id}"
+
+    target_object_display.short_description = "Target"
 
 
 @admin.register(NotificationPreference)
 class NotificationPreferenceAdmin(admin.ModelAdmin):
     list_display = (
-        "user", 
-        "website", 
-        "method", 
-        "target", 
-        "is_active", 
-        "created_at"
+        "user",
+        "target_object_display",
+        "method",
+        "target",
+        "is_active",
+        "created_at",
     )
-    list_filter = ("method", "is_active", "created_at")
-    search_fields = ("user__username", "user__email", "website__url", "target")
-    autocomplete_fields = ("user", "website")
+    list_filter = ("method", "is_active", "created_at", "content_type")
+    search_fields = (
+        "user__username",
+        "user__email",
+        "target",
+    )
+    autocomplete_fields = ("user",)
     ordering = ("-created_at",)
     readonly_fields = ("created_at",)
+
+    def target_object_display(self, obj):
+        """Show what this preference is attached to (Website URL, Heartbeat name, etc.)."""
+        if obj.target_object:
+            return str(obj.target_object)
+        return f"{obj.content_type} {obj.object_id}"
+
+    target_object_display.short_description = "Target"
 
 
 @admin.register(HeartBeat)
@@ -114,20 +136,3 @@ class PingLogAdmin(admin.ModelAdmin):
     autocomplete_fields = ("heartbeat",)
     ordering = ("-timestamp",)
     readonly_fields = ("heartbeat", "timestamp", "status", "notes")
-
-
-@admin.register(HeartbeatNotificationPreference)
-class HeartbeatNotificationPreferenceAdmin(admin.ModelAdmin):
-    list_display = (
-        "user", 
-        "heartbeat", 
-        "method", 
-        "target", 
-        "is_active", 
-        "created_at"
-    )
-    list_filter = ("method", "is_active", "created_at")
-    search_fields = ("user__username", "user__email", "heartbeat__name", "target")
-    autocomplete_fields = ("user", "heartbeat")
-    ordering = ("-created_at",)
-    readonly_fields = ("created_at",)

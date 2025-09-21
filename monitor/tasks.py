@@ -1,13 +1,11 @@
 from celery import shared_task
-from .utils import get_due_websites, check_website_uptime
+from .utils import get_due_websites, check_website_uptime, get_due_heartbeats
 from .models import Website, UptimeCheckResult, HeartBeat, PingLog
 from django.db import transaction
 from datetime import timedelta
 from django.utils.timezone import now
-from .alerts import handle_alert
+from .alerts import handle_alert, send_email_alert_task
 from .redis_utils import allow_ping_sliding
-from django.core.mail import send_mail
-from django.conf import settings
 import logging
 
 logger = logging.getLogger('monitor')
@@ -88,6 +86,8 @@ def check_due_websites():
 
 @shared_task
 def cleanup_old_logs(retention_days=90):
+    """Delete UptimeCheckResult logs older than retention_days."""
+    # TODO: Consider archiving old logs instead of deleting
     cutoff = now() - timedelta(days=retention_days)
     deleted, _ = UptimeCheckResult.objects.filter(checked_at__lt=cutoff).delete()
     return f"Deleted {deleted} logs older than {retention_days} days"
@@ -144,46 +144,26 @@ def process_ping(key, metadata=None):
     # If the heartbeat was DOWN before, send a recovery alert
     if previous_status == "down":
         logger.info(f"Heartbeat {hb.name} RECOVERED for user {hb.user.username}")
-        send_alert.delay(hb.id, "up")
+        send_email_alert_task.delay(hb.id, "up")
 
     logger.info(f"Heartbeat {hb.name} ping accepted for user {hb.user.username}")
     return {"heartbeat": hb.name, "status": "accepted"}
 
 
-@shared_task
-def check_heartbeats():
-    """
-    Periodically check all heartbeats.
-    If a heartbeat has missed its expected ping window,
-    mark it as 'down' and create a failure log entry.
-    """
+@shared_task(bind=True, max_retries=3)
+def check_single_heartbeat(self, heartbeat_id):
+    try:
+        hb = HeartBeat.objects.get(pk=heartbeat_id)
+        if hb.status == "down":
+            return  # already marked down, skip
 
-    current_time = now()
+        current_time = now()
+        expected_next = hb.last_ping + timedelta(seconds=hb.interval + hb.grace_period)
 
-    # Get all heartbeats that:
-    # 1. Have a last_ping timestamp
-    # 2. Are not already marked as "down"
-    due_candidates = HeartBeat.objects.exclude(status="down").exclude(last_ping=None)
-
-    for hb in due_candidates:
-        # Calculate the time when the next ping was expected:
-        # last_ping + interval (expected frequency) + grace_period (buffer)
-        expected_next = hb.last_ping + timedelta(
-            seconds=hb.interval + hb.grace_period
-        )
-
-        # If current time has passed the expected deadline
         if current_time > expected_next:
-            # Update the heartbeat status to "down"
             hb.status = "down"
             hb.save(update_fields=["status", "updated_at"])
 
-            # Log a warning for observability
-            logger.warning(
-                f"[!] Heartbeat DOWN: {hb.name} for user {hb.user.username}"
-            )
-
-            # Create a log entry in PingLog for auditing/debugging
             PingLog.objects.create(
                 heartbeat=hb,
                 timestamp=current_time,
@@ -191,20 +171,17 @@ def check_heartbeats():
                 notes="Heartbeat missed expected interval",
             )
 
-            # Trigger async alert/notification
-            send_alert.delay(hb.id, "down")
+            handle_alert(hb, "downtime")
 
+    except HeartBeat.DoesNotExist:
+        logger.warning(f"[!] Heartbeat {heartbeat_id} no longer exists")
 
+    
 @shared_task
-def send_alert(heartbeat_id, status):
-    """Send alert notification for heartbeat status change."""
-    hb = HeartBeat.objects.get(id=heartbeat_id)
-    user = hb.user
-    # Example: send via email
-    send_mail(
-        subject=f"[Alert] {hb.name} is {status.upper()}",
-        message=f"Heartbeat {hb.name} went {status} at {now()}",
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[user.email],
-    )
-    # TODO: add Slack/WhatsApp here
+def check_due_heartbeats():
+    due_hbs = get_due_heartbeats()
+    count = 0
+    for hb in due_hbs.iterator():
+        check_single_heartbeat.delay(hb.id)
+        count += 1
+    return f"Queued {count} heartbeats for checking."

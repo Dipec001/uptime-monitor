@@ -5,6 +5,7 @@ from rest_framework import status
 from django.contrib.auth.models import User
 from django.urls import reverse
 from monitor.models import Website, NotificationPreference
+from django.contrib.contenttypes.models import ContentType
 
 @pytest.mark.django_db
 def test_register_view_success():
@@ -131,7 +132,11 @@ def test_register_view_failure_existing_username():
 @pytest.fixture
 def user():
     """Create a test user."""
-    return User.objects.create_user(username="tester", email="tester@example.com", password="StrongPassw0rd!")
+    return User.objects.create_user(
+        username="tester", 
+        email="tester@example.com", 
+        password="StrongPassw0rd!"
+    )
 
 @pytest.fixture
 def api_client(user):
@@ -208,19 +213,26 @@ def test_website_delete(api_client, website):
     assert not Website.objects.filter(id=website.id).exists()
 
 # ---------------------------------------------------
-# NotificationPreference Views Tests
+# NotificationPreference Views Tests (Generic Relation)
 # ---------------------------------------------------
-
 
 @pytest.fixture
 def user():
     """Create a test user."""
-    return User.objects.create_user(username="tester", email="tester@example.com", password="StrongPassw0rd!")
+    return User.objects.create_user(
+        username="tester",
+        email="tester@example.com",
+        password="StrongPassw0rd!"
+    )
 
 @pytest.fixture
 def another_user():
     """Another user for ownership tests."""
-    return User.objects.create_user(username="other", email="other@example.com", password="StrongPassw0rd!")
+    return User.objects.create_user(
+        username="other",
+        email="other@example.com",
+        password="StrongPassw0rd!"
+    )
 
 @pytest.fixture
 def api_client(user):
@@ -249,6 +261,7 @@ def other_website(another_user):
         check_interval=5
     )
 
+
 # ----------------- Tests -----------------
 
 @pytest.mark.django_db
@@ -256,20 +269,27 @@ def test_create_notification_preference_success(api_client, website):
     """Test successful creation of a notification preference."""
     url = reverse("preferences-list")
     data = {
-        "website": website.id,
+        "content_type": ContentType.objects.get_for_model(Website).id,
+        "object_id": website.id,
         "method": "email",
         "target": "user@example.com"
     }
     response = api_client.post(url, data, format="json")
     assert response.status_code == status.HTTP_201_CREATED
-    assert NotificationPreference.objects.filter(user=website.user, website=website).exists()
+    assert NotificationPreference.objects.filter(
+        user=website.user,
+        content_type=ContentType.objects.get_for_model(Website),
+        object_id=website.id
+    ).exists()
+
 
 @pytest.mark.django_db
 def test_create_preference_unauthorized_website(api_client, other_website):
     """Test that creating a preference on a website not owned by user fails."""
     url = reverse("preferences-list")
     data = {
-        "website": other_website.id,
+        "content_type": ContentType.objects.get_for_model(Website).id,
+        "object_id": other_website.id,
         "method": "email",
         "target": "user@example.com"
     }
@@ -277,27 +297,29 @@ def test_create_preference_unauthorized_website(api_client, other_website):
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "do not own" in str(response.data).lower()
 
+
 @pytest.mark.django_db
 def test_create_duplicate_preference(api_client, website):
     """Test that duplicate preferences are prevented."""
-    # First creation
     NotificationPreference.objects.create(
         user=website.user,
-        website=website,
+        content_type=ContentType.objects.get_for_model(Website),
+        object_id=website.id,
         method="email",
         target="user@example.com"
     )
 
-    # Attempt duplicate
     url = reverse("preferences-list")
     data = {
-        "website": website.id,
+        "content_type": ContentType.objects.get_for_model(Website).id,
+        "object_id": website.id,
         "method": "email",
         "target": "user@example.com"
     }
     response = api_client.post(url, data, format="json")
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "already have" in str(response.data).lower()
+
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("method,target", [
@@ -309,7 +331,8 @@ def test_create_invalid_target(api_client, website, method, target):
     """Test validation errors for invalid email or URL targets."""
     url = reverse("preferences-list")
     data = {
-        "website": website.id,
+        "content_type": ContentType.objects.get_for_model(Website).id,
+        "object_id": website.id,
         "method": method,
         "target": target
     }
@@ -317,12 +340,14 @@ def test_create_invalid_target(api_client, website, method, target):
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert response.data
 
+
 @pytest.mark.django_db
 def test_update_preference(api_client, website):
     """Test updating a notification preference."""
     preference = NotificationPreference.objects.create(
         user=website.user,
-        website=website,
+        content_type=ContentType.objects.get_for_model(Website),
+        object_id=website.id,
         method="email",
         target="old@example.com"
     )

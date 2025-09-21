@@ -2,6 +2,7 @@ import pytest
 from django.contrib.auth.models import User
 from django.db import IntegrityError
 from monitor.models import Website, UptimeCheckResult, Alert, NotificationPreference, HeartBeat
+from django.contrib.contenttypes.models import ContentType
 
 # ---------------------------------------------------
 # Website Model Tests
@@ -82,15 +83,21 @@ def test_alert_defaults_and_str():
     """
     user = User.objects.create(username="tester")
     site = Website.objects.create(user=user, url="https://example.com")
-    
-    alert = Alert.objects.create(website=site, alert_type="downtime")
+
+    content_type = ContentType.objects.get_for_model(Website)
+
+    alert = Alert.objects.create(
+        content_type=content_type,
+        object_id=site.id,
+        alert_type="downtime",
+    )
 
     # Defaults
     assert alert.is_active is True
     assert alert.retry_count == 1
 
-    # __str__ method
-    expected_str = f"{site.url} - downtime - Active: True"
+    # __str__ method should include the generic target (site.url)
+    expected_str = f"{site} - downtime - Active: True"
     assert str(alert) == expected_str
 
 # ---------------------------------------------------
@@ -100,33 +107,50 @@ def test_alert_defaults_and_str():
 @pytest.mark.django_db
 def test_notification_preference_unique_constraint():
     """
-    Ensure the unique constraint on (user, website, method) is enforced.
+    Ensure the unique constraint on (user, content_type, object_id, method) is enforced.
     """
     user = User.objects.create(username="tester")
     site = Website.objects.create(user=user, url="https://example.com")
 
+    content_type = ContentType.objects.get_for_model(Website)
+
     NotificationPreference.objects.create(
-        user=user, website=site, method="email", target="test@example.com"
+        user=user,
+        content_type=content_type,
+        object_id=site.id,
+        method="email",
+        target="test@example.com",
     )
 
     with pytest.raises(IntegrityError):
         NotificationPreference.objects.create(
-            user=user, website=site, method="email", target="another@example.com"
+            user=user,
+            content_type=content_type,
+            object_id=site.id,
+            method="email",
+            target="another@example.com",
         )
+
 
 @pytest.mark.django_db
 def test_notification_preference_str_method():
     """
-    Test string representation returns user → method: target.
+    Test string representation returns user → method: target (with target object).
     """
     user = User.objects.create(username="tester")
     site = Website.objects.create(user=user, url="https://example.com")
 
+    content_type = ContentType.objects.get_for_model(Website)
+
     pref = NotificationPreference.objects.create(
-        user=user, website=site, method="slack", target="https://hooks.slack.com/test"
+        user=user,
+        content_type=content_type,
+        object_id=site.id,
+        method="slack",
+        target="https://hooks.slack.com/test",
     )
 
-    assert str(pref) == f"{user.username} → slack: {pref.target}"
+    assert str(pref) == f"{user.username} → slack: {pref.target} ({site})"
 
 # ---------------------------------------------------
 # HeartBeat Model Tests

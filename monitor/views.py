@@ -124,25 +124,24 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
         return NotificationPreference.objects.filter(user=user)
 
     def perform_create(self, serializer):
-        website = serializer.validated_data['website']
         user = self.request.user
-        if website.user != user:
-            logger.warning(
-                f"[⚠️] User {user.id} tried to add a preference to "
-                f"website {website.id} not owned by them."
-            )
-            raise PermissionDenied("You do not own this website.")
 
         try:
             serializer.save(user=user)
+            target_type = serializer.validated_data.get("content_type").model
+            target_id = serializer.validated_data.get("object_id")
             logger.info(
                 f"[✓] Notification preference created for user {user.id} "
-                f"on website {website.id}.")
+                f"on {target_type} {target_id}."
+            )
         except IntegrityError:
+            method = serializer.validated_data.get("method")
             logger.warning(
                 f"[!] Duplicate notification preference for user {user.id}, "
-                f"website {website.id}, "
-                f"method {serializer.validated_data.get('method')}.")
+                f"target ({serializer.validated_data.get('content_type')}, "
+                f"{serializer.validated_data.get('object_id')}), "
+                f"method {method}."
+            )
             raise ValidationError("You already have this notification preference.")
 
     def perform_update(self, serializer):
@@ -151,9 +150,10 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
             serializer.save(user=user)
             logger.info(f"[✓] Notification preference updated for user {user.id}.")
         except IntegrityError:
+            method = serializer.validated_data.get("method")
             logger.warning(
-                f"[!] Duplicate on update: user {user.id}, "
-                f"method {serializer.validated_data.get('method')}.")
+                f"[!] Duplicate on update: user {user.id}, method {method}."
+            )
             raise ValidationError("You already have this notification preference.")
 
 

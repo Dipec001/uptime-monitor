@@ -21,7 +21,7 @@ app.conf.beat_schedule = {
         'args': (90,),
     },
     'check_heartbeats-every-minute': {
-        'task': 'monitor.tasks.check_heartbeats',
+        'task': 'monitor.tasks.check_due_heartbeats',
         'schedule': crontab(),  # every minute
     },
 }
