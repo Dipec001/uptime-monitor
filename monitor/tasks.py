@@ -124,7 +124,7 @@ def process_ping(key, metadata=None):
 
     # Safe DB update
     with transaction.atomic():
-        hb.last_ping = now
+        hb.last_ping = now()
         hb.status = "up"
         hb.save(update_fields=["last_ping", "status", "updated_at"])
 
@@ -144,7 +144,7 @@ def process_ping(key, metadata=None):
     # If the heartbeat was DOWN before, send a recovery alert
     if previous_status == "down":
         logger.info(f"Heartbeat {hb.name} RECOVERED for user {hb.user.username}")
-        send_email_alert_task.delay(hb.id, "up")
+        handle_alert(hb.id, "recovery")
 
     logger.info(f"Heartbeat {hb.name} ping accepted for user {hb.user.username}")
     return {"heartbeat": hb.name, "status": "accepted"}
