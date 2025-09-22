@@ -92,7 +92,7 @@ class Alert(models.Model):
 
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
-    target = GenericForeignKey("content_type", "object_id")
+    target_object = GenericForeignKey("content_type", "object_id")
 
     alert_type = models.CharField(max_length=20, choices=ALERT_TYPES)
     is_active = models.BooleanField(default=True)
@@ -107,7 +107,7 @@ class Alert(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.target} - {self.alert_type} - Active: {self.is_active}"
+        return f"{self.target_object} - {self.alert_type} - Active: {self.is_active}"
 
 
 class NotificationPreference(models.Model):

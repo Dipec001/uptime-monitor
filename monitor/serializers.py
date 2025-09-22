@@ -10,6 +10,7 @@ from .models import (
 from urllib.parse import urlparse, urlunparse
 from django.utils import timezone
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 
 User = get_user_model()
 
@@ -96,12 +97,13 @@ class UptimeCheckResultSerializer(serializers.ModelSerializer):
 
 
 class NotificationPreferenceSerializer(serializers.ModelSerializer):
+    model = serializers.CharField(write_only=True)  # "heartbeat" or "website"
     class Meta:
         model = NotificationPreference
         fields = [
             "id",
             "user",
-            "content_type",
+            "model",
             "object_id",
             "method",
             "target",
@@ -116,36 +118,34 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
         user owns the target, and method/target are consistent.
         Works for both POST and PATCH.
         """
-        instance = getattr(self, "instance", None)
+        model_name = data.get("model")
+        if not model_name:
+            raise serializers.ValidationError("model is required.")
+        
+        if model_name.lower() == "heartbeat":
+            data["content_type"] = ContentType.objects.get_for_model(HeartBeat)
+        elif model_name.lower() == "website":
+            data["content_type"] = ContentType.objects.get_for_model(Website)
+        else:
+            raise serializers.ValidationError("Invalid model type. Must be 'heartbeat' or 'website'.")
 
-        # Pick new values if provided, else fall back to existing instance
-        content_type = data.get("content_type") or getattr(instance, "content_type", None)
-        object_id = data.get("object_id") or getattr(instance, "object_id", None)
-        method = data.get("method") or getattr(instance, "method", None)
-        target = data.get("target") or getattr(instance, "target", None)
-
-        user = self.context["request"].user
-
-        # 1. Ensure content_type is valid and points to Website or HeartBeat
-        if not content_type:
-            raise serializers.ValidationError("content_type is required.")
-        model_class = content_type.model_class()
-        if model_class not in [Website, HeartBeat]:
-            raise serializers.ValidationError("Invalid content type.")
-
-        # 2. Ensure object_id exists
-        if not object_id:
-            raise serializers.ValidationError("object_id is required.")
+        # Validate object exists
+        object_id = data.get("object_id")
+        model_class = data["content_type"].model_class()
         try:
-            target_object = model_class.objects.get(id=object_id)
+            obj = model_class.objects.get(id=object_id)
         except model_class.DoesNotExist:
-            raise serializers.ValidationError("Target object does not exist.")
+            raise serializers.ValidationError(f"{model_class.__name__} with id {object_id} does not exist.")
 
         # 3. Ownership check (Website/HeartBeat must belong to user)
-        if hasattr(target_object, "user") and target_object.user != user:
-            raise serializers.ValidationError("You do not own this target object.")
-
-        # 4. Ensure method/target combo makes sense
+        # Ensure ownership
+        user = self.context["request"].user
+        if hasattr(obj, "user") and obj.user != user:
+            raise serializers.ValidationError("You do not own this object.")
+        
+        # Validate method/target combo
+        method = data.get("method")
+        target = data.get("target")
         if not method:
             raise serializers.ValidationError("method is required.")
         if not target:
@@ -161,9 +161,8 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data["user"] = self.context["request"].user
+        validated_data.pop("model", None)  # Remove the friendly field
         return super().create(validated_data)
-
-
 
 
 class HeartBeatSerializer(serializers.ModelSerializer):
