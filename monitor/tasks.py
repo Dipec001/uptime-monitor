@@ -145,7 +145,7 @@ def process_ping(key, metadata=None):
     # If the heartbeat was DOWN before, send a recovery alert
     if previous_status == "down":
         logger.info(f"Heartbeat {hb.name} RECOVERED for user {hb.user.username}")
-        handle_alert(hb.id, "recovery")
+        handle_alert(hb, "recovery")
 
     logger.info(f"Heartbeat {hb.name} ping accepted for user {hb.user.username}")
     return {"heartbeat": hb.name, "status": "accepted"}
@@ -179,6 +179,10 @@ def check_single_heartbeat(self, heartbeat_id):
     
 @shared_task
 def check_due_heartbeats():
+    """ 
+    Check all heartbeats that are due and mark them down if missed.
+    This task is intended to be run every minute via cron or a periodic task scheduler.
+    """
     due_hbs = get_due_heartbeats()
     count = 0
     for hb in due_hbs.iterator():
