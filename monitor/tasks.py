@@ -126,7 +126,8 @@ def process_ping(key, metadata=None):
     with transaction.atomic():
         hb.last_ping = now()
         hb.status = "up"
-        hb.save(update_fields=["last_ping", "status", "updated_at"])
+        hb.update_next_due()  # update next_due automatically
+        hb.save(update_fields=["last_ping", "status", "next_due", "updated_at"])
 
     # Log the successful ping
     try:
@@ -158,11 +159,10 @@ def check_single_heartbeat(self, heartbeat_id):
             return  # already marked down, skip
 
         current_time = now()
-        expected_next = hb.last_ping + timedelta(seconds=hb.interval + hb.grace_period)
-
-        if current_time > expected_next:
+        if hb.next_due and current_time > hb.next_due:
             hb.status = "down"
             hb.save(update_fields=["status", "updated_at"])
+            logger.warning(f"[!] Heartbeat {hb.name} missed ping at {current_time}, marked DOWN")
 
             PingLog.objects.create(
                 heartbeat=hb,

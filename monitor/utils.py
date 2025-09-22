@@ -27,20 +27,10 @@ def check_website_uptime(url: str, timeout=5):
 
 
 def get_due_heartbeats():
-    """Return a queryset of active heartbeats that should be checked."""
-
-    now_time = timezone.now()
-
-    # Convert (interval + grace_period) seconds into a DurationField
-    total_delay = ExpressionWrapper(
-        Func(F("interval") + F("grace_period"), function="make_interval", secs=True),
-        output_field=DurationField(),
-    )
-
-    return HeartBeat.objects.annotate(
-        delay=total_delay
-    ).filter(
+    """Return heartbeats that are past their next_due timestamp."""
+    now = timezone.now()
+    return HeartBeat.objects.filter(
         status="up",
         last_ping__isnull=False,
-        last_ping__lt=now_time - F("delay"),
-    ).only("id", "name", "interval")
+        next_due__lte=now
+    ).only("id", "name", "interval", "grace_period", "last_ping", "next_due")

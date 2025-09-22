@@ -178,11 +178,12 @@ class HeartBeatSerializer(serializers.ModelSerializer):
             'interval', 
             'grace_period', 
             'status', 
+            'next_due', # show next due field
             'last_ping', 
             'created_at', 
             'ping_url'
         ]
-        read_only_fields = ['id', 'key', 'status', 'last_ping', 'created_at', 'ping_url']
+        read_only_fields = ['id', 'key', 'status', 'last_ping', 'next_due', 'created_at', 'ping_url']
 
     def get_ping_url(self, obj):
         request = self.context.get('request')
@@ -194,3 +195,9 @@ class HeartBeatSerializer(serializers.ModelSerializer):
         if value < 10:
             raise serializers.ValidationError("Interval must be at least 10 seconds.")
         return value
+    
+    def create(self, validated_data):
+        hb = super().create(validated_data)
+        hb.update_next_due()
+        hb.save(update_fields=["next_due"])
+        return hb

@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 import uuid
 
 # For now, we'll use this fixed set of check intervals
@@ -146,9 +147,15 @@ class HeartBeat(models.Model):
     )
     grace_period = models.IntegerField(default=60, help_text="Extra time buffer in seconds")
     last_ping = models.DateTimeField(null=True, blank=True, db_index=True)
+    next_due = models.DateTimeField(null=True, blank=True, db_index=True)
     status = models.CharField(max_length=20, choices=CRON_STATUS_CHOICES, default="unknown")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)  # optional, but useful
+
+    def update_next_due(self):
+        """Call this after every ping or creation."""
+        now = timezone.now()
+        self.next_due = now + timezone.timedelta(seconds=self.interval + self.grace_period)
 
     def __str__(self):
         return f"{self.name} ({self.status})"

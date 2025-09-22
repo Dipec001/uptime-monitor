@@ -174,7 +174,14 @@ def build_alert_message(target, alert_type, method="email"):
             """
         elif method == "slack":
             return f"*Website {alert_type.upper()}!* {target.url} at {now()}"
-        # etc...
+        elif method == "whatsapp":
+            return f"🚨 Website {alert_type.upper()}!\nURL: {target.url}\nTime: {now().strftime('%Y-%m-%d %H:%M:%S')}"
+        elif method == "webhook":
+            return {
+                "alert_type": alert_type,
+                "url": target.url,
+                "timestamp": now().isoformat()
+            }
 
     elif isinstance(target, HeartBeat):
         if method == "email":
@@ -186,6 +193,13 @@ def build_alert_message(target, alert_type, method="email"):
             """
         elif method == "slack":
             return f"*Heartbeat {alert_type.upper()}!* {target.name} at {now()}"
-        # etc...
+        elif method == "whatsapp":
+            return f"🚨 Heartbeat {alert_type.upper()}!\nService: {target.name}\nTime: {now().strftime('%Y-%m-%d %H:%M:%S')}"
+        elif method == "webhook":
+            return {
+                "alert_type": alert_type,
+                "service": target.name,
+                "timestamp": now().isoformat()
+            }
 
     return f"Alert: {target} is {alert_type}"
