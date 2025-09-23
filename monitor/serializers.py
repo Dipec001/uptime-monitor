@@ -10,6 +10,7 @@ from .models import (
 from urllib.parse import urlparse, urlunparse
 from django.utils import timezone
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 
 User = get_user_model()
@@ -195,3 +196,56 @@ class HeartBeatSerializer(serializers.ModelSerializer):
         hb.update_next_due()
         hb.save(update_fields=["next_due"])
         return hb
+
+
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from .alerts import send_email_alert_task
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("No user with this email.")
+        return value
+
+    def save(self):
+        email = self.validated_data["email"]
+        user = User.objects.get(email=email)
+
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        reset_link = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}/"
+
+        send_email_alert_task.delay(
+            email,
+            "Password Reset Request",
+            f"Click the link to reset your password: {reset_link}"
+        )
+
+        return reset_link
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        try:
+            uid = urlsafe_base64_decode(data["uid"]).decode()
+            self.user = User.objects.get(pk=uid)
+        except (User.DoesNotExist, ValueError, TypeError):
+            raise serializers.ValidationError("Invalid UID.")
+
+        if not default_token_generator.check_token(self.user, data["token"]):
+            raise serializers.ValidationError("Invalid or expired token.")
+
+        return data
+
+    def save(self):
+        self.user.set_password(self.validated_data["new_password"])
+        self.user.save()
+        return self.user

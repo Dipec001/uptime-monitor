@@ -34,3 +34,5 @@ def get_due_heartbeats():
         last_ping__isnull=False,
         next_due__lte=now
     ).only("id", "name", "interval", "grace_period", "last_ping", "next_due")
+
+

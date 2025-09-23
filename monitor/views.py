@@ -6,7 +6,9 @@ from monitor.serializers import (
     RegisterSerializer, 
     WebsiteSerializer, 
     NotificationPreferenceSerializer, 
-    HeartBeatSerializer
+    HeartBeatSerializer,
+    ForgotPasswordSerializer,
+    ResetPasswordSerializer
 )
 from .models import Website, NotificationPreference, HeartBeat
 from .tasks import process_ping
@@ -256,3 +258,27 @@ class TestNotificationView(generics.GenericAPIView):
                 {"error": "Failed to send test notification."}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class ForgotPasswordView(generics.GenericAPIView):
+    permission_classes = [permissions.AllowAny]
+    serializer_class = ForgotPasswordSerializer
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            logger.info(f"[✓] Password reset email sent to {serializer.validated_data['email']}")
+            return Response({"detail": "Password reset email sent."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResetPasswordView(generics.GenericAPIView):
+    permission_classes = [permissions.AllowAny]
+    serializer_class = ResetPasswordSerializer
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            logger.info(f"[✓] Password reset successful for user {serializer.user.email}")
+            return Response({"detail": "Password reset successful."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

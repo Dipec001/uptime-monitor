@@ -6,19 +6,30 @@ const API = axios.create({
 });
 
 // login function
-export async function login(username, password) {
-  const response = await API.post("login/", { username, password });
+export async function login(email, password) {
+  const response = await API.post("login/", { email, password });
+  console.log(response.data)
   return response.data; // this will have {access, refresh}
 }
 
 // register function
-export async function register(username, password, email) {
-  const response = await API.post("register/", { username, password, email });
+export async function register(password, email) {
+  const response = await API.post("register/", { password, email });
   return response.data;
 }
 
-// example: check if token is still valid
+
 export async function refreshToken(token) {
   const response = await API.post("token/refresh/", { token });
+  return response.data;
+}
+
+
+export async function resetPasswordConfirm(uid, token, new_password) {
+  const response = await API.post("reset-password/", {
+    uid,
+    token,
+    new_password,
+  });
   return response.data;
 }
