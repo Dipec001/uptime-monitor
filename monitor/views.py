@@ -209,3 +209,50 @@ class HeartBeatViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         # Ensure user cannot change heartbeat ownership
         serializer.save(user=self.request.user)
+
+
+class TestNotificationView(generics.GenericAPIView):
+    """
+    API endpoint to test notification methods for a given target (Website or HeartBeat).
+    """
+    serializer_class = NotificationPreferenceSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            logger.warning(
+                f"[!] Test notification validation failed: {serializer.errors} "
+                f"by {request.user.username}"
+            )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = serializer.validated_data
+        target_object = data.get("target_object")
+        method = data.get("method")
+        target = data.get("target")
+
+        if not target_object:
+            return Response(
+                {"error": "Target object not found."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check ownership
+        if hasattr(target_object, "user") and target_object.user != request.user:
+            raise PermissionDenied("You do not own this object.")
+
+        # Simulate sending a test notification
+        try:
+            # Here you would integrate with your actual notification sending logic
+            logger.info(
+                f"[✓] Test notification sent to {target} via {method} "
+                f"for user {request.user.username} on {target_object}."
+            )
+            return Response({"message": f"Test notification sent to {target} via {method}."})
+        except Exception as e:
+            logger.error(f"[!] Failed to send test notification: {e}")
+            return Response(
+                {"error": "Failed to send test notification."}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

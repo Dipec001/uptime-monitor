@@ -5,7 +5,7 @@ from .models import (
     CHECK_INTERVAL_CHOICES, 
     UptimeCheckResult, 
     NotificationPreference, 
-    HeartBeat 
+    HeartBeat
 )
 from urllib.parse import urlparse, urlunparse
 from django.utils import timezone
@@ -18,16 +18,11 @@ User = get_user_model()
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'email', 'password']
+        fields = ('email', 'password')
         extra_kwargs = {
             'password': {'write_only': True},
             'email': {'required': True}
         }
-
-    def validate_username(self, value):
-        if User.objects.filter(username=value).exists():
-            raise serializers.ValidationError("Username already exists.")
-        return value
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -41,7 +36,6 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Create the user using create_user to hash the password
         user = User.objects.create_user(
-            username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password']
         )
