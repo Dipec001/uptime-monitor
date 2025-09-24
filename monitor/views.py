@@ -217,6 +217,7 @@ class TestNotificationView(generics.GenericAPIView):
     """
     API endpoint to test notification methods for a given target (Website or HeartBeat).
     """
+    # TODO: Add rate limiting to prevent abuse
     serializer_class = NotificationPreferenceSerializer
     permission_classes = [permissions.IsAuthenticated]
 

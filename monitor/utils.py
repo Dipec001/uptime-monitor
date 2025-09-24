@@ -2,7 +2,7 @@ from django.utils import timezone
 import requests
 import time
 from .models import Website, HeartBeat
-from django.db.models import F, ExpressionWrapper, DurationField, Func
+
 
 def get_due_websites():
     """Return a queryset of active websites that are due for a check."""

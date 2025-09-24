@@ -33,3 +33,20 @@ export async function resetPasswordConfirm(uid, token, new_password) {
   });
   return response.data;
 }
+
+export async function requestPasswordReset(email) {
+  const response = await API.post("forgot-password/", { email });
+  return response.data;
+}
+
+export function isLoggedIn() {
+    // Check if access token exists in localStorage
+  return !!localStorage.getItem("access_token");
+}
+
+export function logout() {
+    // Remove tokens from localStorage
+    console.log("Logging out...");
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+}

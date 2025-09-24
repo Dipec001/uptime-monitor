@@ -1,19 +1,29 @@
 // src/Login.jsx
 import React, { useState } from "react";
 import { login } from "../services/Api";
+import { useNavigate } from "react-router-dom";
+
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const navigate = useNavigate();
+
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log("Email:", email, "Password:", password);
-    // call your backend login API here
+    
     login(email, password)
       .then((data) => {
-        console.log("Login successful:", data);
+        
+        localStorage.setItem("access_token", data.access);
+        localStorage.setItem("refresh_token", data.refresh);
         // store tokens, redirect, etc.
+        console.log("Login successful:", data);
+        
+        // Redirect to dashboard without reloading the page
+        navigate("/dashboard");
       })
       .catch((error) => {
         console.error("Login failed:", error);
@@ -25,7 +35,7 @@ function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white shadow-md rounded-lg p-8 w-full max-w-sm">
         <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
-          Login
+          Welcome
         </h2>
         <form onSubmit={handleSubmit}>
           <label className="block mb-2 text-gray-700">Email</label>
@@ -57,12 +67,18 @@ function Login() {
         </form>
 
         <p className="text-sm text-center text-gray-500 mt-4">
-          Don't have an account?{" "}
+          <a href="/forgot-password" className="text-blue-600 hover:underline">
+            Forgot Password?
+          </a>
+        </p>
+        <p className="text-sm text-center text-gray-500 mt-4">
+          Don't have an account yet?{" "}
           <a href="/register" className="text-blue-600 hover:underline">
             Register
           </a>
-        </p>
+      </p>
       </div>
+      
     </div>
   );
 }

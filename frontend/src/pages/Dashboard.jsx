@@ -1,7 +1,9 @@
 // src/Dashboard.jsx
-import React from "react";
+import { logout } from "../services/Api";
+import { useNavigate, Link } from "react-router-dom";
 
 function Dashboard() {
+    const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-gray-100 flex">
       {/* Sidebar */}
@@ -10,21 +12,27 @@ function Dashboard() {
           <h2 className="text-xl font-bold text-blue-600">Uptime Monitor</h2>
         </div>
         <nav className="flex-1 px-4 py-6 space-y-3">
-          <a href="/" className="block text-gray-700 hover:text-blue-600">
+          <Link to="/" className="block text-gray-700 hover:text-blue-600">
             Dashboard
-          </a>
-          <a href="/monitors" className="block text-gray-700 hover:text-blue-600">
+          </Link>
+          <Link to="/monitors" className="block text-gray-700 hover:text-blue-600">
             Monitors
-          </a>
-          <a href="/alerts" className="block text-gray-700 hover:text-blue-600">
+            </Link>
+          <Link to="/alerts" className="block text-gray-700 hover:text-blue-600">
             Alerts
-          </a>
-          <a href="/settings" className="block text-gray-700 hover:text-blue-600">
+          </Link>
+          <Link to="/settings" className="block text-gray-700 hover:text-blue-600">
             Settings
-          </a>
+          </Link>
         </nav>
         <div className="px-6 py-4 border-t">
-          <button className="w-full bg-red-500 text-white py-2 rounded hover:bg-red-600">
+          <button
+            className="w-full bg-red-500 text-white py-2 rounded hover:bg-red-600"
+            onClick={() => {
+                logout();
+                navigate("/login");
+            }}
+            >
             Logout
           </button>
         </div>
