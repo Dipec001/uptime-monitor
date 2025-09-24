@@ -116,7 +116,7 @@ def process_ping(key, metadata=None):
         interval_seconds=hb.interval, 
         max_calls=1
     ):
-        logger.info(f"Heartbeat {hb.name} rate limited for user {hb.user.username}")
+        logger.info(f"Heartbeat {hb.name} rate limited for user {hb.user.email}")
         return f"Rate limited: {hb.name}"
 
     # Track previous status so we can detect "recovery"
@@ -144,10 +144,10 @@ def process_ping(key, metadata=None):
 
     # If the heartbeat was DOWN before, send a recovery alert
     if previous_status == "down":
-        logger.info(f"Heartbeat {hb.name} RECOVERED for user {hb.user.username}")
+        logger.info(f"Heartbeat {hb.name} RECOVERED for user {hb.user.email}")
         handle_alert(hb, "recovery")
 
-    logger.info(f"Heartbeat {hb.name} ping accepted for user {hb.user.username}")
+    logger.info(f"Heartbeat {hb.name} ping accepted for user {hb.user.email}")
     return {"heartbeat": hb.name, "status": "accepted"}
 
 

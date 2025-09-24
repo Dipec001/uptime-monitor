@@ -164,7 +164,7 @@ class NotificationPreference(models.Model):
         unique_together = ("user", "content_type", "object_id", "method")
 
     def __str__(self):
-        return f"{self.user.username} → {self.method}: {self.target} ({self.target_object})"
+        return f"{self.user.email} → {self.method}: {self.target} ({self.target_object})"
 
     
 

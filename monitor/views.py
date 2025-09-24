@@ -10,7 +10,7 @@ from monitor.serializers import (
     ForgotPasswordSerializer,
     ResetPasswordSerializer
 )
-from .models import Website, NotificationPreference, HeartBeat
+from .models import Website, NotificationPreference, HeartBeat, UptimeCheckResult
 from .tasks import process_ping
 from django.http import Http404
 from django.contrib.auth import get_user_model
@@ -77,16 +77,16 @@ class WebsiteViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             logger.warning(
                 f"[!] Website validation failed: {serializer.errors}" 
-                f"by {request.user.username}"
+                f"by {request.user.email}"
             )
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         website = serializer.save(user=request.user)
-        logger.info(f"[✓] Monitor created: {website.url} by {request.user.username}")
+        logger.info(f"[✓] Monitor created: {website.url} by {request.user.email}")
         return Response(self.get_serializer(website).data, status=status.HTTP_201_CREATED)
     
     def update(self, request, *args, **kwargs):
-        logger.debug(f"Update attempt with data: {request.data} by {request.user.username}")
+        logger.debug(f"Update attempt with data: {request.data} by {request.user.email}")
 
         try:
             partial = kwargs.pop('partial', False)
@@ -94,7 +94,7 @@ class WebsiteViewSet(viewsets.ModelViewSet):
         except Http404:
             logger.warning(
                 f"[!] Update failed: Monitor not found for ID {kwargs.get('pk')} "
-                f"by {request.user.username}"
+                f"by {request.user.email}"
             )
             return Response({"detail": "Monitor not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -103,16 +103,16 @@ class WebsiteViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             logger.warning(
                 f"[!] Update validation failed: {serializer.errors} "
-                f"by {request.user.username}"
+                f"by {request.user.email}"
             )
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         website = serializer.save()
-        logger.info(f"[✓] Monitor updated: {website.url} by {request.user.username}")
+        logger.info(f"[✓] Monitor updated: {website.url} by {request.user.email}")
         return Response(serializer.data)
 
     def perform_destroy(self, instance):
-        logger.warning(f"[!] Monitor deleted: {instance.url} by {self.request.user.username}")
+        logger.warning(f"[!] Monitor deleted: {instance.url} by {self.request.user.email}")
         return super().perform_destroy(instance)
 
 
@@ -182,7 +182,7 @@ def ping_heartbeat(request, key):
     try:
         process_ping.delay(str(uuid_key), metadata)
         logger.info(
-            f"Ping queued for heartbeat {heartbeat.name} (User: {heartbeat.user.username})"
+            f"Ping queued for heartbeat {heartbeat.name} (User: {heartbeat.user.email})"
         )
         return Response({"message": "Ping queued"})
     except Exception as e:
@@ -226,7 +226,7 @@ class TestNotificationView(generics.GenericAPIView):
         if not serializer.is_valid():
             logger.warning(
                 f"[!] Test notification validation failed: {serializer.errors} "
-                f"by {request.user.username}"
+                f"by {request.user.email}"
             )
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -250,7 +250,7 @@ class TestNotificationView(generics.GenericAPIView):
             # Here you would integrate with your actual notification sending logic
             logger.info(
                 f"[✓] Test notification sent to {target} via {method} "
-                f"for user {request.user.username} on {target_object}."
+                f"for user {request.user.email} on {target_object}."
             )
             return Response({"message": f"Test notification sent to {target} via {method}."})
         except Exception as e:
@@ -283,3 +283,72 @@ class ResetPasswordView(generics.GenericAPIView):
             logger.info(f"[✓] Password reset successful for user {serializer.user.email}")
             return Response({"detail": "Password reset successful."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+from django.db.models import OuterRef, Subquery
+
+class DashboardMetricsView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # Stats
+        total_websites = Website.objects.filter(user=user).count()
+        active_websites = Website.objects.filter(user=user, is_active=True).count()
+        total_heartbeats = HeartBeat.objects.filter(user=user).count()
+        active_heartbeats = HeartBeat.objects.filter(user=user, status="up").count()
+
+        # Subquery: get latest check per website
+        latest_check = UptimeCheckResult.objects.filter(
+            website=OuterRef("pk")
+        ).order_by("-checked_at")
+
+        websites = (
+            Website.objects.filter(user=user)
+            .annotate(
+                last_status_code=Subquery(latest_check.values("status_code")[:1]),
+                last_checked_at=Subquery(latest_check.values("checked_at")[:1]),
+            )
+            .order_by("-created_at")[:5]  # last 5 websites
+        )
+
+        recent_monitors = []
+        for site in websites:
+            status = "unknown"
+            if site.last_status_code is not None:
+                status = "up" if 200 <= site.last_status_code < 300 else "down"
+
+            recent_monitors.append({
+                "website_name": site.name or site.url,
+                "status": status,
+                "last_check": site.last_checked_at,
+                "uptime": None,  # placeholder for later % uptime calc
+            })
+
+        # Recent heartbeats
+        recent_heartbeats = (
+            HeartBeat.objects.filter(user=user)
+            .order_by("-last_ping")[:5]
+        )
+        recent_heartbeats_list = []
+        for hb in recent_heartbeats:
+            recent_heartbeats_list.append({
+                "cronjob_name": hb.name,
+                "status": hb.status,
+                "last_ping": hb.last_ping,
+                "uptime": 100 if hb.status == "up" else 0
+            })
+
+        data = {
+            "stats": {
+                "total_websites": total_websites,
+                "active_websites": active_websites,
+                "total_heartbeats": total_heartbeats,
+                "active_heartbeats": active_heartbeats
+            },
+            "recent_monitors": recent_monitors,
+            "recent_heartbeats": recent_heartbeats_list,
+        }
+
+        return Response(data)

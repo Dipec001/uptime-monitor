@@ -1,42 +1,43 @@
 // src/Dashboard.jsx
-import { logout } from "../services/Api";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 
 function Dashboard() {
-    const navigate = useNavigate();
+    const [stats, setStats] = useState({
+        total_websites: 0,
+        active_websites: 0,
+        total_heartbeats: 0,
+        active_heartbeats: 0,
+    });
+    const [recentMonitors, setRecentMonitors] = useState([]);
+    const [recentHeartbeats, setRecentHeartbeats] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchDashboard = async () => {
+        try {
+            const token = localStorage.getItem("access_token"); // or wherever you store it
+            const response = await axios.get("http://127.0.0.1:8000/api/dashboard-metrics/", {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+            });
+            setStats(response.data.stats);
+            setRecentMonitors(response.data.recent_monitors);
+            setRecentHeartbeats(response.data.recent_heartbeats);
+        } catch (err) {
+            console.error("Failed to fetch dashboard:", err);
+        } finally {
+            setLoading(false);
+        }
+        };
+
+        fetchDashboard();
+    }, []);
+
+    if (loading) return <p>Loading dashboard...</p>;
   return (
     <div className="min-h-screen bg-gray-100 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white shadow-md hidden md:flex flex-col">
-        <div className="px-6 py-4 border-b">
-          <h2 className="text-xl font-bold text-blue-600">Uptime Monitor</h2>
-        </div>
-        <nav className="flex-1 px-4 py-6 space-y-3">
-          <Link to="/" className="block text-gray-700 hover:text-blue-600">
-            Dashboard
-          </Link>
-          <Link to="/monitors" className="block text-gray-700 hover:text-blue-600">
-            Monitors
-            </Link>
-          <Link to="/alerts" className="block text-gray-700 hover:text-blue-600">
-            Alerts
-          </Link>
-          <Link to="/settings" className="block text-gray-700 hover:text-blue-600">
-            Settings
-          </Link>
-        </nav>
-        <div className="px-6 py-4 border-t">
-          <button
-            className="w-full bg-red-500 text-white py-2 rounded hover:bg-red-600"
-            onClick={() => {
-                logout();
-                navigate("/login");
-            }}
-            >
-            Logout
-          </button>
-        </div>
-      </aside>
 
       {/* Main Content */}
       <main className="flex-1 p-6">
@@ -47,18 +48,22 @@ function Dashboard() {
         </header>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <div className="bg-white p-4 shadow rounded-lg">
             <h3 className="text-gray-500 text-sm">Monitors</h3>
-            <p className="text-2xl font-bold text-gray-800">12</p>
+            <p className="text-2xl font-bold text-gray-800">{stats.total_websites}</p>
           </div>
           <div className="bg-white p-4 shadow rounded-lg">
-            <h3 className="text-gray-500 text-sm">Uptime (last 24h)</h3>
-            <p className="text-2xl font-bold text-green-600">99.9%</p>
+            <h3 className="text-gray-500 text-sm">Uptime (active websites)</h3>
+            <p className="text-2xl font-bold text-green-600">{stats.active_websites}</p>
           </div>
           <div className="bg-white p-4 shadow rounded-lg">
-            <h3 className="text-gray-500 text-sm">Incidents</h3>
-            <p className="text-2xl font-bold text-red-500">2</p>
+            <h3 className="text-gray-500 text-sm">Heartbeats</h3>
+            <p className="text-2xl font-bold text-red-500">{stats.total_heartbeats}</p>
+          </div>
+          <div className="bg-white p-4 shadow rounded-lg">
+            <h3 className="text-gray-500 text-sm">Active Heartbeats</h3>
+            <p className="text-2xl font-bold text-red-500">{stats.active_heartbeats}</p>
           </div>
         </div>
 
@@ -77,24 +82,45 @@ function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              <tr className="border-t">
-                <td className="px-4 py-2">example.com</td>
-                <td className="px-4 py-2 text-green-600 font-semibold">Up</td>
-                <td className="px-4 py-2">5 min ago</td>
-                <td className="px-4 py-2">100%</td>
+              {recentMonitors.map((check, idx) => (
+                <tr key={idx} className="border-t">
+                  <td className="px-4 py-2">{check.website_name}</td>
+                  <td className={`px-4 py-2 font-semibold ${check.status === "up" ? "text-green-600" : "text-red-500"}`}>
+                    {check.status.toUpperCase()}
+                  </td>
+                  <td className="px-4 py-2">{new Date(check.last_check).toLocaleString()}</td>
+                  <td className="px-4 py-2">{check.uptime}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Recent Cron jobs Table */}
+        <div className="bg-white shadow rounded-lg overflow-hidden mt-6">
+          <div className="px-4 py-3 border-b">
+            <h2 className="text-lg font-semibold text-gray-800">Recent Cron jobs</h2>
+          </div>
+          <table className="w-full text-left">
+            <thead className="bg-gray-50 text-gray-600 text-sm uppercase">
+              <tr>
+                <th className="px-4 py-2">Cron Job</th>
+                <th className="px-4 py-2">Status</th>
+                <th className="px-4 py-2">Last Ping</th>
+                <th className="px-4 py-2">Status</th>
               </tr>
-              <tr className="border-t">
-                <td className="px-4 py-2">api.myapp.com</td>
-                <td className="px-4 py-2 text-red-500 font-semibold">Down</td>
-                <td className="px-4 py-2">2 min ago</td>
-                <td className="px-4 py-2">97%</td>
-              </tr>
-              <tr className="border-t">
-                <td className="px-4 py-2">shop.io</td>
-                <td className="px-4 py-2 text-green-600 font-semibold">Up</td>
-                <td className="px-4 py-2">10 min ago</td>
-                <td className="px-4 py-2">99.8%</td>
-              </tr>
+            </thead>
+            <tbody>
+              {recentHeartbeats.map((check, idx) => (
+                <tr key={idx} className="border-t">
+                  <td className="px-4 py-2">{check.cronjob_name}</td>
+                  <td className={`px-4 py-2 font-semibold ${check.status === "up" ? "text-green-600" : "text-red-500"}`}>
+                    {check.status.toUpperCase()}
+                  </td>
+                  <td className="px-4 py-2">{new Date(check.last_ping).toLocaleString()}</td>
+                  <td className="px-4 py-2">{check.uptime}%</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

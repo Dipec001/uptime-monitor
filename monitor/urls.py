@@ -13,5 +13,6 @@ urlpatterns = [
     path('ping/<uuid:key>/', views.ping_heartbeat, name='ping_heartbeat'),
     path("forgot-password/", views.ForgotPasswordView.as_view(), name="forgot-password"),
     path("reset-password/", views.ResetPasswordView.as_view(), name="reset-password"),
+    path("dashboard-metrics/", views.DashboardMetricsView.as_view(), name="dashboard-metrics"),
     path('', include(router.urls)),
 ]

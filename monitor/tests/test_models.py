@@ -13,7 +13,7 @@ def test_website_creation_defaults():
     """
     Test that a Website instance is created with correct default values.
     """
-    user = User.objects.create(username="testuser")
+    user = User.objects.create(email="testuser@gmail.com")
     site = Website.objects.create(user=user, url="https://example.com")
 
     assert site.check_interval == 5
@@ -26,7 +26,7 @@ def test_website_str_method():
     """
     Test the __str__ method returns the name if present, else URL.
     """
-    user = User.objects.create(username="testuser")
+    user = User.objects.create(email="testuser@gmail.com")
     site1 = Website.objects.create(user=user, url="https://example.com")
     site2 = Website.objects.create(user=user, url="https://example.com", name="My Site")
 
@@ -42,7 +42,7 @@ def test_uptime_check_result_is_passed_property():
     """
     Ensure the `is_passed` property correctly evaluates the status_code.
     """
-    user = User.objects.create(username="testuser")
+    user = User.objects.create(email="testuser@gmail.com")
     site = Website.objects.create(user=user, url="https://example.com")
 
     # Passed check
@@ -62,7 +62,7 @@ def test_uptime_check_result_str_method():
     """
     Test the string representation includes URL and status.
     """
-    user = User.objects.create(username="testuser")
+    user = User.objects.create(email="testuser@gmail.com")
     site = Website.objects.create(user=user, url="https://example.com")
 
     result = UptimeCheckResult.objects.create(
@@ -81,7 +81,7 @@ def test_alert_defaults_and_str():
     """
     Test that an Alert has correct defaults and string representation.
     """
-    user = User.objects.create(username="tester")
+    user = User.objects.create(email="tester@gmail.com")
     site = Website.objects.create(user=user, url="https://example.com")
 
     content_type = ContentType.objects.get_for_model(Website)
@@ -109,7 +109,7 @@ def test_notification_preference_unique_constraint():
     """
     Ensure the unique constraint on (user, content_type, object_id, method) is enforced.
     """
-    user = User.objects.create(username="tester")
+    user = User.objects.create(email="tester@gmail.com")
     site = Website.objects.create(user=user, url="https://example.com")
 
     content_type = ContentType.objects.get_for_model(Website)
@@ -137,7 +137,7 @@ def test_notification_preference_str_method():
     """
     Test string representation returns user → method: target (with target object).
     """
-    user = User.objects.create(username="tester")
+    user = User.objects.create(email="tester@gmail.com")
     site = Website.objects.create(user=user, url="https://example.com")
 
     content_type = ContentType.objects.get_for_model(Website)
@@ -150,7 +150,7 @@ def test_notification_preference_str_method():
         target="https://hooks.slack.com/test",
     )
 
-    assert str(pref) == f"{user.username} → slack: {pref.target} ({site})"
+    assert str(pref) == f"{user.email} → slack: {pref.target} ({site})"
 
 # ---------------------------------------------------
 # HeartBeat Model Tests
@@ -161,7 +161,7 @@ def test_heartbeat_defaults_and_str():
     """
     Ensure HeartBeat instance has correct default status and string representation.
     """
-    user = User.objects.create(username="tester")
+    user = User.objects.create(email="tester@gmail.com")
     hb = HeartBeat.objects.create(user=user, name="Daily Backup", interval=86400, grace_period=60)
 
     assert hb.status == "unknown"

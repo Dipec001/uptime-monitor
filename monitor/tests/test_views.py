@@ -15,7 +15,6 @@ def test_register_view_success():
     client = APIClient()
     url = reverse("register")
     data = {
-        "username": "testuser",
         "email": "test@example.com",
         "password": "StrongPassw0rd!"
     }
@@ -26,7 +25,7 @@ def test_register_view_success():
     assert response.status_code == status.HTTP_201_CREATED
 
     # Assert user is created in DB
-    user = User.objects.get(username="testuser")
+    user = User.objects.get(email="test@example.com")
     assert user.email == "test@example.com"
 
     # Assert response contains user info
@@ -44,12 +43,11 @@ def test_register_view_failure_existing_email():
     Test registration fails when the email already exists.
     """
     # Create existing user
-    User.objects.create_user(username="existing", email="test@example.com", password="password123")
+    User.objects.create_user(email="test@example.com", password="password123")
 
     client = APIClient()
     url = reverse("register")
     data = {
-        "username": "newuser",
         "email": "test@example.com",  # duplicate email
         "password": "StrongPassw0rd!"
     }
@@ -68,7 +66,6 @@ def test_register_view_failure_invalid_password():
     client = APIClient()
     url = reverse("register")
     data = {
-        "username": "testuser2",
         "email": "test2@example.com",
         "password": "123"  # too weak
     }
@@ -79,52 +76,6 @@ def test_register_view_failure_invalid_password():
     assert "password" in response.data
 
 
-@pytest.mark.django_db
-def test_register_view_failure_existing_username():
-    """
-    Test registration fails when the username already exists.
-    """
-    # Create existing user
-    User.objects.create_user(username="existing", email="test@example.com", password="password123")
-
-    client = APIClient()
-    url = reverse("register")
-    data = {
-        "username": "newuser",
-        "email": "test@example.com",  # duplicate email
-        "password": "StrongPassw0rd!"
-    }
-
-    response = client.post(url, data, format="json")
-
-    # Assert HTTP 400 Bad Request
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "email" in response.data
-
-
-@pytest.mark.django_db
-def test_register_view_failure_existing_username():
-    """
-    Test registration fails when the username already exists.
-    """
-    # Create existing user
-    User.objects.create_user(username="existing", email="existing@example.com", password="password123")
-
-    client = APIClient()
-    url = reverse("register")
-    data = {
-        "username": "existing",  # duplicate username
-        "email": "new@example.com",
-        "password": "StrongPassw0rd!"
-    }
-
-    response = client.post(url, data, format="json")
-
-    # Assert HTTP 400 Bad Request
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "username" in response.data
-
-
 # ---------------------------------------------------
 # Website Views Tests
 # ---------------------------------------------------
@@ -133,7 +84,6 @@ def test_register_view_failure_existing_username():
 def user():
     """Create a test user."""
     return User.objects.create_user(
-        username="tester", 
         email="tester@example.com", 
         password="StrongPassw0rd!"
     )
@@ -220,7 +170,6 @@ def test_website_delete(api_client, website):
 def user():
     """Create a test user."""
     return User.objects.create_user(
-        username="tester",
         email="tester@example.com",
         password="StrongPassw0rd!"
     )
@@ -229,7 +178,6 @@ def user():
 def another_user():
     """Another user for ownership tests."""
     return User.objects.create_user(
-        username="other",
         email="other@example.com",
         password="StrongPassw0rd!"
     )

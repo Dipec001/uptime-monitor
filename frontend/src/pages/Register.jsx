@@ -1,10 +1,13 @@
 // src/Register.jsx
 import React, { useState } from "react";
+import { register } from "../services/Api";
+import { useNavigate } from "react-router-dom";
 
 function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+    const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -14,6 +17,17 @@ function Register() {
     }
     console.log("Registered with:", email, password);
     // call your backend register API here
+    register(email, password)
+      .then((data) => {
+        console.log("Registration successful:", data);
+        localStorage.setItem("access_token", data.access);
+        localStorage.setItem("refresh_token", data.refresh);
+        navigate("/dashboard"); // redirect to login
+      })
+      .catch((error) => {
+        console.error("Registration failed:", error);
+        alert("Registration failed. Please try again.");
+      });
   };
 
   return (
