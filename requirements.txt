@@ -12,6 +12,7 @@ colorama==0.4.6
 cron-descriptor==1.4.5
 Django==5.2.4
 django-celery-beat==2.8.1
+django-cors-headers==4.9.0
 django-prometheus==2.4.1
 django-timezone-field==7.1
 djangorestframework==3.16.0
@@ -19,14 +20,19 @@ djangorestframework_simplejwt==5.5.0
 drf-yasg==1.21.10
 idna==3.10
 inflection==0.5.1
+iniconfig==2.1.0
 kombu==5.5.4
 packaging==25.0
+pluggy==1.6.0
 prometheus_client==0.22.1
 prompt_toolkit==3.0.51
 psycopg==3.2.9
 psycopg-binary==3.2.9
 psycopg2-binary==2.9.10
+Pygments==2.19.2
 PyJWT==2.9.0
+pytest==8.4.2
+pytest-django==4.11.1
 python-crontab==3.3.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1

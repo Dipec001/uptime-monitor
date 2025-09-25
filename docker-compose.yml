@@ -12,6 +12,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: always
     
   redis:
     image: redis:7-alpine
@@ -41,6 +42,7 @@ services:
       - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
     env_file:
       - .env.docker
+    restart: always
 
   grafana:
     image: grafana/grafana
