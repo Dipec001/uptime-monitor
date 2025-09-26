@@ -6,6 +6,7 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
+
 def get_redis_connection():
     """
     Safely get a Redis connection. Returns None if unavailable.
@@ -23,10 +24,17 @@ def get_redis_connection():
         logger.error(f"Cannot connect to Redis at {redis_url}: {e}")
         return None
 
+
 # Global Redis connection
 r = get_redis_connection()
 
-def allow_ping_sliding(heartbeat_id, user_id=None, interval_seconds=10, max_calls=1):
+
+def allow_ping_sliding(
+        heartbeat_id,
+        user_id=None,
+        interval_seconds=10,
+        max_calls=1
+        ):
     """
     Sliding-window rate limiter.
     Returns True if allowed, False if rate-limited.

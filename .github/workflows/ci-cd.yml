@@ -32,9 +32,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Lint
-        run: |
-          pip install flake8
-          flake8 .
+        run: flake8 .
 
       - name: Run Tests
         run: python manage.py test

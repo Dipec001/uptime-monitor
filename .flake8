@@ -1,0 +1,9 @@
+[flake8]
+exclude = 
+    venv,
+    env,
+    frontend,
+    infra,
+    migrations,
+    __pycache__
+max-line-length = 91

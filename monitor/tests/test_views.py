@@ -7,6 +7,7 @@ from django.urls import reverse
 from monitor.models import Website, NotificationPreference
 from django.contrib.contenttypes.models import ContentType
 
+
 @pytest.mark.django_db
 def test_register_view_success():
     """
@@ -37,6 +38,7 @@ def test_register_view_success():
     assert "access" in response.data["token"]
     assert "refresh" in response.data["token"]
 
+
 @pytest.mark.django_db
 def test_register_view_failure_existing_email():
     """
@@ -57,6 +59,7 @@ def test_register_view_failure_existing_email():
     # Assert HTTP 400 Bad Request
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "email" in response.data
+
 
 @pytest.mark.django_db
 def test_register_view_failure_invalid_password():
@@ -84,9 +87,10 @@ def test_register_view_failure_invalid_password():
 def user():
     """Create a test user."""
     return User.objects.create_user(
-        email="tester@example.com", 
+        email="tester@example.com",
         password="StrongPassw0rd!"
     )
+
 
 @pytest.fixture
 def api_client(user):
@@ -94,6 +98,7 @@ def api_client(user):
     client = APIClient()
     client.force_authenticate(user=user)
     return client
+
 
 @pytest.fixture
 def website(user):
@@ -107,6 +112,7 @@ def website(user):
 
 # ----------------- Tests -----------------
 
+
 @pytest.mark.django_db
 def test_website_list(api_client, website):
     """Test that authenticated user can list their websites."""
@@ -117,6 +123,7 @@ def test_website_list(api_client, website):
     assert response.status_code == status.HTTP_200_OK
     assert len(response.data["results"]) == 1
     assert response.data["results"][0]["url"] == website.url
+
 
 @pytest.mark.django_db
 def test_website_create_success(api_client):
@@ -131,6 +138,7 @@ def test_website_create_success(api_client):
     assert response.status_code == status.HTTP_201_CREATED
     assert Website.objects.filter(url="https://newsite.com").exists()
 
+
 @pytest.mark.django_db
 def test_website_create_duplicate_url(api_client, website):
     """Test creating a website with duplicate URL fails."""
@@ -144,6 +152,7 @@ def test_website_create_duplicate_url(api_client, website):
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "url" in response.data
 
+
 @pytest.mark.django_db
 def test_website_update(api_client, website):
     """Test updating a website's name."""
@@ -153,6 +162,7 @@ def test_website_update(api_client, website):
     assert response.status_code == status.HTTP_200_OK
     website.refresh_from_db()
     assert website.name == "Updated Name"
+
 
 @pytest.mark.django_db
 def test_website_delete(api_client, website):
@@ -166,13 +176,6 @@ def test_website_delete(api_client, website):
 # NotificationPreference Views Tests (Generic Relation)
 # ---------------------------------------------------
 
-@pytest.fixture
-def user():
-    """Create a test user."""
-    return User.objects.create_user(
-        email="tester@example.com",
-        password="StrongPassw0rd!"
-    )
 
 @pytest.fixture
 def another_user():
@@ -182,22 +185,6 @@ def another_user():
         password="StrongPassw0rd!"
     )
 
-@pytest.fixture
-def api_client(user):
-    """Authenticated APIClient fixture."""
-    client = APIClient()
-    client.force_authenticate(user=user)
-    return client
-
-@pytest.fixture
-def website(user):
-    """Website owned by the authenticated user."""
-    return Website.objects.create(
-        user=user,
-        name="My Site",
-        url="https://example.com",
-        check_interval=5
-    )
 
 @pytest.fixture
 def other_website(another_user):

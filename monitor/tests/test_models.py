@@ -1,12 +1,19 @@
 import pytest
 from django.contrib.auth.models import User
 from django.db import IntegrityError
-from monitor.models import Website, UptimeCheckResult, Alert, NotificationPreference, HeartBeat
+from monitor.models import (
+    Website,
+    UptimeCheckResult,
+    Alert,
+    NotificationPreference,
+    HeartBeat
+)
 from django.contrib.contenttypes.models import ContentType
 
 # ---------------------------------------------------
 # Website Model Tests
 # ---------------------------------------------------
+
 
 @pytest.mark.django_db
 def test_website_creation_defaults():
@@ -20,6 +27,7 @@ def test_website_creation_defaults():
     assert site.is_active is True
     assert site.is_down is False
     assert site.name is None or isinstance(site.name, str)
+
 
 @pytest.mark.django_db
 def test_website_str_method():
@@ -36,6 +44,7 @@ def test_website_str_method():
 # ---------------------------------------------------
 # UptimeCheckResult Model Tests
 # ---------------------------------------------------
+
 
 @pytest.mark.django_db
 def test_uptime_check_result_is_passed_property():
@@ -57,6 +66,7 @@ def test_uptime_check_result_is_passed_property():
     assert result_ok.is_passed is True
     assert result_fail.is_passed is False
 
+
 @pytest.mark.django_db
 def test_uptime_check_result_str_method():
     """
@@ -75,6 +85,7 @@ def test_uptime_check_result_str_method():
 # ---------------------------------------------------
 # Alert Model Tests
 # ---------------------------------------------------
+
 
 @pytest.mark.django_db
 def test_alert_defaults_and_str():
@@ -103,6 +114,7 @@ def test_alert_defaults_and_str():
 # ---------------------------------------------------
 # NotificationPreference Model Tests
 # ---------------------------------------------------
+
 
 @pytest.mark.django_db
 def test_notification_preference_unique_constraint():
@@ -156,13 +168,19 @@ def test_notification_preference_str_method():
 # HeartBeat Model Tests
 # ---------------------------------------------------
 
+
 @pytest.mark.django_db
 def test_heartbeat_defaults_and_str():
     """
     Ensure HeartBeat instance has correct default status and string representation.
     """
     user = User.objects.create(email="tester@gmail.com")
-    hb = HeartBeat.objects.create(user=user, name="Daily Backup", interval=86400, grace_period=60)
+    hb = HeartBeat.objects.create(
+        user=user,
+        name="Daily Backup",
+        interval=86400,
+        grace_period=60
+    )
 
     assert hb.status == "unknown"
     assert str(hb) == "Daily Backup (unknown)"

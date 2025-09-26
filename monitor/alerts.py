@@ -14,6 +14,7 @@ logger = logging.getLogger('monitor')
 RETRY_INTERVAL_MINUTES = 10
 MAX_RETRIES = 3
 
+
 @shared_task(bind=True, max_retries=3)
 def send_email_alert_task(self, to_email, subject, message):
     try:
@@ -94,7 +95,6 @@ def notify_users(target, alert_type):
             send_whatsapp_alert_task.delay(pref.target, message)
 
 
-
 def handle_alert(target, alert_type):
     """
     Generic alert handler for Website or HeartBeat.
@@ -115,15 +115,23 @@ def handle_alert(target, alert_type):
                 logger.info(f"[!] Retry limit reached for {target}, skipping alert.")
                 return
 
-            if existing_alert.last_sent_at and now() - existing_alert.last_sent_at < timedelta(minutes=RETRY_INTERVAL_MINUTES):
-                logger.info(f"[!] Last alert for {target} sent recently, skipping retry for now.")
-                return
+            if existing_alert.last_sent_at:
+                time_since_last = now() - existing_alert.last_sent_at
+                if time_since_last < timedelta(minutes=RETRY_INTERVAL_MINUTES):
+                    logger.info(
+                        f"[!] Last alert for {target} sent recently,"
+                        f"skipping retry for now."
+                    )
+                    return
 
             notify_users(target, "downtime")
             existing_alert.retry_count += 1
             existing_alert.last_sent_at = now()
             existing_alert.save(update_fields=["retry_count", "last_sent_at"])
-            logger.warning(f"[!] Retried alert for {target} (attempt {existing_alert.retry_count})")
+            logger.warning(
+                f"[!] Retried alert for {target}"
+                f"(attempt {existing_alert.retry_count})"
+            )
             return
 
         # First downtime alert
@@ -175,7 +183,10 @@ def build_alert_message(target, alert_type, method="email"):
         elif method == "slack":
             return f"*Website {alert_type.upper()}!* {target.url} at {now()}"
         elif method == "whatsapp":
-            return f"🚨 Website {alert_type.upper()}!\nURL: {target.url}\nTime: {now().strftime('%Y-%m-%d %H:%M:%S')}"
+            ts = now().strftime("%Y-%m-%d %H:%M:%S")
+            return f"""🚨 Website {alert_type.upper()}!
+            URL: {target.url}
+            Time: {ts}"""
         elif method == "webhook":
             return {
                 "alert_type": alert_type,
@@ -194,7 +205,11 @@ def build_alert_message(target, alert_type, method="email"):
         elif method == "slack":
             return f"*Heartbeat {alert_type.upper()}!* {target.name} at {now()}"
         elif method == "whatsapp":
-            return f"🚨 Heartbeat {alert_type.upper()}!\nService: {target.name}\nTime: {now().strftime('%Y-%m-%d %H:%M:%S')}"
+            ts = now().strftime("%Y-%m-%d %H:%M:%S")
+            return f"""🚨 Heartbeat {alert_type.upper()}!
+            Service: {target.name}
+            Time: {ts}"""
+
         elif method == "webhook":
             return {
                 "alert_type": alert_type,

@@ -4,8 +4,12 @@ import logging
 
 logger = logging.getLogger('monitor')
 
+
 def send_whatsapp_message(to_number, message_text):
-    url = f"https://graph.facebook.com/v18.0/{os.getenv('WHATSAPP_PHONE_NUMBER_ID')}/messages"
+    url = f"""
+    https://graph.facebook.com/v18.0/
+    {os.getenv('WHATSAPP_PHONE_NUMBER_ID')}/messages
+    """
     headers = {
         "Authorization": f"Bearer {os.getenv('WHATSAPP_TOKEN')}",
         "Content-Type": "application/json"

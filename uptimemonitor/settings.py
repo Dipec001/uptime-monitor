@@ -181,7 +181,7 @@ SWAGGER_SETTINGS = {
             'type': 'apiKey',
             'name': 'Authorization',
             'in': 'header',
-            'description': 'JWT Authorization header using the Bearer scheme. Example: "Bearer your_token_here"',
+            'description': 'JWT Authorization header',
         }
     }
 }
@@ -223,8 +223,8 @@ LOGGING = {
     },
 }
 
-# CELERY_BROKER_URL = 'redis://localhost:6379/0'  # locally undockerized
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") # or your Redis instance
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")  # or your Redis instance
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_TASK_DEFAULT_QUEUE = 'uptimemonitor'

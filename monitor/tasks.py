@@ -4,11 +4,12 @@ from .models import Website, UptimeCheckResult, HeartBeat, PingLog
 from django.db import transaction
 from datetime import timedelta
 from django.utils.timezone import now
-from .alerts import handle_alert, send_email_alert_task
+from .alerts import handle_alert
 from .redis_utils import allow_ping_sliding
 import logging
 
 logger = logging.getLogger('monitor')
+
 
 @shared_task(bind=True, max_retries=3)
 def check_single_website(self, website_id):
@@ -35,7 +36,7 @@ def check_single_website(self, website_id):
             logger.info(f"[✓] {website.url} RECOVERED at {website.last_recovered_at}")
             # Send recovery alert
             handle_alert(website, "recovery")
-        
+
         # 🔍 Downtime detection
         recent_checks = website.checks.order_by('-checked_at')[:3]
         if all(check.status_code != 200 for check in recent_checks):
@@ -43,15 +44,16 @@ def check_single_website(self, website_id):
                 website.is_down = True
                 website.last_downtime_at = now()
                 logger.warning(f"[!] {website.url} DOWN at {website.last_downtime_at}")
-                
-            # Send downtime alert. Always call handle_alert — even if already marked down
+
+            # Send downtime alert.
             handle_alert(website, "downtime")
 
         # 🔁 Schedule next check
         # Floor the current time to the nearest minute
         current_time = now().replace(second=0, microsecond=0)
 
-        # Calculate the next aligned interval (e.g., if interval=1 and it's 00:02:32 → next_check = 00:03:00)
+        # Calculate the next aligned interval
+        # (e.g., if interval=1 and it's 00:02:32 → next_check = 00:03:00)
         website.next_check_at = current_time + timedelta(minutes=website.check_interval)
         website.save(update_fields=[
             "is_down",
@@ -68,7 +70,9 @@ def check_single_website(self, website_id):
     except Exception as e:
         logger.error(f"[!] Error checking {website_id}: {str(e)}", exc_info=True)
         # Log retry attempt
-        logger.warning(f"Retrying check for website {website_id} in 10s (attempt {self.request.retries + 1})")
+        logger.warning(
+            f"Retrying check for website {website_id}"
+            f"in 10s (attempt {self.request.retries + 1})")
         self.retry(countdown=10)
 
 
@@ -111,9 +115,9 @@ def process_ping(key, metadata=None):
     # Apply rate limiting (per heartbeat & user)
     # Sliding-window rate limiting
     if not allow_ping_sliding(
-        hb.id, 
-        user_id=hb.user_id, 
-        interval_seconds=hb.interval, 
+        hb.id,
+        user_id=hb.user_id,
+        interval_seconds=hb.interval,
         max_calls=1
     ):
         logger.info(f"Heartbeat {hb.name} rate limited for user {hb.user.email}")
@@ -162,7 +166,10 @@ def check_single_heartbeat(self, heartbeat_id):
         if hb.next_due and current_time > hb.next_due:
             hb.status = "down"
             hb.save(update_fields=["status", "updated_at"])
-            logger.warning(f"[!] Heartbeat {hb.name} missed ping at {current_time}, marked DOWN")
+            logger.warning(
+                f"[!] Heartbeat {hb.name} missed ping"
+                f"at {current_time}, marked DOWN"
+            )
 
             PingLog.objects.create(
                 heartbeat=hb,
@@ -176,10 +183,10 @@ def check_single_heartbeat(self, heartbeat_id):
     except HeartBeat.DoesNotExist:
         logger.warning(f"[!] Heartbeat {heartbeat_id} no longer exists")
 
-    
+
 @shared_task
 def check_due_heartbeats():
-    """ 
+    """
     Check all heartbeats that are due and mark them down if missed.
     This task is intended to be run every minute via cron or a periodic task scheduler.
     """

@@ -16,35 +16,56 @@ class CustomUserAdmin(UserAdmin):
 
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Permissions", {"fields": ("is_staff", "is_active", "is_superuser", "groups", "user_permissions")}),
+        (
+            "Permissions",
+            {
+                "fields": (
+                    "is_staff",
+                    "is_active",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions"
+                )
+            }
+        ),
     )
     add_fieldsets = (
-        (None, {
-            "classes": ("wide",),
-            "fields": ("email", "password1", "password2", "is_staff", "is_active")}
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": (
+                    "email",
+                    "password1",
+                    "password2",
+                    "is_staff",
+                    "is_active"
+                )
+            }
         ),
     )
 
 
 @admin.register(Website)
 class WebsiteAdmin(admin.ModelAdmin):
-    list_display = ("name", 
-                    "url", 
-                    "user", 
-                    "check_interval", 
-                    "is_active", 
-                    "is_down", 
-                    "next_check_at", 
-                    "created_at"
+    list_display = (
+        "name",
+        "url",
+        "user",
+        "check_interval",
+        "is_active",
+        "is_down",
+        "next_check_at",
+        "created_at"
     )
     list_filter = ("is_active", "is_down", "check_interval", "created_at")
     search_fields = ("name", "url", "user__username", "user__email")
     autocomplete_fields = ("user",)
     ordering = ("-created_at",)
     readonly_fields = (
-        "created_at", 
-        "last_downtime_at", 
-        "last_recovered_at", 
+        "created_at",
+        "last_downtime_at",
+        "last_recovered_at",
         "next_check_at"
     )
 
@@ -52,10 +73,10 @@ class WebsiteAdmin(admin.ModelAdmin):
 @admin.register(UptimeCheckResult)
 class UptimeCheckResultAdmin(admin.ModelAdmin):
     list_display = (
-        "website", 
-        "status_code", 
-        "response_time_ms", 
-        "checked_at", 
+        "website",
+        "status_code",
+        "response_time_ms",
+        "checked_at",
         "is_passed"
     )
     list_filter = ("status_code", "checked_at")
@@ -118,7 +139,7 @@ class NotificationPreferenceAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at",)
 
     def target_object_display(self, obj):
-        """Show what this preference is attached to (Website URL, Heartbeat name, etc.)."""
+        """Show what this preference is attached to"""
         if obj.target_object:
             return str(obj.target_object)
         return f"{obj.content_type} {obj.object_id}"
@@ -129,12 +150,12 @@ class NotificationPreferenceAdmin(admin.ModelAdmin):
 @admin.register(HeartBeat)
 class HeartBeatAdmin(admin.ModelAdmin):
     list_display = (
-        "name", 
-        "key", 
-        "user", 
-        "interval", 
-        "status", 
-        "last_ping",  
+        "name",
+        "key",
+        "user",
+        "interval",
+        "status",
+        "last_ping",
         "created_at"
     )
     list_filter = ("status", "interval", "created_at")
@@ -147,9 +168,9 @@ class HeartBeatAdmin(admin.ModelAdmin):
 @admin.register(PingLog)
 class PingLogAdmin(admin.ModelAdmin):
     list_display = (
-        "heartbeat", 
-        "timestamp", 
-        "status", 
+        "heartbeat",
+        "timestamp",
+        "status",
         "notes"
     )
     list_filter = ("status", "timestamp")

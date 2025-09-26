@@ -1,10 +1,10 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from .models import (
-    Website, 
-    CHECK_INTERVAL_CHOICES, 
-    UptimeCheckResult, 
-    NotificationPreference, 
+    Website,
+    CHECK_INTERVAL_CHOICES,
+    UptimeCheckResult,
+    NotificationPreference,
     HeartBeat
 )
 from urllib.parse import urlparse, urlunparse
@@ -12,6 +12,10 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from .alerts import send_email_alert_task
 
 User = get_user_model()
 
@@ -29,7 +33,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("Email already exists.")
         return value
-    
+
     def validate_password(self, value):
         validate_password(value)
         return value
@@ -45,6 +49,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 class WebsiteSerializer(serializers.ModelSerializer):
     check_interval_display = serializers.SerializerMethodField()
+
     class Meta:
         model = Website
         fields = [
@@ -55,7 +60,7 @@ class WebsiteSerializer(serializers.ModelSerializer):
             'check_interval_display',
             'is_active'
         ]
-        read_only_fields = ['id','created_at','is_active']
+        read_only_fields = ['id', 'created_at', 'is_active']
 
     def get_check_interval_display(self, obj):
         return dict(CHECK_INTERVAL_CHOICES).get(obj.check_interval)
@@ -74,10 +79,12 @@ class WebsiteSerializer(serializers.ModelSerializer):
 
         # Check for duplicate with normalized URL
         if Website.objects.filter(user=user, url=normalized_url).exists():
-            raise serializers.ValidationError("You already have a monitor for this URL.")
+            raise serializers.ValidationError(
+                "You already have a monitor for this URL."
+            )
 
         return normalized_url
-    
+
     def create(self, validated_data):
         # ensures website gets picked up immediately
         validated_data['next_check_at'] = timezone.now()
@@ -88,11 +95,16 @@ class UptimeCheckResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = UptimeCheckResult
         fields = '__all__'
-        read_only_fields = ['checked_at', 'status_code', 'response_time_ms']
+        read_only_fields = [
+            'checked_at',
+            'status_code',
+            'response_time_ms'
+        ]
 
 
 class NotificationPreferenceSerializer(serializers.ModelSerializer):
     model = serializers.CharField(write_only=True)  # "heartbeat" or "website"
+
     class Meta:
         model = NotificationPreference
         fields = [
@@ -116,13 +128,15 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
         model_name = data.get("model")
         if not model_name:
             raise serializers.ValidationError("model is required.")
-        
+
         if model_name.lower() == "heartbeat":
             data["content_type"] = ContentType.objects.get_for_model(HeartBeat)
         elif model_name.lower() == "website":
             data["content_type"] = ContentType.objects.get_for_model(Website)
         else:
-            raise serializers.ValidationError("Invalid model type. Must be 'heartbeat' or 'website'.")
+            raise serializers.ValidationError(
+                "Invalid model type. Must be 'heartbeat' or 'website'."
+            )
 
         # Validate object exists
         object_id = data.get("object_id")
@@ -130,14 +144,16 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
         try:
             obj = model_class.objects.get(id=object_id)
         except model_class.DoesNotExist:
-            raise serializers.ValidationError(f"{model_class.__name__} with id {object_id} does not exist.")
+            raise serializers.ValidationError(
+                f"{model_class.__name__} with id {object_id} does not exist."
+            )
 
         # 3. Ownership check (Website/HeartBeat must belong to user)
         # Ensure ownership
         user = self.context["request"].user
         if hasattr(obj, "user") and obj.user != user:
             raise serializers.ValidationError("You do not own this object.")
-        
+
         # Validate method/target combo
         method = data.get("method")
         target = data.get("target")
@@ -150,7 +166,9 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Invalid email address.")
         if method in ["slack", "webhook"]:
             if not (target.startswith("http://") or target.startswith("https://")):
-                raise serializers.ValidationError("Target must be a valid URL for Slack/Webhook.")
+                raise serializers.ValidationError(
+                    "Target must be a valid URL for Slack/Webhook."
+                )
 
         return data
 
@@ -167,18 +185,26 @@ class HeartBeatSerializer(serializers.ModelSerializer):
     class Meta:
         model = HeartBeat
         fields = [
-            'id', 
-            'name', 
-            'key', 
-            'interval', 
-            'grace_period', 
-            'status', 
-            'next_due', # show next due field
-            'last_ping', 
-            'created_at', 
+            'id',
+            'name',
+            'key',
+            'interval',
+            'grace_period',
+            'status',
+            'next_due',  # show next due field
+            'last_ping',
+            'created_at',
             'ping_url'
         ]
-        read_only_fields = ['id', 'key', 'status', 'last_ping', 'next_due', 'created_at', 'ping_url']
+        read_only_fields = [
+            'id',
+            'key',
+            'status',
+            'last_ping',
+            'next_due',
+            'created_at',
+            'ping_url'
+        ]
 
     def get_ping_url(self, obj):
         request = self.context.get('request')
@@ -188,20 +214,17 @@ class HeartBeatSerializer(serializers.ModelSerializer):
 
     def validate_interval(self, value):
         if value < 10:
-            raise serializers.ValidationError("Interval must be at least 10 seconds.")
+            raise serializers.ValidationError(
+                "Interval must be at least 10 seconds."
+            )
         return value
-    
+
     def create(self, validated_data):
         hb = super().create(validated_data)
         hb.update_next_due()
         hb.save(update_fields=["next_due"])
         return hb
 
-
-from django.contrib.auth.tokens import default_token_generator
-from django.utils.encoding import force_bytes
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from .alerts import send_email_alert_task
 
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()

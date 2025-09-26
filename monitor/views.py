@@ -3,9 +3,9 @@ from rest_framework import generics, status, permissions, viewsets
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied, APIException
 from monitor.serializers import (
-    RegisterSerializer, 
-    WebsiteSerializer, 
-    NotificationPreferenceSerializer, 
+    RegisterSerializer,
+    WebsiteSerializer,
+    NotificationPreferenceSerializer,
     HeartBeatSerializer,
     ForgotPasswordSerializer,
     ResetPasswordSerializer
@@ -19,10 +19,12 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.decorators import permission_classes, api_view
 import uuid
 import logging
+from django.db.models import OuterRef, Subquery
 
 logger = logging.getLogger('monitor')
 
 User = get_user_model()
+
 
 class RegisterView(generics.CreateAPIView):
     """
@@ -62,6 +64,7 @@ class RegisterView(generics.CreateAPIView):
             logger.exception("🔥 Unexpected error during registration: %s", str(e))
             raise APIException("Something went wrong. Please try again later.")
 
+
 class WebsiteViewSet(viewsets.ModelViewSet):
     serializer_class = WebsiteSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -76,17 +79,22 @@ class WebsiteViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
             logger.warning(
-                f"[!] Website validation failed: {serializer.errors}" 
+                f"[!] Website validation failed: {serializer.errors}"
                 f"by {request.user.email}"
             )
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         website = serializer.save(user=request.user)
         logger.info(f"[✓] Monitor created: {website.url} by {request.user.email}")
-        return Response(self.get_serializer(website).data, status=status.HTTP_201_CREATED)
-    
+        return Response(
+            self.get_serializer(website).data,
+            status=status.HTTP_201_CREATED
+        )
+
     def update(self, request, *args, **kwargs):
-        logger.debug(f"Update attempt with data: {request.data} by {request.user.email}")
+        logger.debug(
+            f"Update attempt with data: {request.data} by {request.user.email}"
+        )
 
         try:
             partial = kwargs.pop('partial', False)
@@ -96,7 +104,10 @@ class WebsiteViewSet(viewsets.ModelViewSet):
                 f"[!] Update failed: Monitor not found for ID {kwargs.get('pk')} "
                 f"by {request.user.email}"
             )
-            return Response({"detail": "Monitor not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Monitor not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
 
@@ -112,7 +123,9 @@ class WebsiteViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def perform_destroy(self, instance):
-        logger.warning(f"[!] Monitor deleted: {instance.url} by {self.request.user.email}")
+        logger.warning(
+            f"[!] Monitor deleted: {instance.url} by {self.request.user.email}"
+        )
         return super().perform_destroy(instance)
 
 
@@ -163,22 +176,32 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
 @permission_classes([permissions.AllowAny])
 def ping_heartbeat(request, key):
     """Endpoint to receive heartbeat pings asynchronously."""
-    
+
     try:
         uuid_key = uuid.UUID(str(key))
     except ValueError:
-        return Response({"error": "Invalid key format"}, status=status.HTTP_400_BAD_REQUEST)
-    
+        return Response(
+            {
+                "error": "Invalid key format"
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
     # Check if heartbeat exists
     heartbeat = HeartBeat.objects.filter(key=uuid_key).first()
     if not heartbeat:
-        return Response({"error": "Heartbeat not found"}, status=status.HTTP_404_NOT_FOUND)
-    
+        return Response(
+            {
+                "error": "Heartbeat not found"
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+
     metadata = {
         "ip": request.META.get("REMOTE_ADDR"),
         "user_agent": request.META.get("HTTP_USER_AGENT"),
     }
-    
+
     try:
         process_ping.delay(str(uuid_key), metadata)
         logger.info(
@@ -188,7 +211,7 @@ def ping_heartbeat(request, key):
     except Exception as e:
         logger.error(f"Error queueing ping for heartbeat {heartbeat.name}: {e}")
         return Response(
-            {"error": "Failed to queue ping"}, 
+            {"error": "Failed to queue ping"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
@@ -237,7 +260,7 @@ class TestNotificationView(generics.GenericAPIView):
 
         if not target_object:
             return Response(
-                {"error": "Target object not found."}, 
+                {"error": "Target object not found."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -252,11 +275,16 @@ class TestNotificationView(generics.GenericAPIView):
                 f"[✓] Test notification sent to {target} via {method} "
                 f"for user {request.user.email} on {target_object}."
             )
-            return Response({"message": f"Test notification sent to {target} via {method}."})
+            return Response(
+                {
+                    "message": f"Test notification sent to {target} via {method}."
+                },
+                status=status.HTTP_200_OK
+            )
         except Exception as e:
             logger.error(f"[!] Failed to send test notification: {e}")
             return Response(
-                {"error": "Failed to send test notification."}, 
+                {"error": "Failed to send test notification."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -264,28 +292,42 @@ class TestNotificationView(generics.GenericAPIView):
 class ForgotPasswordView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = ForgotPasswordSerializer
+
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            logger.info(f"[✓] Password reset email sent to {serializer.validated_data['email']}")
-            return Response({"detail": "Password reset email sent."}, status=status.HTTP_200_OK)
+            logger.info(
+                f"[✓] Password reset email sent to"
+                f"{serializer.validated_data['email']}")
+            return Response(
+                {
+                    "detail": "Password reset email sent."
+                },
+                status=status.HTTP_200_OK
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ResetPasswordView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = ResetPasswordSerializer
+
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            logger.info(f"[✓] Password reset successful for user {serializer.user.email}")
-            return Response({"detail": "Password reset successful."}, status=status.HTTP_200_OK)
+            logger.info(
+                f"[✓] Password reset successful for user {serializer.user.email}"
+            )
+            return Response(
+                {
+                    "detail": "Password reset successful."
+                },
+                status=status.HTTP_200_OK
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
 
-from django.db.models import OuterRef, Subquery
 
 class DashboardMetricsView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
