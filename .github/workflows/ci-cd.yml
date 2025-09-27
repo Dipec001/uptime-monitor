@@ -10,9 +10,6 @@ on:
       - main
       - dev
 
-env:
-  DATABASE_URL: postgres://postgres:postgres@postgres:5432/test_db
-
 jobs:
   lint-test:
     name: Lint & Test
@@ -32,6 +29,15 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
+
+    env:
+      POSTGRES_DB: test_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST: postgres   # must match the service name
+      POSTGRES_PORT: 5432
+      SECRET_KEY: test-secret
+      DEBUG: "true"
 
     steps:
       - uses: actions/checkout@v4
@@ -54,11 +60,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Tests
-        run: pytest -v
-
       - name: Run Linter
         run: flake8 .
+
+      - name: Run Tests
+        run: pytest -v
 
   docker-build-push:
     name: Docker Build & Push
