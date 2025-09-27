@@ -14,6 +14,7 @@ from pathlib import Path
 import os
 from datetime import timedelta
 from dotenv import load_dotenv
+import dj_database_url
 
 load_dotenv()
 
@@ -116,15 +117,28 @@ WSGI_APPLICATION = "uptimemonitor.wsgi.application"
 #     }
 # }
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django_prometheus.db.backends.postgresql',
+#         'NAME': os.getenv('POSTGRES_DB', 'test_db'),
+#         'USER': os.getenv('POSTGRES_USER'),
+#         'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
+#         'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
+#         'PORT': os.getenv('POSTGRES_PORT'),
+#     }
+# }
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django_prometheus.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'test_db'),
-        'USER': os.getenv('POSTGRES_USER'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-        'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
-        'PORT': os.getenv('POSTGRES_PORT'),
-    }
+    'default': dj_database_url.config(
+        default=os.getenv(
+            "DATABASE_URL",
+            "postgres://postgres:mypassword@localhost:5432/test_db"
+        ),
+        conn_max_age=600,
+        conn_health_checks=True,
+        # For using django-prometheus with PostgreSQL, uncomment the line below
+        # engine='django_prometheus.db.backends.postgresql'
+    )
 }
 
 # Password validation
