@@ -296,7 +296,7 @@ def test_update_preference(api_client, website):
     url = reverse("preferences-detail", args=[preference.id])
     # TODO: Check to make sure we don't need to pass the model
     #  anytime we want to update
-    data = {"target": "new@example.com", "model": "website", "method": "email",}
+    data = {"target": "new@example.com", "model": "website", "method": "email"}
     response = api_client.patch(url, data, format="json")
     print(response.data)
     assert response.status_code == status.HTTP_200_OK

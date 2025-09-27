@@ -158,7 +158,9 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
                 f"{serializer.validated_data.get('object_id')}), "
                 f"method {method}."
             )
-            raise ValidationError(f"You already have a {method} preference for this object.")
+            raise ValidationError(
+                f"You already have a {method} preference for this object."
+            )
 
     def perform_update(self, serializer):
         user = self.request.user
@@ -170,7 +172,9 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
             logger.warning(
                 f"[!] Duplicate on update: user {user.id}, method {method}."
             )
-            raise ValidationError(f"You already have a {method} preference for this object.")
+            raise ValidationError(
+                f"You already have a {method} preference for this object."
+            )
 
 
 @api_view(['POST'])

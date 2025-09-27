@@ -152,7 +152,7 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     f"{model_class.__name__} with id {object_id} does not exist."
                 )
-            
+
             # Ownership check
             user = self.context["request"].user
             if hasattr(obj, "user") and obj.user != user:
@@ -182,12 +182,15 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        if "object_id" in validated_data and validated_data["object_id"] != instance.object_id:
+        obj_id = validated_data.get("object_id")
+        if obj_id and obj_id != instance.object_id:
             raise serializers.ValidationError("Changing object_id is not allowed.")
-        if "model" in validated_data and validated_data["model"].lower() != instance.content_type.model:
-            raise serializers.ValidationError("Changing model is not allowed.")
-        return super().update(instance, validated_data)
 
+        model = validated_data.get("model")
+        if model and model.lower() != instance.content_type.model:
+            raise serializers.ValidationError("Changing model is not allowed.")
+
+        return super().update(instance, validated_data)
 
 
 class HeartBeatSerializer(serializers.ModelSerializer):
