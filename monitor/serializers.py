@@ -103,7 +103,8 @@ class UptimeCheckResultSerializer(serializers.ModelSerializer):
 
 
 class NotificationPreferenceSerializer(serializers.ModelSerializer):
-    model = serializers.CharField(write_only=True)  # "heartbeat" or "website"
+    MODEL_CHOICES = (("heartbeat", "HeartBeat"), ("website", "Website"))
+    model = serializers.ChoiceField(choices=MODEL_CHOICES, write_only=True)
 
     class Meta:
         model = NotificationPreference
@@ -114,7 +115,6 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
             "object_id",
             "method",
             "target",
-            "is_active",
             "created_at",
         ]
         read_only_fields = ["id", "created_at", "user"]
@@ -126,33 +126,37 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
         Works for both POST and PATCH.
         """
         model_name = data.get("model")
-        if not model_name:
-            raise serializers.ValidationError("model is required.")
-
-        if model_name.lower() == "heartbeat":
-            data["content_type"] = ContentType.objects.get_for_model(HeartBeat)
-        elif model_name.lower() == "website":
-            data["content_type"] = ContentType.objects.get_for_model(Website)
+        # If PATCH, reuse instance values instead of requiring them in data
+        if self.instance:
+            data["content_type"] = self.instance.content_type
+            data["object_id"] = self.instance.object_id
         else:
-            raise serializers.ValidationError(
-                "Invalid model type. Must be 'heartbeat' or 'website'."
-            )
+            if not model_name:
+                raise serializers.ValidationError("model is required.")
 
-        # Validate object exists
-        object_id = data.get("object_id")
-        model_class = data["content_type"].model_class()
-        try:
-            obj = model_class.objects.get(id=object_id)
-        except model_class.DoesNotExist:
-            raise serializers.ValidationError(
-                f"{model_class.__name__} with id {object_id} does not exist."
-            )
+            if model_name.lower() == "heartbeat":
+                data["content_type"] = ContentType.objects.get_for_model(HeartBeat)
+            elif model_name.lower() == "website":
+                data["content_type"] = ContentType.objects.get_for_model(Website)
+            else:
+                raise serializers.ValidationError(
+                    "Invalid model type. Must be 'heartbeat' or 'website'."
+                )
 
-        # 3. Ownership check (Website/HeartBeat must belong to user)
-        # Ensure ownership
-        user = self.context["request"].user
-        if hasattr(obj, "user") and obj.user != user:
-            raise serializers.ValidationError("You do not own this object.")
+            # Validate object exists only on create
+            object_id = data.get("object_id")
+            model_class = data["content_type"].model_class()
+            try:
+                obj = model_class.objects.get(id=object_id)
+            except model_class.DoesNotExist:
+                raise serializers.ValidationError(
+                    f"{model_class.__name__} with id {object_id} does not exist."
+                )
+            
+            # Ownership check
+            user = self.context["request"].user
+            if hasattr(obj, "user") and obj.user != user:
+                raise serializers.ValidationError("You do not own this object.")
 
         # Validate method/target combo
         method = data.get("method")
@@ -176,6 +180,14 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
         validated_data["user"] = self.context["request"].user
         validated_data.pop("model", None)  # Remove the friendly field
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        if "object_id" in validated_data and validated_data["object_id"] != instance.object_id:
+            raise serializers.ValidationError("Changing object_id is not allowed.")
+        if "model" in validated_data and validated_data["model"].lower() != instance.content_type.model:
+            raise serializers.ValidationError("Changing model is not allowed.")
+        return super().update(instance, validated_data)
+
 
 
 class HeartBeatSerializer(serializers.ModelSerializer):

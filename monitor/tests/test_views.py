@@ -2,10 +2,12 @@
 import pytest
 from rest_framework.test import APIClient
 from rest_framework import status
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from monitor.models import Website, NotificationPreference
 from django.contrib.contenttypes.models import ContentType
+
+User = get_user_model()
 
 
 @pytest.mark.django_db
@@ -207,7 +209,8 @@ def test_create_notification_preference_success(api_client, website):
         "content_type": ContentType.objects.get_for_model(Website).id,
         "object_id": website.id,
         "method": "email",
-        "target": "user@example.com"
+        "target": "user@example.com",
+        "model": "website"
     }
     response = api_client.post(url, data, format="json")
     assert response.status_code == status.HTTP_201_CREATED
@@ -226,7 +229,8 @@ def test_create_preference_unauthorized_website(api_client, other_website):
         "content_type": ContentType.objects.get_for_model(Website).id,
         "object_id": other_website.id,
         "method": "email",
-        "target": "user@example.com"
+        "target": "user@example.com",
+        "model": "website"
     }
     response = api_client.post(url, data, format="json")
     assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -249,7 +253,8 @@ def test_create_duplicate_preference(api_client, website):
         "content_type": ContentType.objects.get_for_model(Website).id,
         "object_id": website.id,
         "method": "email",
-        "target": "user@example.com"
+        "target": "user@example.com",
+        "model": "website"
     }
     response = api_client.post(url, data, format="json")
     assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -279,6 +284,7 @@ def test_create_invalid_target(api_client, website, method, target):
 @pytest.mark.django_db
 def test_update_preference(api_client, website):
     """Test updating a notification preference."""
+    print(website.id, "website.id")
     preference = NotificationPreference.objects.create(
         user=website.user,
         content_type=ContentType.objects.get_for_model(Website),
@@ -288,8 +294,11 @@ def test_update_preference(api_client, website):
     )
 
     url = reverse("preferences-detail", args=[preference.id])
-    data = {"target": "new@example.com"}
+    # TODO: Check to make sure we don't need to pass the model
+    #  anytime we want to update
+    data = {"target": "new@example.com", "model": "website", "method": "email",}
     response = api_client.patch(url, data, format="json")
+    print(response.data)
     assert response.status_code == status.HTTP_200_OK
     preference.refresh_from_db()
     assert preference.target == "new@example.com"

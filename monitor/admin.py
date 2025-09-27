@@ -125,10 +125,9 @@ class NotificationPreferenceAdmin(admin.ModelAdmin):
         "target_object_display",
         "method",
         "target",
-        "is_active",
         "created_at",
     )
-    list_filter = ("method", "is_active", "created_at", "content_type")
+    list_filter = ("method", "created_at", "content_type")
     search_fields = (
         "user__username",
         "user__email",

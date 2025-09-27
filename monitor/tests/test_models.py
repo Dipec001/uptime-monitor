@@ -1,5 +1,5 @@
 import pytest
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from monitor.models import (
     Website,
@@ -9,6 +9,8 @@ from monitor.models import (
     HeartBeat
 )
 from django.contrib.contenttypes.models import ContentType
+
+User = get_user_model()
 
 # ---------------------------------------------------
 # Website Model Tests
@@ -162,7 +164,7 @@ def test_notification_preference_str_method():
         target="https://hooks.slack.com/test",
     )
 
-    assert str(pref) == f"{user.email} → slack: {pref.target} ({site})"
+    assert str(pref) == f"{user.email} → slack:{pref.target} ({site})"
 
 # ---------------------------------------------------
 # HeartBeat Model Tests

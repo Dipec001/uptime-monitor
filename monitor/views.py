@@ -1,5 +1,6 @@
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import generics, status, permissions, viewsets
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied, APIException
 from monitor.serializers import (
@@ -142,7 +143,7 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
         user = self.request.user
 
         try:
-            serializer.save(user=user)
+            serializer.save()
             target_type = serializer.validated_data.get("content_type").model
             target_id = serializer.validated_data.get("object_id")
             logger.info(
@@ -157,19 +158,19 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
                 f"{serializer.validated_data.get('object_id')}), "
                 f"method {method}."
             )
-            raise ValidationError("You already have this notification preference.")
+            raise ValidationError(f"You already have a {method} preference for this object.")
 
     def perform_update(self, serializer):
         user = self.request.user
         try:
-            serializer.save(user=user)
+            serializer.save()
             logger.info(f"[✓] Notification preference updated for user {user.id}.")
         except IntegrityError:
             method = serializer.validated_data.get("method")
             logger.warning(
                 f"[!] Duplicate on update: user {user.id}, method {method}."
             )
-            raise ValidationError("You already have this notification preference.")
+            raise ValidationError(f"You already have a {method} preference for this object.")
 
 
 @api_view(['POST'])
@@ -329,7 +330,7 @@ class ResetPasswordView(generics.GenericAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class DashboardMetricsView(generics.GenericAPIView):
+class DashboardMetricsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
