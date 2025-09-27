@@ -130,10 +130,6 @@ WSGI_APPLICATION = "uptimemonitor.wsgi.application"
 
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.getenv(
-            "DATABASE_URL",
-            "postgres://postgres:mypassword@localhost:5432/test_db"
-        ),
         conn_max_age=600,
         conn_health_checks=True,
         # For using django-prometheus with PostgreSQL, uncomment the line below
