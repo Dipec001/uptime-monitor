@@ -87,7 +87,11 @@ class Website(models.Model):
         help_text="Maximum wait time (in milliseconds) for the request to respond,"
         " before you give up and mark it as failed."
     )
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(
+        default=True,
+        help_text="For maintenance/pause window, " \
+        "If disabled, the website will not be checked."
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     next_check_at = models.DateTimeField(null=True, blank=True)
     is_down = models.BooleanField(default=False)
@@ -210,6 +214,11 @@ class HeartBeat(models.Model):
     grace_period = models.IntegerField(
         default=60,
         help_text="Extra time buffer in seconds"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="For maintenance/pause window, " \
+        "If disabled, the website will not be checked."
     )
     last_ping = models.DateTimeField(null=True, blank=True, db_index=True)
     next_due = models.DateTimeField(null=True, blank=True, db_index=True)

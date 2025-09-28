@@ -58,9 +58,16 @@ class WebsiteSerializer(serializers.ModelSerializer):
             'url',
             'check_interval',
             'check_interval_display',
-            'is_active'
+            'is_active',
+            'last_downtime_at',
+            'last_recovered_at',
         ]
-        read_only_fields = ['id', 'created_at', 'is_active']
+        read_only_fields = [
+            'id',
+            'created_at',
+            'last_downtime_at',
+            'last_recovered_at',
+        ]
 
     def get_check_interval_display(self, obj):
         return dict(CHECK_INTERVAL_CHOICES).get(obj.check_interval)
@@ -205,6 +212,7 @@ class HeartBeatSerializer(serializers.ModelSerializer):
             'key',
             'interval',
             'grace_period',
+            'is_active',
             'status',
             'next_due',  # show next due field
             'last_ping',

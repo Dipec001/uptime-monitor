@@ -159,8 +159,10 @@ def process_ping(key, metadata=None):
 def check_single_heartbeat(self, heartbeat_id):
     try:
         hb = HeartBeat.objects.get(pk=heartbeat_id)
-        if hb.status == "down":
-            return  # already marked down, skip
+        
+        if not hb.is_active:
+            logger.info(f"⏸️ Skipped paused heartbeat {heartbeat_id}")
+            return
 
         current_time = now()
         if hb.next_due and current_time > hb.next_due:

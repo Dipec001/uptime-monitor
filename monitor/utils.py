@@ -30,7 +30,7 @@ def get_due_heartbeats():
     """Return heartbeats that are past their next_due timestamp."""
     now = timezone.now()
     return HeartBeat.objects.filter(
-        status="up",
+        is_active=True,
         last_ping__isnull=False,
         next_due__lte=now
     ).only("id", "name", "interval", "grace_period", "last_ping", "next_due")
