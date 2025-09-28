@@ -1,5 +1,6 @@
 global:
   scrape_interval: 30s
+  evaluation_interval: 30s
 
 rule_files:
   - "prometheus-alerts.yml"  # 👈 This tells Prometheus to load your alert rules

@@ -72,8 +72,7 @@ def notify_users(target, alert_type):
     content_type = ContentType.objects.get_for_model(target)
     preferences = NotificationPreference.objects.filter(
         content_type=content_type,
-        object_id=target.id,
-        is_active=True
+        object_id=target.id
     )
 
     for pref in preferences:

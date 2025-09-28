@@ -153,19 +153,3 @@ jobs:
             export DATABASE_URL=${{ secrets.DEV_DATABASE_URL }}
           fi
           python manage.py migrate
-
-  notify-failure:
-    name: Notify on Failure
-    if: failure()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Slack Notification
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          payload: |
-            {
-              "text": "🚨 CI/CD pipeline failed for ${{ github.repository }} branch ${{ github.ref }}",
-              "channel": "#deployments"
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
