@@ -21,7 +21,6 @@ from rest_framework.decorators import permission_classes, api_view
 import uuid
 import logging
 from django.db.models import OuterRef, Subquery
-from .metrics import user_registrations_total
 
 logger = logging.getLogger('monitor')
 
@@ -46,7 +45,6 @@ class RegisterView(generics.CreateAPIView):
                 refresh = RefreshToken.for_user(user)
 
                 logger.info("[✓] User registered: %s", user.email)
-                user_registrations_total.inc()  # ✅ increment counter
 
                 return Response({
                     "message": "User registered successfully",

@@ -38,7 +38,7 @@ DEBUG = True
 #     "172.30.112.1",  # Docker for Windows internal host
 # ]
 
-ALLOWED_HOSTS = ["*"] # for testing only, allow all hosts
+ALLOWED_HOSTS = ["*"]  # for testing only, allow all hosts
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",

@@ -23,7 +23,15 @@ def check_single_website(self, website_id):
             logger.info(f"⏸️ Skipped inactive website {website_id}")
             return
 
-        status_code, response_time_ms = check_website_uptime(website_url)
+        try:
+            # 🚦 Perform the actual website check
+            status_code, response_time_ms = check_website_uptime(website_url)
+        except Exception as e:
+            logger.error(
+                f"[!] Unexpected error checking {website_url}: {str(e)}",
+                exc_info=True
+            )
+            raise
 
         # ✅ Save check result
         UptimeCheckResult.objects.create(
@@ -31,18 +39,24 @@ def check_single_website(self, website_id):
             status_code=status_code,
             response_time_ms=response_time_ms
         )
+        try:
+            push_website_metric(website_name or website_url, success=(status_code == 200))
+        except Exception as e:
+            logger.error(f"Failed to push metric for {website_url}: {e}")
 
         # 🔍 Recovery detection
         if website.is_down and status_code == 200:
             website.is_down = False
             website.last_recovered_at = now()
             logger.info(f"[✓] {website_url} RECOVERED at {website.last_recovered_at}")
+
+            try:
+                # Push success metric
+                push_website_metric(website_name or website_url, success=True)
+            except Exception as e:
+                logger.error(f"Failed to push metric for {website_url}: {e}")
             # Send recovery alert
             handle_alert(website, "recovery")
-
-            # TODO: Use try / except to avoid crashing if Prometheus is down
-            # Push success metric
-            push_website_metric(website_name or website_url, success=True)
 
         # 🔍 Downtime detection
         recent_checks = website.checks.order_by('-checked_at')[:3]
@@ -52,11 +66,13 @@ def check_single_website(self, website_id):
                 website.last_downtime_at = now()
                 logger.warning(f"[!] {website_url} DOWN at {website.last_downtime_at}")
 
+            try:
+                push_website_metric(website_name or website_url, success=False)
+            except Exception as e:
+                logger.error(f"Failed to push failure metric for {website_url}: {e}")
+
             # Send downtime alert.
             handle_alert(website, "downtime")
-
-            # Push failure metric
-            push_website_metric(website_name or website_url, success=False)
 
         # 🔁 Schedule next check
         # Floor the current time to the nearest minute
