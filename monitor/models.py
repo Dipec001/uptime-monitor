@@ -89,7 +89,7 @@ class Website(models.Model):
     )
     is_active = models.BooleanField(
         default=True,
-        help_text="For maintenance/pause window, " \
+        help_text="For maintenance/pause window, "
         "If disabled, the website will not be checked."
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -217,7 +217,7 @@ class HeartBeat(models.Model):
     )
     is_active = models.BooleanField(
         default=True,
-        help_text="For maintenance/pause window, " \
+        help_text="For maintenance/pause window, "
         "If disabled, the website will not be checked."
     )
     last_ping = models.DateTimeField(null=True, blank=True, db_index=True)

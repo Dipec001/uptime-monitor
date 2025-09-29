@@ -6,6 +6,7 @@ from datetime import timedelta
 from django.utils.timezone import now
 from .alerts import handle_alert
 from .redis_utils import allow_ping_sliding
+from .metrics import push_website_metric
 import logging
 
 logger = logging.getLogger('monitor')
@@ -15,12 +16,14 @@ logger = logging.getLogger('monitor')
 def check_single_website(self, website_id):
     try:
         website = Website.objects.get(pk=website_id)
+        website_url = website.url
+        website_name = website.name
 
         if not website.is_active:
             logger.info(f"⏸️ Skipped inactive website {website_id}")
             return
 
-        status_code, response_time_ms = check_website_uptime(website.url)
+        status_code, response_time_ms = check_website_uptime(website_url)
 
         # ✅ Save check result
         UptimeCheckResult.objects.create(
@@ -33,9 +36,13 @@ def check_single_website(self, website_id):
         if website.is_down and status_code == 200:
             website.is_down = False
             website.last_recovered_at = now()
-            logger.info(f"[✓] {website.url} RECOVERED at {website.last_recovered_at}")
+            logger.info(f"[✓] {website_url} RECOVERED at {website.last_recovered_at}")
             # Send recovery alert
             handle_alert(website, "recovery")
+
+            # TODO: Use try / except to avoid crashing if Prometheus is down
+            # Push success metric
+            push_website_metric(website_name or website_url, success=True)
 
         # 🔍 Downtime detection
         recent_checks = website.checks.order_by('-checked_at')[:3]
@@ -43,10 +50,13 @@ def check_single_website(self, website_id):
             if not website.is_down:
                 website.is_down = True
                 website.last_downtime_at = now()
-                logger.warning(f"[!] {website.url} DOWN at {website.last_downtime_at}")
+                logger.warning(f"[!] {website_url} DOWN at {website.last_downtime_at}")
 
             # Send downtime alert.
             handle_alert(website, "downtime")
+
+            # Push failure metric
+            push_website_metric(website_name or website_url, success=False)
 
         # 🔁 Schedule next check
         # Floor the current time to the nearest minute
@@ -62,7 +72,7 @@ def check_single_website(self, website_id):
             "next_check_at"
         ])
 
-        logger.info(f"[✓] {website.url} checked: {status_code} in {response_time_ms}ms")
+        logger.info(f"[✓] {website_url} checked: {status_code} in {response_time_ms}ms")
 
     except Website.DoesNotExist:
         logger.warning(f"[!] Website {website_id} no longer exists. Skipping...")
@@ -159,7 +169,7 @@ def process_ping(key, metadata=None):
 def check_single_heartbeat(self, heartbeat_id):
     try:
         hb = HeartBeat.objects.get(pk=heartbeat_id)
-        
+
         if not hb.is_active:
             logger.info(f"⏸️ Skipped paused heartbeat {heartbeat_id}")
             return

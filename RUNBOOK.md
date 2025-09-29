@@ -106,7 +106,7 @@ Admin: http://localhost:8000/admin/
 ### Step 1: Run all tests
 
 ```bash
-pytest
+pytest -v
 ```
 ### Step 2: Run a single test file
 

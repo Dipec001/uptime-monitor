@@ -10,3 +10,10 @@ receivers:
       - api_url: "https://hooks.slack.com/services/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"
         channel: '#all-new-workspace'
         send_resolved: true
+  
+  - name: 'email-notifications'
+    email_configs:
+      - to: 'dpecchukwu@gmail.com'
+        from: 'dpecchukwu@gmail.com'
+        smarthost: 'smtp.gmail.com:587'
+        auth_username: '
