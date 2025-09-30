@@ -1,5 +1,6 @@
 global:
-  scrape_interval: 30s
+  scrape_interval: 15s
+  evaluation_interval: 15s
 
 rule_files:
   - "prometheus-alerts.yml"  # 👈 This tells Prometheus to load your alert rules
@@ -8,9 +9,15 @@ rule_files:
 alerting:
   alertmanagers:
     - static_configs:
-        - targets: ['alertmanager:9093']
+        - targets: ['localhost:9093']
 
 scrape_configs:
   - job_name: 'django-uptime-api'
+    metrics_path: '/metrics'
     static_configs:
-      - targets: ['web:8000']
+      - targets: ['localhost:8000']  # 👈 Update with your Django app's service name and port
+
+  - job_name: 'website-celery'
+    honor_labels: true
+    static_configs:
+      - targets: ['localhost:9091']  # 👈 Update with your Celery service name and port

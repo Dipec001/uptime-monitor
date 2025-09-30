@@ -6,6 +6,7 @@ import logging
 
 logger = logging.getLogger('monitor')
 
+
 class Command(BaseCommand):
     help = 'Deletes UptimeCheckResult entries older than N days (default 90)'
 
@@ -24,6 +25,10 @@ class Command(BaseCommand):
             checked_at__lt=cutoff_date
         ).delete()
 
-        message = f"[✓] Deleted {deleted_count} uptime logs older than {retention_days} days"
+        message = f"[✓] Deleted {deleted_count} uptime"
+        "logs older than {retention_days} days"
         logger.info(message)
-        self.stdout.write(self.style.SUCCESS(f"[✓] Deleted {deleted_count} records older than {retention_days} days."))
+        self.stdout.write(self.style.SUCCESS(
+            f"[✓] Deleted {deleted_count} records"
+            f"older than {retention_days} days.")
+        )

@@ -8,4 +8,4 @@ groups:
           severity: critical
         annotations:
           summary: "Test alert from Divine"
-          description: "This is a test alert that always fires to verify Slack integration."
+          description: "This is a test alert that always fires to verify Email integration."

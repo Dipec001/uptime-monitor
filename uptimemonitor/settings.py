@@ -14,6 +14,7 @@ from pathlib import Path
 import os
 from datetime import timedelta
 from dotenv import load_dotenv
+import dj_database_url
 
 load_dotenv()
 
@@ -30,12 +31,19 @@ SECRET_KEY = "django-insecure-gy_2+ww%ubs4q0@8rzgzx(7y=$eprl!-2v)b*2-l0^0(wc#x9u
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "web",  # internal Docker hostname
-]
+# ALLOWED_HOSTS = [
+#     "localhost",
+#     "127.0.0.1",
+#     "web",  # internal Docker hostname
+#     "172.30.112.1",  # Docker for Windows internal host
+# ]
 
+ALLOWED_HOSTS = ["*"]  # for testing only, allow all hosts
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
 
 # Application definition
 
@@ -50,6 +58,7 @@ INSTALLED_APPS = [
     'monitor',
     'rest_framework',
     'rest_framework_simplejwt',
+    'corsheaders',
     'drf_yasg',
     'django_celery_beat',
 
@@ -71,6 +80,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -110,15 +120,24 @@ WSGI_APPLICATION = "uptimemonitor.wsgi.application"
 #     }
 # }
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django_prometheus.db.backends.postgresql',
+#         'NAME': os.getenv('POSTGRES_DB', 'test_db'),
+#         'USER': os.getenv('POSTGRES_USER'),
+#         'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
+#         'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
+#         'PORT': os.getenv('POSTGRES_PORT'),
+#     }
+# }
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django_prometheus.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'monitor_db'),
-        'USER': os.getenv('POSTGRES_USER', 'postgres'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
-        'HOST': os.getenv('POSTGRES_HOST', 'db'),
-        'PORT': os.getenv('POSTGRES_PORT', '5432'),
-    }
+    'default': dj_database_url.config(
+        conn_max_age=600,
+        conn_health_checks=True,
+        # For using django-prometheus with PostgreSQL, uncomment the line below
+        # engine='django_prometheus.db.backends.postgresql'
+    )
 }
 
 # Password validation
@@ -139,6 +158,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+AUTH_USER_MODEL = "monitor.CustomUser"
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
@@ -174,7 +194,7 @@ SWAGGER_SETTINGS = {
             'type': 'apiKey',
             'name': 'Authorization',
             'in': 'header',
-            'description': 'JWT Authorization header using the Bearer scheme. Example: "Bearer your_token_here"',
+            'description': 'JWT Authorization header',
         }
     }
 }
@@ -216,8 +236,8 @@ LOGGING = {
     },
 }
 
-# CELERY_BROKER_URL = 'redis://localhost:6379/0'  # locally undockerized
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") # or your Redis instance
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")  # or your Redis instance
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_TASK_DEFAULT_QUEUE = 'uptimemonitor'
@@ -237,3 +257,5 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 
 SWAGGER_USE_COMPAT_RENDERERS = False
+
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')

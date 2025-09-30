@@ -1,7 +1,7 @@
 from django.utils import timezone
 import requests
 import time
-from .models import Website
+from .models import Website, HeartBeat
 
 
 def get_due_websites():
@@ -24,3 +24,13 @@ def check_website_uptime(url: str, timeout=5):
 
     elapsed_ms = (time.time() - start) * 1000
     return status_code, round(elapsed_ms, 2)
+
+
+def get_due_heartbeats():
+    """Return heartbeats that are past their next_due timestamp."""
+    now = timezone.now()
+    return HeartBeat.objects.filter(
+        is_active=True,
+        last_ping__isnull=False,
+        next_due__lte=now
+    ).only("id", "name", "interval", "grace_period", "last_ping", "next_due")

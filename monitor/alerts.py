@@ -2,12 +2,18 @@ import requests
 from django.core.mail import send_mail
 from django.conf import settings
 from celery import shared_task
-from monitor.models import Alert
+from monitor.models import Alert, NotificationPreference, Website, HeartBeat
 from django.utils.timezone import now
 from datetime import timedelta
+from django.contrib.contenttypes.models import ContentType
 import logging
 
 logger = logging.getLogger('monitor')
+
+
+RETRY_INTERVAL_MINUTES = 10
+MAX_RETRIES = 3
+
 
 @shared_task(bind=True, max_retries=3)
 def send_email_alert_task(self, to_email, subject, message):
@@ -24,6 +30,7 @@ def send_email_alert_task(self, to_email, subject, message):
         logger.error(f"[EMAIL] Error sending to {to_email}: {str(e)}")
         self.retry(exc=e, countdown=10)
 
+
 @shared_task(bind=True, max_retries=3)
 def send_slack_alert_task(self, webhook_url, message):
     try:
@@ -33,6 +40,7 @@ def send_slack_alert_task(self, webhook_url, message):
     except requests.RequestException as e:
         logger.error(f"[SLACK] Error sending: {e}")
         self.retry(exc=e, countdown=10)
+
 
 @shared_task(bind=True, max_retries=3)
 def send_webhook_alert_task(self, webhook_url, payload):
@@ -45,88 +53,102 @@ def send_webhook_alert_task(self, webhook_url, payload):
         self.retry(exc=e, countdown=10)
 
 
-def notify_users(website, alert_type):
-    preferences = website.notificationpreference_set.filter(is_active=True)
-    # message = f"{website.url} is {'DOWN' if alert_type == 'downtime' else 'BACK UP'}."
+@shared_task(bind=True, max_retries=3)
+def send_whatsapp_alert_task(self, phone_number, message):
+    try:
+        # TODO: Implement WhatsApp alert sending logic here.
+        # Placeholder for WhatsApp API integration
+        logger.info(f"[WHATSAPP] Sent to {phone_number} (not implemented)")
+    except Exception as e:
+        logger.error(f"[WHATSAPP] Error sending to {phone_number}: {str(e)}")
+        self.retry(exc=e, countdown=10)
+
+
+def notify_users(target, alert_type):
+    """
+    Notify users based on their preferences for a given target (Website or HeartBeat).
+    """
+
+    content_type = ContentType.objects.get_for_model(target)
+    preferences = NotificationPreference.objects.filter(
+        content_type=content_type,
+        object_id=target.id
+    )
 
     for pref in preferences:
         if pref.method == "email":
-            subject = f"🔴 Website Down Alert – {website.url}"
+            subject = f"[{alert_type.upper()}] {target}"
+            message = build_alert_message(target, alert_type, method="email")
+            send_email_alert_task.delay(pref.target, subject, message)
 
-            message = f"""
-                🚨 Your website is DOWN!
-
-                URL: {website.url}
-                Time: {now().strftime('%Y-%m-%d %H:%M:%S')}
-                Status: ❌ Unreachable
-                Retry Count: 2/3
-
-                We’ll try again in 10 minutes.
-                You’ll receive up to 3 alerts, then pause until it's back online.
-
-                – Uptime Monitor
-                """
-
-            send_email_alert_task.delay(pref.target, f"[{alert_type.upper()}] {website.url}", message, subject)
         elif pref.method == "slack":
-            message = (
-                f"*🔴 Website Down Alert!*\n"
-                f"*URL:* {website.url}\n"
-                f"*Time:* {now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-                f"*Status:* ❌ Down\n"
-                f"*Retry:* 1/3\n\n"
-                f"_We'll retry every 10 minutes, up to 3 times._"
-            )
+            message = build_alert_message(target, alert_type, method="slack")
             send_slack_alert_task.delay(pref.target, message)
+
         elif pref.method == "webhook":
-            send_webhook_alert_task.delay(pref.target, {"status": alert_type, "url": website.url})
+            payload = {"status": alert_type, "target": str(target)}
+            send_webhook_alert_task.delay(pref.target, payload)
+
+        elif pref.method == "whatsapp":
+            message = build_alert_message(target, alert_type, method="whatsapp")
+            send_whatsapp_alert_task.delay(pref.target, message)
 
 
-RETRY_INTERVAL_MINUTES = 10
-MAX_RETRIES = 3
+def handle_alert(target, alert_type):
+    """
+    Generic alert handler for Website or HeartBeat.
+    """
 
-def handle_alert(website, alert_type):
+    content_type = ContentType.objects.get_for_model(target)
+
     if alert_type == "downtime":
         existing_alert = Alert.objects.filter(
-            website=website,
+            content_type=content_type,
+            object_id=target.id,
             alert_type="downtime",
             is_active=True
         ).first()
 
         if existing_alert:
-            # Check if retry limit is reached
             if existing_alert.retry_count >= MAX_RETRIES:
-                logger.info(f"[!] Retry limit reached for {website.url}, skipping alert.")
+                logger.info(f"[!] Retry limit reached for {target}, skipping alert.")
                 return
 
-            # Enforce 10-minute interval between retries
-            if existing_alert.last_sent_at and now() - existing_alert.last_sent_at < timedelta(minutes=RETRY_INTERVAL_MINUTES):
-                logger.info(f"[!] Last alert for {website.url} sent recently, skipping retry for now.")
-                return
+            if existing_alert.last_sent_at:
+                time_since_last = now() - existing_alert.last_sent_at
+                if time_since_last < timedelta(minutes=RETRY_INTERVAL_MINUTES):
+                    logger.info(
+                        f"[!] Last alert for {target} sent recently,"
+                        f"skipping retry for now."
+                    )
+                    return
 
-            # Retry: Send and update
-            notify_users(website, "downtime")
+            notify_users(target, "downtime")
             existing_alert.retry_count += 1
             existing_alert.last_sent_at = now()
             existing_alert.save(update_fields=["retry_count", "last_sent_at"])
-            logger.warning(f"[!] Retried alert for {website.url} (attempt {existing_alert.retry_count})")
+            logger.warning(
+                f"[!] Retried alert for {target}"
+                f"(attempt {existing_alert.retry_count})"
+            )
             return
 
-        # First time going down: create alert and notify
+        # First downtime alert
         Alert.objects.create(
-            website=website,
+            content_type=content_type,
+            object_id=target.id,
             alert_type="downtime",
             is_active=True,
             retry_count=1,
             last_sent_at=now()
         )
-        notify_users(website, "downtime")
-        logger.warning(f"[!] First downtime alert created for {website.url}")
+        notify_users(target, "downtime")
+        logger.warning(f"[!] First downtime alert created for {target}")
 
     elif alert_type == "recovery":
-        # Only notify recovery if there was a previous downtime alert
         existing_alert = Alert.objects.filter(
-            website=website,
+            content_type=content_type,
+            object_id=target.id,
             alert_type="downtime",
             is_active=True
         ).first()
@@ -135,10 +157,63 @@ def handle_alert(website, alert_type):
             existing_alert.is_active = False
             existing_alert.save(update_fields=["is_active"])
             Alert.objects.create(
-                website=website,
+                content_type=content_type,
+                object_id=target.id,
                 alert_type="recovery",
                 is_active=False,
                 last_sent_at=now()
             )
-            notify_users(website, "recovery")
-            logger.info(f"[✓] Recovery alert sent for {website.url}")
+            notify_users(target, "recovery")
+            logger.info(f"[✓] Recovery alert sent for {target}")
+
+
+def build_alert_message(target, alert_type, method="email"):
+    """
+    Build alert messages depending on whether target is Website or HeartBeat.
+    """
+    if isinstance(target, Website):
+        if method == "email":
+            return f"""
+                🚨 Website {alert_type.upper()}!
+
+                URL: {target.url}
+                Time: {now().strftime('%Y-%m-%d %H:%M:%S')}
+            """
+        elif method == "slack":
+            return f"*Website {alert_type.upper()}!* {target.url} at {now()}"
+        elif method == "whatsapp":
+            ts = now().strftime("%Y-%m-%d %H:%M:%S")
+            return f"""🚨 Website {alert_type.upper()}!
+            URL: {target.url}
+            Time: {ts}"""
+        elif method == "webhook":
+            return {
+                "alert_type": alert_type,
+                "url": target.url,
+                "timestamp": now().isoformat()
+            }
+
+    elif isinstance(target, HeartBeat):
+        if method == "email":
+            return f"""
+                🚨 Heartbeat {alert_type.upper()}!
+
+                Service: {target.name}
+                Time: {now().strftime('%Y-%m-%d %H:%M:%S')}
+            """
+        elif method == "slack":
+            return f"*Heartbeat {alert_type.upper()}!* {target.name} at {now()}"
+        elif method == "whatsapp":
+            ts = now().strftime("%Y-%m-%d %H:%M:%S")
+            return f"""🚨 Heartbeat {alert_type.upper()}!
+            Service: {target.name}
+            Time: {ts}"""
+
+        elif method == "webhook":
+            return {
+                "alert_type": alert_type,
+                "service": target.name,
+                "timestamp": now().isoformat()
+            }
+
+    return f"Alert: {target} is {alert_type}"

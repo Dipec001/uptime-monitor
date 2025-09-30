@@ -106,7 +106,7 @@ Admin: http://localhost:8000/admin/
 ### Step 1: Run all tests
 
 ```bash
-pytest
+pytest -v
 ```
 ### Step 2: Run a single test file
 
@@ -123,7 +123,7 @@ pytest monitor/tests/test_views.py::test_register_view_success
 
 - Always activate virtualenv when running Django commands locally.
 - Celery workers and beat must run separately unless using Docker.
-- For production, ensure Redis or RabbitMQ is configured for Celery.
+- For production, ensure Redis is configured for Celery.
 - If using pagination in APIs, always order querysets to avoid warnings.
 - Keep logs visible for debugging background tasks and alerts.
 
