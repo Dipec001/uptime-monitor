@@ -241,6 +241,8 @@ CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")  # or your Redis instance
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_TASK_DEFAULT_QUEUE = 'uptimemonitor'
+CELERY_WORKER_SEND_TASK_EVENTS = True
+CELERY_TASK_SEND_SENT_EVENT = True
 
 # Email Config
 # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

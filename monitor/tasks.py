@@ -6,7 +6,7 @@ from datetime import timedelta
 from django.utils.timezone import now
 from .alerts import handle_alert
 from .redis_utils import allow_ping_sliding
-from .metrics import push_website_metric
+# from .metrics import push_website_metric
 import logging
 
 logger = logging.getLogger('monitor')
@@ -39,10 +39,10 @@ def check_single_website(self, website_id):
             status_code=status_code,
             response_time_ms=response_time_ms
         )
-        try:
-            push_website_metric(website_name or website_url, success=(status_code == 200))
-        except Exception as e:
-            logger.error(f"Failed to push metric for {website_url}: {e}")
+        # try:
+        #     push_website_metric(website_name or website_url, success=(status_code == 200))
+        # except Exception as e:
+        #     logger.error(f"Failed to push metric for {website_url}: {e}")
 
         # 🔍 Recovery detection
         if website.is_down and status_code == 200:
@@ -50,11 +50,11 @@ def check_single_website(self, website_id):
             website.last_recovered_at = now()
             logger.info(f"[✓] {website_url} RECOVERED at {website.last_recovered_at}")
 
-            try:
-                # Push success metric
-                push_website_metric(website_name or website_url, success=True)
-            except Exception as e:
-                logger.error(f"Failed to push metric for {website_url}: {e}")
+            # try:
+            #     # Push success metric
+            #     push_website_metric(website_name or website_url, success=True)
+            # except Exception as e:
+            #     logger.error(f"Failed to push metric for {website_url}: {e}")
             # Send recovery alert
             handle_alert(website, "recovery")
 
@@ -66,10 +66,10 @@ def check_single_website(self, website_id):
                 website.last_downtime_at = now()
                 logger.warning(f"[!] {website_url} DOWN at {website.last_downtime_at}")
 
-            try:
-                push_website_metric(website_name or website_url, success=False)
-            except Exception as e:
-                logger.error(f"Failed to push failure metric for {website_url}: {e}")
+            # try:
+            #     push_website_metric(website_name or website_url, success=False)
+            # except Exception as e:
+            #     logger.error(f"Failed to push failure metric for {website_url}: {e}")
 
             # Send downtime alert.
             handle_alert(website, "downtime")
