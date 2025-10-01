@@ -9,3 +9,33 @@ groups:
         annotations:
           summary: "Website is down!"
           description: "The monitored website {{ $labels.instance }} has been down for 1 minute."
+
+      - alert: WebsiteDown
+        expr: probe_success{job="uptime-monitor"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.instance }} is down"
+          description: "Check endpoint {{ $labels.instance }}, probe failed."
+
+      - alert: WebsiteSlow
+        expr: probe_duration_seconds{job="uptime-monitor"} > 2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} is slow"
+          description: "Response time {{ $value }}s is above 2s threshold."
+
+  - name: CeleryMonitoringRules
+    rules:
+      - alert: CeleryWorkersDown
+        expr: celery_worker_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No Celery workers are alive"
+          description: "Celery exporter reports no active workers for at least 2 minutes."
+    
