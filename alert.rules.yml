@@ -1,11 +1,11 @@
 groups:
-  - name: test-alerts
+  - name: django-5xx-alerts
     rules:
-      - alert: AlwaysFires
-        expr: vector(1)  # Always true
-        for: 10s
+      - alert: Django5xxError
+        expr: increase(django_http_responses_5xx_total[1m]) > 0
+        for: 0m
         labels:
           severity: critical
         annotations:
-          summary: "Test alert from Divine"
-          description: "This is a test alert that always fires to verify Email integration."
+          summary: "Django 5xx error detected"
+          description: "A 500 error occurred on {{ $labels.view }} via {{ $labels.method }}"

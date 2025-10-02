@@ -1,16 +1,22 @@
 global:
   resolve_timeout: 5m
   smtp_smarthost: 'smtp.gmail.com:465'
-  smtp_from: '${EMAIL_HOST_USER}'
-  smtp_auth_username: '${EMAIL_HOST_USER}'
-  smtp_auth_password: '${EMAIL_HOST_PASSWORD}'
+  smtp_from: 'dpecchukwu@gmail.com'
+  smtp_auth_username: 'dpecchukwu@gmail.com'
+  smtp_auth_password: 'blwseesfwlyrppnx'
   smtp_require_tls: false
 
 route:
+  group_by: ['alertname', 'view', 'method']
+  group_wait: 10s       # wait before sending first notification for a new alert
+  group_interval: 2m    # wait before sending another notification for the same alert
+  repeat_interval: 2m   # repeat notifications for ongoing firing alerts
+  # send_resolved: false
+
   receiver: 'email-notifications'
     
 receivers:
   - name: 'email-notifications'
     email_configs:
-      - to: '${EMAIL_HOST_USER}'
+      - to: 'dpecchukwu@gmail.com'
         send_resolved: true
