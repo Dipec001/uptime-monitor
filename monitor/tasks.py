@@ -17,7 +17,7 @@ def check_single_website(self, website_id):
     try:
         website = Website.objects.get(pk=website_id)
         website_url = website.url
-        website_name = website.name
+        # website_name = website.name
 
         if not website.is_active:
             logger.info(f"⏸️ Skipped inactive website {website_id}")
@@ -40,9 +40,9 @@ def check_single_website(self, website_id):
             response_time_ms=response_time_ms
         )
         # try:
-        #     push_website_metric(website_name or website_url, success=(status_code == 200))
+        # push_website_metric(website_name or website_url, success=(status_code == 200))
         # except Exception as e:
-        #     logger.error(f"Failed to push metric for {website_url}: {e}")
+        # logger.error(f"Failed to push metric for {website_url}: {e}")
 
         # 🔍 Recovery detection
         if website.is_down and status_code == 200:

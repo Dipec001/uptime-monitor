@@ -2,6 +2,7 @@
 from django.utils.deprecation import MiddlewareMixin
 from monitor.metrics import http_5xx_responses_total
 
+
 class Track5xxMiddleware(MiddlewareMixin):
     def process_response(self, request, response):
         if 500 <= response.status_code < 600:
