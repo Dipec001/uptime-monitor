@@ -3,7 +3,7 @@ global:
   smtp_smarthost: 'smtp.gmail.com:465'
   smtp_from: 'dpecchukwu@gmail.com'
   smtp_auth_username: 'dpecchukwu@gmail.com'
-  smtp_auth_password: 'blwseesfwlyrppnx'
+  smtp_auth_password: 'mypassword'
   smtp_require_tls: false
 
 route:

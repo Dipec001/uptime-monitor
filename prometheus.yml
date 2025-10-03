@@ -3,7 +3,7 @@ global:
   evaluation_interval: 15s
 
 rule_files:
-  - "prometheus-alerts.yml"  # 👈 This tells Prometheus to load your alert rules
+  - "prometheus-alerts.yml"
   - "alert.rules.yml"
 
 alerting:
@@ -15,7 +15,7 @@ scrape_configs:
   - job_name: 'django-uptime-api'
     metrics_path: '/metrics'
     static_configs:
-      - targets: ["web:8000"]  # 👈 Update with your Django app's service name and port
+      - targets: ["web:8000"]
 
   - job_name: "celery"
     static_configs:
