@@ -399,3 +399,8 @@ class DashboardMetricsView(APIView):
         }
 
         return Response(data)
+
+
+def trigger_error(request):
+    # Don’t leave this route active in production long-term
+    raise Exception("Test 500 error — monitoring check")

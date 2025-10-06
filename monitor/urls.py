@@ -13,6 +13,7 @@ router.register(
 router.register(r'heartbeats', views.HeartBeatViewSet, basename='heartbeat')
 
 urlpatterns = [
+    path("trigger-error/", views.trigger_error, name="trigger_error"),
     path('register/', views.RegisterView.as_view(), name='register'),
     path('ping/<uuid:key>/', views.ping_heartbeat, name='ping_heartbeat'),
     path(
