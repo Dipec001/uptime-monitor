@@ -136,10 +136,10 @@ DATABASES = {
     'default': dj_database_url.config(
         conn_max_age=600,
         conn_health_checks=True,
-        # For using django-prometheus with PostgreSQL, uncomment the line below
-        # engine='django_prometheus.db.backends.postgresql'
     )
 }
+
+DATABASES['default']['ENGINE'] = 'django_prometheus.db.backends.postgresql'
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
