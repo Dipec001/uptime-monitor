@@ -1,3 +1,2 @@
-PROJECT_NAME=uptime-monitor-dev
 env = "dev"
-db_username = "
+db_name = "uptimemonitor_db_dev"

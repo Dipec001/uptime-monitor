@@ -20,3 +20,29 @@ variable "env" {
   type = string
   description = "Environment name: dev or prod"
 }
+
+variable "db_username" {
+  type        = string
+  description = "RDS username"
+}
+
+variable "db_password" {
+  type        = string
+  description = "RDS password"
+  sensitive   = true
+}
+
+variable "db_name" {
+  type        = string
+  description = "RDS database name"
+}
+
+variable "redis_url" {
+  type        = string
+  description = "Redis connection URL"
+}
+
+variable "use_elasticache" {
+  type    = bool
+  default = false
+}

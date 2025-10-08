@@ -10,6 +10,10 @@ on:
       - main
       - dev
 
+env:
+  PROJECT_NAME: "uptime-monitor"
+  AWS_REGION: "us-east-1"
+
 jobs:
   lint-test:
     name: Lint & Test
@@ -66,6 +70,8 @@ jobs:
     name: Docker Build & Push
     needs: lint-test
     runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: ${{ github.ref_name == 'main' && 'prod' || 'staging' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -78,19 +84,24 @@ jobs:
 
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v1
+        with:
+          registry-type: public
+          mask-password: true
 
       - name: Build Docker Image
         run: |
           IMAGE_TAG=${GITHUB_SHA}
-          docker build -t ${{ env.PROJECT_NAME }}:$IMAGE_TAG .
-          docker tag ${{ env.PROJECT_NAME }}:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.PROJECT_NAME }}:$IMAGE_TAG
-          docker tag ${{ env.PROJECT_NAME }}:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.PROJECT_NAME }}:latest
+          echo "Building image: $PROJECT_NAME:$IMAGE_TAG"
+          docker build -t $PROJECT_NAME:$IMAGE_TAG .
+
+          docker tag $PROJECT_NAME:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$PROJECT_NAME:$IMAGE_TAG
+          docker tag $PROJECT_NAME:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$PROJECT_NAME:$ENVIRONMENT
 
       - name: Push Docker Image
         run: |
           IMAGE_TAG=${GITHUB_SHA}
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.PROJECT_NAME }}:$IMAGE_TAG
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.PROJECT_NAME }}:latest
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$PROJECT_NAME:$IMAGE_TAG
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$PROJECT_NAME:$ENVIRONMENT
 
   terraform-deploy:
     name: Terraform Deploy
@@ -126,17 +137,29 @@ jobs:
           terraform -chdir=tf-infra init -input=false
           terraform -chdir=tf-infra workspace select $TF_WORKSPACE || terraform -chdir=tf-infra workspace new $TF_WORKSPACE
 
-      - name: Select Env File
+      - name: Select Environment Variables
         id: env_select
         run: |
-          if [ "${GITHUB_REF}" == "refs/heads/main" ]; then
+          if [ "${GITHUB_REF_NAME}" == "main" ]; then
+            echo "TF_VAR_db_username=${{ secrets.PROD_DB_USERNAME }}" >> $GITHUB_ENV
+            echo "TF_VAR_db_password=${{ secrets.PROD_DB_PASSWORD }}" >> $GITHUB_ENV
+            echo "TF_VAR_env=prod" >> $GITHUB_ENV
             echo "env_file=prod.tfvars" >> $GITHUB_OUTPUT
           else
+            echo "TF_VAR_db_username=${{ secrets.STAGING_DB_USERNAME }}" >> $GITHUB_ENV
+            echo "TF_VAR_db_password=${{ secrets.STAGING_DB_PASSWORD }}" >> $GITHUB_ENV
+            echo "TF_VAR_env=staging" >> $GITHUB_ENV
             echo "env_file=dev.tfvars" >> $GITHUB_OUTPUT
           fi
 
       - name: Terraform Plan
-        run: terraform -chdir=terraform plan -var-file=${{ steps.env_select.outputs.env_file }} -out=tfplan
+        run: |
+          if [ "${GITHUB_REF}" == "refs/heads/main" ]; then
+            TF_USE_ELASTICACHE=true
+          else
+            TF_USE_ELASTICACHE=false
+          fi
+          terraform -chdir=terraform plan -var "use_elasticache=$TF_USE_ELASTICACHE" -var-file=${{ steps.env_select.outputs.env_file }} -out=tfplan
 
       - name: Terraform Apply
         run: terraform -chdir=terraform apply -auto-approve tfplan
