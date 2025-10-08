@@ -70,6 +70,9 @@ jobs:
     name: Docker Build & Push
     needs: lint-test
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     env:
       ENVIRONMENT: ${{ github.ref_name == 'main' && 'prod' || 'staging' }}
     steps:
@@ -105,7 +108,9 @@ jobs:
     name: Terraform Deploy
     needs: docker-build-push
     runs-on: ubuntu-latest
-
+    permissions:
+      id-token: write
+      contents: read
     env:
       TF_WORKSPACE: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
 
