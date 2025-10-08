@@ -1,4 +1,14 @@
+terraform {
+  backend "s3" {
+    bucket         = "uptimemonitor-tfstate"
+    key            = "envs/${terraform.workspace}/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-locks"  # DynamoDB table for state locking
+    encrypt        = true
+  }
+}
+
 provider "aws" {
-  region = var.aws_region
-  profile = "iam-dipec01"
+  region  = var.aws_region
+  profile = var.aws_profile
 }

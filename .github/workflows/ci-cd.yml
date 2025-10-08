@@ -96,6 +96,16 @@ jobs:
     name: Terraform Deploy
     needs: docker-build-push
     runs-on: ubuntu-latest
+
+    env:
+      TF_WORKSPACE: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+
+    # 👇 Automatically sets environment name and URL based on branch
+    # TODO: Update URLs to match my app
+    environment:
+      name: ${{ github.ref_name }}
+      url: ${{ github.ref_name == 'main' && 'https://myapp.example.com' || 'https://staging-myapp.example.com' }}
+
     steps:
       - uses: actions/checkout@v3
 
@@ -104,31 +114,32 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.6.5
 
-      - name: Terraform Init
-        run: terraform -chdir=terraform init -input=false
+      - name: Initialize Terraform
+        run: |
+          terraform -chdir=tf-infra init -input=false
+          terraform -chdir=tf-infra workspace select $TF_WORKSPACE || terraform -chdir=tf-infra workspace new $TF_WORKSPACE
+
+      - name: Select Env File
+        id: env_select
+        run: |
+          if [ "${GITHUB_REF}" == "refs/heads/main" ]; then
+            echo "env_file=prod.tfvars" >> $GITHUB_OUTPUT
+          else
+            echo "env_file=dev.tfvars" >> $GITHUB_OUTPUT
+          fi
 
       - name: Terraform Plan
-        run: |
-          ENV_FILE="dev.tfvars"
-          if [ "${GITHUB_REF}" == "refs/heads/main" ]; then
-            ENV_FILE="prod.tfvars"
-          fi
-          terraform -chdir=terraform plan -var-file=$ENV_FILE -out=tfplan
+        run: terraform -chdir=terraform plan -var-file=${{ steps.env_select.outputs.env_file }} -out=tfplan
 
       - name: Terraform Apply
-        run: |
-          ENV_FILE="dev.tfvars"
-          if [ "${GITHUB_REF}" == "refs/heads/main" ]; then
-            ENV_FILE="prod.tfvars"
-          fi
-          terraform -chdir=terraform apply -input=false tfplan
+        run: terraform -chdir=terraform apply -auto-approve tfplan
 
   django-migrate:
     name: Django Migrations
