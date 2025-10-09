@@ -5,11 +5,16 @@ on:
     branches:
       - main
       - dev
-  pull_request:
-    branches:
-      - main
-      - dev
-
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'CHANGELOG.md'
+      - 'RUNBOOK.md'
+      - 'ARCHITECTURE.md'
+      - 'DEPLOYMENT.md'
+      - 'CONTRIBUTING.md'
+      - 'SECURITY.md'
+      
 env:
   PROJECT_NAME: "uptime-monitor"
   AWS_REGION: "us-east-1"
@@ -96,11 +101,11 @@ jobs:
           REPOSITORY: uptime-monitor
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          echo "Building Docker image: $REPOSITORY:$IMAGE_TAG"
+          echo "Building Docker image for $ENVIRONMENT..."
           docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG .
-          docker tag $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:latest
+          docker tag $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:${{ env.ENVIRONMENT }}-latest
           docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
-          docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:latest
+          docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:${{ env.ENVIRONMENT }}-latest
 
   terraform-deploy:
     name: Terraform Deploy
@@ -127,38 +132,39 @@ jobs:
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.6.5
-
-      - name: Initialize Terraform
-        run: |
-          terraform -chdir=tf-infra init -input=false
-          terraform -chdir=tf-infra workspace select prod || terraform -chdir=tf-infra workspace new $TF_WORKSPACE
-
-      - name: Select Environment Variables
+      
+      - name: Determine Environment Folder
         id: env_select
         run: |
           if [ "${GITHUB_REF_NAME}" == "main" ]; then
-            echo "TF_VAR_db_username=${{ secrets.PROD_DB_USERNAME }}" >> $GITHUB_ENV
-            echo "TF_VAR_db_password=${{ secrets.PROD_DB_PASSWORD }}" >> $GITHUB_ENV
-            echo "TF_VAR_env=prod" >> $GITHUB_ENV
-            echo "env_file=prod.tfvars" >> $GITHUB_OUTPUT
+            echo "env=prod" >> $GITHUB_OUTPUT
+            echo "tf_dir=tf-infra/prod" >> $GITHUB_OUTPUT
+            echo "db_username=${{ secrets.PROD_DB_USERNAME }}" >> $GITHUB_OUTPUT
+            echo "db_password=${{ secrets.PROD_DB_PASSWORD }}" >> $GITHUB_OUTPUT
           else
-            echo "TF_VAR_db_username=${{ secrets.STAGING_DB_USERNAME }}" >> $GITHUB_ENV
-            echo "TF_VAR_db_password=${{ secrets.STAGING_DB_PASSWORD }}" >> $GITHUB_ENV
-            echo "TF_VAR_env=staging" >> $GITHUB_ENV
-            echo "env_file=dev.tfvars" >> $GITHUB_OUTPUT
+            echo "env=staging" >> $GITHUB_OUTPUT
+            echo "tf_dir=tf-infra/staging" >> $GITHUB_OUTPUT
+            echo "db_username=${{ secrets.STAGING_DB_USERNAME }}" >> $GITHUB_OUTPUT
+            echo "db_password=${{ secrets.STAGING_DB_PASSWORD }}" >> $GITHUB_OUTPUT
           fi
+
+      - name: Initialize Terraform
+        run: |
+          echo "Initializing Terraform in ${{ steps.env_select.outputs.tf_dir }} ..."
+          terraform -chdir=${{ steps.env_select.outputs.tf_dir }} init -input=false
 
       - name: Terraform Plan
         run: |
-          if [ "${GITHUB_REF}" == "refs/heads/main" ]; then
-            TF_USE_ELASTICACHE=true
-          else
-            TF_USE_ELASTICACHE=false
-          fi
-          terraform -chdir=terraform plan -var "use_elasticache=$TF_USE_ELASTICACHE" -var-file=${{ steps.env_select.outputs.env_file }} -out=tfplan
+          echo "Running Terraform plan for ${{ steps.env_select.outputs.env }}..."
+          terraform -chdir=${{ steps.env_select.outputs.tf_dir }} plan \
+            -var "db_username=${{ steps.env_select.outputs.db_username }}" \
+            -var "db_password=${{ steps.env_select.outputs.db_password }}" \
+            -out=tfplan
 
       - name: Terraform Apply
-        run: terraform -chdir=terraform apply -auto-approve tfplan
+        run: |
+          echo "Applying Terraform for ${{ steps.env_select.outputs.env }}..."
+          terraform -chdir=${{ steps.env_select.outputs.tf_dir }} apply -auto-approve tfplan
 
   django-migrate:
     name: Django Migrations

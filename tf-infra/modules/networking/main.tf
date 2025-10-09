@@ -22,7 +22,7 @@ resource "aws_subnet" "private" {
   }
 }
 
-# ---------- Public Subnet (optional for ECS / app servers) ----------
+# ---------- Public Subnet ----------
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.2.0/24"
@@ -34,12 +34,32 @@ resource "aws_subnet" "public" {
   }
 }
 
-# ---------- Internet Gateway for public subnet ----------
+# ---------- Internet Gateway ----------
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
 
   tags = {
     Name = "${var.env}-igw"
+    Env  = var.env
+  }
+}
+
+# ---------- ECS Security Group ----------
+resource "aws_security_group" "ecs_sg" {
+  name        = "${var.env}-ecs-sg"
+  description = "Allow ECS tasks outbound access"
+  vpc_id      = aws_vpc.main.id
+
+  # Allow outbound internet access
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.env}-ecs-sg"
     Env  = var.env
   }
 }
@@ -50,7 +70,6 @@ resource "aws_security_group" "db_sg" {
   description = "Allow Postgres access from ECS tasks"
   vpc_id      = aws_vpc.main.id
 
-  # Allow ECS app servers to connect
   ingress {
     from_port       = 5432
     to_port         = 5432
@@ -58,7 +77,6 @@ resource "aws_security_group" "db_sg" {
     security_groups = [aws_security_group.ecs_sg.id]
   }
 
-  # Outbound traffic
   egress {
     from_port   = 0
     to_port     = 0

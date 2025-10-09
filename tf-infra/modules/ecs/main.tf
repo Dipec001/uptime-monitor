@@ -1,7 +1,7 @@
 # =========================
 # ECS Cluster
 # =========================
-resource "aws_ecs_cluster" "uptimemonitor" {
+resource "aws_ecs_cluster" "this" {
   name = "${var.env}-uptimemonitor-cluster"
 }
 
@@ -31,7 +31,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy" {
 resource "aws_security_group" "ecs_sg" {
   name        = "${var.env}-ecs-sg"
   description = "Allow web access"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = var.vpc_id
 
   ingress {
     from_port   = 8000
@@ -56,7 +56,7 @@ resource "aws_security_group" "ecs_sg" {
 # =========================
 # ECS Task Definition
 # =========================
-resource "aws_ecs_task_definition" "uptimemonitor" {
+resource "aws_ecs_task_definition" "this" {
   family                   = "${var.env}-uptimemonitor"
   network_mode             = "awsvpc"
   requires_compatibilities = ["EC2"]
@@ -71,11 +71,8 @@ resource "aws_ecs_task_definition" "uptimemonitor" {
       essential = true
       portMappings = [{ containerPort = 8000, hostPort = 8000 }]
       environment = [
-        { name = "DATABASE_URL", value = "postgres://${var.db_username}:${var.db_password}@${aws_db_instance.this.address}:5432/${var.db_name}" },
-        {
-          name = "REDIS_URL"
-          value = var.use_elasticache ? "redis://${aws_elasticache_cluster.redis[0].configuration_endpoint_address}:6379/0" : "redis://redis:6379/0"
-        }
+        { name = "DATABASE_URL", value = var.database_url },
+        { name = "REDIS_URL", value = var.redis_url }
       ]
     },
     {
@@ -84,11 +81,8 @@ resource "aws_ecs_task_definition" "uptimemonitor" {
       command = ["celery", "-A", "uptimemonitor", "worker", "-l", "info"]
       essential = false
       environment = [
-        { name = "DATABASE_URL", value = "postgres://${var.db_username}:${var.db_password}@${aws_db_instance.this.address}:5432/${var.db_name}" },
-        {
-          name = "REDIS_URL"
-          value = var.use_elasticache ? "redis://${aws_elasticache_cluster.redis[0].configuration_endpoint_address}:6379/0" : "redis://redis:6379/0"
-        }
+        { name = "DATABASE_URL", value = var.database_url },
+        { name = "REDIS_URL", value = var.redis_url }
       ]
     },
     {
@@ -97,21 +91,16 @@ resource "aws_ecs_task_definition" "uptimemonitor" {
       command = ["celery", "-A", "uptimemonitor", "beat", "-l", "info", "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"]
       essential = false
       environment = [
-        { name = "DATABASE_URL", value = "postgres://${var.db_username}:${var.db_password}@${aws_db_instance.this.address}:5432/${var.db_name}" },
-        {
-          name = "REDIS_URL"
-          value = var.use_elasticache ? "redis://${aws_elasticache_cluster.redis[0].configuration_endpoint_address}:6379/0" : "redis://redis:6379/0"
-        }
+        { name = "DATABASE_URL", value = var.database_url },
+        { name = "REDIS_URL", value = var.redis_url }
       ]
     },
     # Redis container only for staging
     {
       name      = "redis"
       image     = "redis:7-alpine"
-      essential = true
-      portMappings = [
-        { containerPort = 6379, hostPort = 6379 }
-      ]
+      essential = var.env == "staging" ? true : false
+      portMappings = var.env == "staging" ? [{ containerPort = 6379, hostPort = 6379 }] : []
     }
   ])
 }
@@ -119,17 +108,15 @@ resource "aws_ecs_task_definition" "uptimemonitor" {
 # =========================
 # ECS Service
 # =========================
-resource "aws_ecs_service" "uptimemonitor" {
+resource "aws_ecs_service" "this" {
   name            = "${var.env}-uptimemonitor-service"
-  cluster         = aws_ecs_cluster.uptimemonitor.id
-  task_definition = aws_ecs_task_definition.uptimemonitor.arn
+  cluster         = aws_ecs_cluster.this.id
+  task_definition = aws_ecs_task_definition.this.arn
   desired_count   = 1
   launch_type     = "EC2"
-  deployment_minimum_healthy_percent = 50
-  deployment_maximum_percent         = 200
 
   network_configuration {
-    subnets          = [aws_subnet.public.id]
+    subnets          = var.public_subnets
     security_groups  = [aws_security_group.ecs_sg.id]
     assign_public_ip = true
   }
@@ -180,9 +167,10 @@ resource "aws_launch_configuration" "ecs_launch_config" {
   instance_type        = var.ec2_instance_type
   security_groups      = [aws_security_group.ecs_sg.id]
   iam_instance_profile = aws_iam_instance_profile.ecs_instance_profile.name
+
   user_data = <<-EOF
               #!/bin/bash
-              echo ECS_CLUSTER=${aws_ecs_cluster.uptimemonitor.name} >> /etc/ecs/ecs.config
+              echo ECS_CLUSTER=${aws_ecs_cluster.this.name} >> /etc/ecs/ecs.config
               EOF
 }
 
@@ -193,6 +181,6 @@ resource "aws_autoscaling_group" "ecs_asg" {
   desired_capacity     = 1
   max_size             = 2
   min_size             = 1
-  vpc_zone_identifier  = [aws_subnet.public.id]
+  vpc_zone_identifier  = var.public_subnets
   launch_configuration = aws_launch_configuration.ecs_launch_config.id
 }
