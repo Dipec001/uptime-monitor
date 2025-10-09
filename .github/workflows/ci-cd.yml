@@ -130,6 +130,14 @@ jobs:
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.6.5
+        
+      - name: Select Backend Config
+        run: |
+          if [ "${GITHUB_REF_NAME}" == "main" ]; then
+            cp tf-infra/backend.prod.tf tf-infra/backend.tf
+          else
+            cp tf-infra/backend.staging.tf tf-infra/backend.tf
+          fi
 
       - name: Initialize Terraform
         run: |

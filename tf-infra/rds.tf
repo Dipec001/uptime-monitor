@@ -16,7 +16,7 @@ resource "aws_db_instance" "this" {
 
   # Protect production DBs from deletion
   lifecycle {
-    prevent_destroy = var.env == "prod" ? true : false
+    prevent_destroy = false  # temporarily
   }
 
   tags = {
