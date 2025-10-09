@@ -17,8 +17,6 @@ resource "aws_db_instance" "this" {
   vpc_security_group_ids  = var.vpc_security_group_ids
   db_subnet_group_name    = var.db_subnet_group_name
 
-  # configure lifecycle later
-
   tags = {
     Name = "${var.env}-uptimemonitor-db"
     Env  = var.env
