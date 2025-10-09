@@ -34,8 +34,10 @@ module "networking" {
 module "rds" {
   source      = "../modules/rds"
   env         = "staging"
-  vpc_id      = module.networking.vpc_id
-  subnet_ids  = module.networking.private_subnets
+
+  db_subnet_group_name   = module.networking.rds_subnet_group_name
+  vpc_security_group_ids = [module.networking.db_sg_id]
+
   db_username = var.db_username
   db_password = var.db_password
   db_name     = var.db_name
@@ -47,8 +49,9 @@ module "rds" {
 module "redis" {
   source = "../modules/redis"
   env    = "staging"
-  vpc_id = module.networking.vpc_id
-  subnets = module.networking.private_subnets
+
+  subnet_ids       = [module.networking.private_subnet_id]
+  security_group_ids = [module.networking.db_sg_id]
   use_elasticache = false
 }
 
@@ -59,7 +62,7 @@ module "ecs" {
   source             = "../modules/ecs"
   env                = "staging"
   vpc_id             = module.networking.vpc_id
-  public_subnets     = module.networking.public_subnets
+  public_subnets     = [module.networking.public_subnet_id]
   ecr_repo_url       = var.ecr_repo_url
   image_tag          = var.image_tag
   database_url       = "postgres://${var.db_username}:${var.db_password}@${module.rds.db_endpoint}:5432/${var.db_name}"

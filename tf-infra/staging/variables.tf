@@ -8,3 +8,18 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+variable "db_name" {
+    description = "Database name"
+    type        = string
+}
+
+variable "ecr_repo_url" {
+  description = "ECR repository URL for ECS service"
+  type        = string
+}
+
+variable "image_tag" {
+  description = "Docker image tag to deploy"
+  type        = string
+}
