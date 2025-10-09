@@ -139,7 +139,7 @@ jobs:
           if [ "${GITHUB_REF_NAME}" == "main" ]; then
             echo "env=prod" >> $GITHUB_OUTPUT
             echo "tf_dir=tf-infra/prod" >> $GITHUB_OUTPUT
-            echo "tfvars_file=tf-infra/prod/prod.tfvars" >> $GITHUB_OUTPUT
+            echo "tfvars_file=prod.tfvars" >> $GITHUB_OUTPUT
             echo "db_username=${{ secrets.PROD_DB_USERNAME }}" >> $GITHUB_OUTPUT
             echo "db_password=${{ secrets.PROD_DB_PASSWORD }}" >> $GITHUB_OUTPUT
             echo "ecr_repo_url=${{ secrets.PROD_ECR_REPO_URL }}" >> $GITHUB_OUTPUT
@@ -147,7 +147,7 @@ jobs:
           else
             echo "env=staging" >> $GITHUB_OUTPUT
             echo "tf_dir=tf-infra/staging" >> $GITHUB_OUTPUT
-            echo "tfvars_file=tf-infra/staging/dev.tfvars" >> $GITHUB_OUTPUT
+            echo "tfvars_file=dev.tfvars" >> $GITHUB_OUTPUT
             echo "db_username=${{ secrets.STAGING_DB_USERNAME }}" >> $GITHUB_OUTPUT
             echo "db_password=${{ secrets.STAGING_DB_PASSWORD }}" >> $GITHUB_OUTPUT
             echo "ecr_repo_url=${{ secrets.STAGING_ECR_REPO_URL }}" >> $GITHUB_OUTPUT
