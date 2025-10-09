@@ -92,7 +92,7 @@ jobs:
       - name: Build, Tag, and Push Docker Image
         env:
           REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
-          REGISTRY_ALIAS: dipec001  # 👈 your public ECR alias
+          REGISTRY_ALIAS: v9n7w5d9  # 👈 your public ECR alias
           REPOSITORY: uptime-monitor
           IMAGE_TAG: ${{ github.sha }}
         run: |
