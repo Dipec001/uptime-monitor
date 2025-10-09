@@ -69,7 +69,7 @@ EOF
 }
 
 # ---------- Staging Role ----------
-create_or_update_github_role "GitHubActions-Staging" "staging"
+create_or_update_github_role "GitHubActions-Staging" "dev"
 
 # ---------- Production Role ----------
 create_or_update_github_role "GitHubActions-Production" "main"
