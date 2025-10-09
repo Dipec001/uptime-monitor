@@ -17,10 +17,7 @@ resource "aws_db_instance" "this" {
   vpc_security_group_ids  = var.vpc_security_group_ids
   db_subnet_group_name    = var.db_subnet_group_name
 
-  # Environment-specific lifecycle
-  lifecycle {
-    prevent_destroy = var.env == "prod" ? true : false
-  }
+  # configure lifecycle later
 
   tags = {
     Name = "${var.env}-uptimemonitor-db"
