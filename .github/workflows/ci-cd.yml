@@ -107,9 +107,6 @@ jobs:
     needs: docker-build-push
     runs-on: ubuntu-latest
 
-    env:
-      TF_WORKSPACE: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
-
     # 👇 Automatically sets environment name and URL based on branch
     # TODO: Update URLs to match my app
     environment:
@@ -130,19 +127,11 @@ jobs:
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.6.5
-        
-      - name: Select Backend Config
-        run: |
-          if [ "${GITHUB_REF_NAME}" == "main" ]; then
-            cp tf-infra/backend.prod.tf tf-infra/backend.tf
-          else
-            cp tf-infra/backend.staging.tf tf-infra/backend.tf
-          fi
 
       - name: Initialize Terraform
         run: |
           terraform -chdir=tf-infra init -input=false
-          terraform -chdir=tf-infra workspace select $TF_WORKSPACE || terraform -chdir=tf-infra workspace new $TF_WORKSPACE
+          terraform -chdir=tf-infra workspace select prod || terraform -chdir=tf-infra workspace new $TF_WORKSPACE
 
       - name: Select Environment Variables
         id: env_select
