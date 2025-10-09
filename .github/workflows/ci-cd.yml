@@ -17,7 +17,7 @@ on:
       
 env:
   PROJECT_NAME: "uptime-monitor"
-  AWS_REGION: "us-east-1"  # 👈 update to your AWS region
+  AWS_REGION: "us-east-1"
 
 jobs:
   lint-test:
