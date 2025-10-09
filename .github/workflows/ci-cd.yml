@@ -70,9 +70,6 @@ jobs:
     name: Docker Build & Push
     needs: lint-test
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
     env:
       ENVIRONMENT: ${{ github.ref_name == 'main' && 'prod' || 'staging' }}
     steps:
@@ -81,7 +78,8 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ github.ref_name == 'main' && 'arn:aws:iam::790814117525:role/GitHubActions-Production' || 'arn:aws:iam::790814117525:role/GitHubActions-Staging' }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to Amazon ECR Public
@@ -108,9 +106,7 @@ jobs:
     name: Terraform Deploy
     needs: docker-build-push
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
+
     env:
       TF_WORKSPACE: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
 
@@ -126,7 +122,8 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ github.ref_name == 'main' && 'arn:aws:iam::790814117525:role/GitHubActions-Production' || 'arn:aws:iam::790814117525:role/GitHubActions-Staging' }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Setup Terraform
