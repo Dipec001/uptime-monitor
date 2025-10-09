@@ -262,5 +262,3 @@ REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 SWAGGER_USE_COMPAT_RENDERERS = False
 
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
-
-# Theklwfosnfjsnfjdsnfjkdsn fkjdsnfkjds
