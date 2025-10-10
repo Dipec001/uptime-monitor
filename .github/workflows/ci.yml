@@ -1,4 +1,4 @@
-name: Uptime Monitor CI/CD
+name: CI workflow
 
 on:
   pull_request:
