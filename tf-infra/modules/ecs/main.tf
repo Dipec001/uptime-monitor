@@ -81,6 +81,14 @@ resource "aws_ecs_task_definition" "this" {
         { name = "DATABASE_URL", value = var.database_url },
         { name = "REDIS_URL", value = var.redis_url }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/${var.env}-uptimemonitor"
+          "awslogs-region"        = "us-east-1"
+          "awslogs-stream-prefix" = "web"
+        }
+      }
     },
     {
       name  = "celery"
@@ -91,6 +99,14 @@ resource "aws_ecs_task_definition" "this" {
         { name = "DATABASE_URL", value = var.database_url },
         { name = "REDIS_URL", value = var.redis_url }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/${var.env}-uptimemonitor"
+          "awslogs-region"        = "us-east-1"
+          "awslogs-stream-prefix" = "celery"
+        }
+      }
     },
     {
       name  = "beat"
@@ -101,6 +117,14 @@ resource "aws_ecs_task_definition" "this" {
         { name = "DATABASE_URL", value = var.database_url },
         { name = "REDIS_URL", value = var.redis_url }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/${var.env}-uptimemonitor"
+          "awslogs-region"        = "us-east-1"
+          "awslogs-stream-prefix" = "beat"
+        }
+      }
     },
     # Redis container only for staging
     {
