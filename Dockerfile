@@ -8,15 +8,17 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install build deps for psycopg2, Pillow, etc.
+# Install build deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
-RUN pip install --user --no-cache-dir --upgrade pip \
-    && pip install --user --no-cache-dir -r requirements.txt
+
+# Install packages system-wide (no --user)
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
 
 # =======================
 # 2. Final Stage
@@ -28,11 +30,8 @@ WORKDIR /app
 # Create non-root user
 RUN useradd --create-home appuser
 
-# Copy installed packages from builder
-COPY --from=builder /root/.local /root/.local
-
-# Make sure Python can find user-installed packages
-ENV PATH=/root/.local/bin:$PATH
+# Copy system-wide installed packages
+COPY --from=builder /usr/local /usr/local
 
 # Copy codebase
 COPY --chown=appuser:appuser . .
@@ -40,7 +39,7 @@ COPY --chown=appuser:appuser . .
 # Collect static files (Django admin, etc.)
 RUN python manage.py collectstatic --noinput || true
 
-# Switch to appuser
+# Switch to non-root user
 USER appuser
 
 EXPOSE 8000
