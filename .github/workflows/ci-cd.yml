@@ -179,7 +179,9 @@ jobs:
         id: tf_outputs
         run: |
           DATABASE_URL=$(terraform -chdir=${{ steps.env_select.outputs.tf_dir }} output -raw database_url)
-          echo "DATABASE_URL=$DATABASE_URL" >> $GITHUB_ENV
+          if [ -n "$DATABASE_URL" ]; then
+            echo "DATABASE_URL=$DATABASE_URL" >> $GITHUB_ENV
+          fi
 
   django-migrate:
     name: Django Migrations
