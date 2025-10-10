@@ -60,21 +60,6 @@ resource "aws_security_group" "ecs_sg" {
   }
 }
 
-# -----------------------------
-# Encode the DB password
-# -----------------------------
-locals {
-  encoded_db_password = urlencode(var.db_password)
-}
-
-# -----------------------------
-# Build the full DATABASE_URL
-# -----------------------------
-locals {
-  database_url = "postgres://${var.db_username}:${local.encoded_db_password}@${aws_db_instance.this.endpoint}:5432/${var.db_name}"
-}
-
-
 # =========================
 # ECS Task Definition
 # =========================
@@ -93,7 +78,7 @@ resource "aws_ecs_task_definition" "this" {
       essential = true
       portMappings = [{ containerPort = 8000, hostPort = 8000 }]
       environment = [
-        { name = "DATABASE_URL", value = local.database_url },
+        { name = "DATABASE_URL", value = var.database_url },
         { name = "REDIS_URL", value = var.redis_url }
       ]
       logConfiguration = {
@@ -111,7 +96,7 @@ resource "aws_ecs_task_definition" "this" {
       command = ["celery", "-A", "uptimemonitor", "worker", "-l", "info"]
       essential = false
       environment = [
-        { name = "DATABASE_URL", value = local.database_url },
+        { name = "DATABASE_URL", value = var.database_url },
         { name = "REDIS_URL", value = var.redis_url }
       ]
       logConfiguration = {
@@ -129,7 +114,7 @@ resource "aws_ecs_task_definition" "this" {
       command = ["celery", "-A", "uptimemonitor", "beat", "-l", "info", "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"]
       essential = false
       environment = [
-        { name = "DATABASE_URL", value = local.database_url },
+        { name = "DATABASE_URL", value = var.database_url },
         { name = "REDIS_URL", value = var.redis_url }
       ]
       logConfiguration = {
