@@ -231,7 +231,7 @@ LOGGING = {
     },
     'loggers': {
         'monitor': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': True,
         },
