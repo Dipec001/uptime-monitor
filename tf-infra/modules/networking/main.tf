@@ -10,14 +10,16 @@ resource "aws_vpc" "main" {
   }
 }
 
-# ---------- Private Subnet for RDS ----------
+# ---------- Private Subnets for RDS ----------
 resource "aws_subnet" "private" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
+  count = 2
+  vpc_id = aws_vpc.main.id
+  cidr_block = cidrsubnet("10.0.0.0/16", 8, count.index) # creates 10.0.0.0/24 and 10.0.1.0/24
   map_public_ip_on_launch = false
+  availability_zone       = ["us-east-1a", "us-east-1b"][count.index]
 
   tags = {
-    Name = "${var.env}-private-subnet"
+    Name = "${var.env}-private-subnet-${count.index}"
     Env  = var.env
   }
 }
@@ -93,7 +95,7 @@ resource "aws_security_group" "db_sg" {
 # ---------- DB Subnet Group ----------
 resource "aws_db_subnet_group" "rds_subnet_group" {
   name       = "${var.env}-rds-subnet-group"
-  subnet_ids = [aws_subnet.private.id]
+  subnet_ids = aws_subnet.private[*].id
 
   tags = {
     Name = "${var.env}-rds-subnet-group"

@@ -1,28 +1,59 @@
-name: Destroy Staging Environment
-
+name: Terraform Destroy
 on:
-  workflow_dispatch:   # manual trigger from GitHub UI
+  workflow_dispatch:   # Manually trigger from GitHub Actions
 
 jobs:
-  destroy:
+  terraform-destroy:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v3
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.6.5
+          terraform_version: 1.13.3
 
-      - name: Terraform Init
-        run: terraform -chdir=terraform init -input=false
+      - name: Determine Environment Folder
+        id: env_select
+        run: |
+          if [ "${GITHUB_REF_NAME}" == "main" ]; then
+            echo "env=prod" >> $GITHUB_OUTPUT
+            echo "tf_dir=tf-infra/prod" >> $GITHUB_OUTPUT
+            echo "tfvars_file=prod.tfvars" >> $GITHUB_OUTPUT
+            echo "db_username=${{ secrets.PROD_DB_USERNAME }}" >> $GITHUB_OUTPUT
+            echo "db_password=${{ secrets.PROD_DB_PASSWORD }}" >> $GITHUB_OUTPUT
+            echo "ecr_repo_url=${{ secrets.PROD_ECR_REPO_URL }}" >> $GITHUB_OUTPUT
+            echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          else
+            echo "env=staging" >> $GITHUB_OUTPUT
+            echo "tf_dir=tf-infra/staging" >> $GITHUB_OUTPUT
+            echo "tfvars_file=dev.tfvars" >> $GITHUB_OUTPUT
+            echo "db_username=${{ secrets.STAGING_DB_USERNAME }}" >> $GITHUB_OUTPUT
+            echo "db_password=${{ secrets.STAGING_DB_PASSWORD }}" >> $GITHUB_OUTPUT
+            echo "ecr_repo_url=${{ secrets.STAGING_ECR_REPO_URL }}" >> $GITHUB_OUTPUT
+            echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Terraform Destroy (dev)
-        run: terraform -chdir=terraform destroy -auto-approve -var-file=dev.tfvars
+      - name: Initialize Terraform
+        run: |
+          terraform -chdir=${{ steps.env_select.outputs.tf_dir }} init -input=false
+
+      - name: Terraform Destroy
+        run: |
+          echo "Destroying Terraform for ${{ steps.env_select.outputs.env }}..."
+          terraform -chdir=${{ steps.env_select.outputs.tf_dir }} destroy \
+            -var-file=${{ steps.env_select.outputs.tfvars_file }} \
+            -var "db_username=${{ steps.env_select.outputs.db_username }}" \
+            -var "db_password=${{ steps.env_select.outputs.db_password }}" \
+            -var "ecr_repo_url=${{ steps.env_select.outputs.ecr_repo_url }}" \
+            -var "image_tag=${{ steps.env_select.outputs.image_tag }}" \
+            -auto-approve \
+            -lock=false
