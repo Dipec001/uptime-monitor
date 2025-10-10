@@ -23,3 +23,20 @@ variable "image_tag" {
   description = "Docker image tag to deploy"
   type        = string
 }
+
+variable "ec2_instance_type" {
+  type    = string
+  default = "t3.micro"
+}
+
+variable "use_elasticache" {
+  description = "Whether to provision Elasticache or not"
+  type        = bool
+  default     = true
+}
+
+variable "env" {
+    description = "the environment"
+    type        = string
+    default     = "staging"
+}

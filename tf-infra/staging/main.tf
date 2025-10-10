@@ -50,7 +50,7 @@ module "redis" {
   source = "../modules/redis"
   env    = "staging"
 
-  subnet_ids       = [module.networking.private_subnet_id]
+  subnet_ids       = module.networking.private_subnet_ids
   security_group_ids = [module.networking.db_sg_id]
   use_elasticache = false
 }
