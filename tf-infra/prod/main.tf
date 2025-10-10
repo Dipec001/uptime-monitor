@@ -52,11 +52,6 @@ module "redis" {
   use_elasticache = true
 }
 
-module "ecr" {
-  source = "../modules/ecr"
-  env    = var.env
-}
-
 # =========================
 # ECS Cluster + Services
 # =========================

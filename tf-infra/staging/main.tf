@@ -55,11 +55,6 @@ module "redis" {
   use_elasticache = false
 }
 
-module "ecr" {
-  source = "../modules/ecr"
-  env    = var.env
-}
-
 # =========================
 # ECS (App)
 # =========================
@@ -74,5 +69,3 @@ module "ecs" {
   redis_url          = "redis://redis:6379/0"
   ec2_instance_type  = "t3.micro"
 }
-
-public.ecr.aws//uptimemonitor
