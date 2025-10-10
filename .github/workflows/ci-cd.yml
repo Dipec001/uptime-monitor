@@ -98,7 +98,7 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
           REGISTRY_ALIAS: v9n7w5d9  # 👈 your public ECR alias
-          REPOSITORY: uptime-monitor
+          REPOSITORY: uptimemonitor
           IMAGE_TAG: ${{ github.sha }}
         run: |
           echo "Building Docker image for $ENVIRONMENT..."
