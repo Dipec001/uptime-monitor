@@ -132,6 +132,14 @@ resource "aws_ecs_task_definition" "this" {
       image     = "redis:7-alpine"
       essential = var.env == "staging" ? true : false
       portMappings = var.env == "staging" ? [{ containerPort = 6379, hostPort = 6379 }] : []
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/${var.env}-uptimemonitor"
+          "awslogs-region"        = "us-east-1"
+          "awslogs-stream-prefix" = "redis"
+        }
+      }
     }
   ])
 }
@@ -179,9 +187,25 @@ resource "aws_iam_role_policy_attachment" "ecs_ssm_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+# ========================================================
+# ensures ECS can create log streams and push logs to CloudWatch.
+# ========================================================
+resource "aws_iam_role_policy_attachment" "ecs_logs" {
+  role       = aws_iam_role.ecs_task_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
 resource "aws_iam_instance_profile" "ecs_instance_profile" {
   name = "${var.env}-ecs-instance-profile"
   role = aws_iam_role.ec2_instance_role.name
+}
+
+# =========================
+# Create Log Group
+# =========================
+resource "aws_cloudwatch_log_group" "ecs" {
+  name              = "/ecs/${var.env}-uptimemonitor"
+  retention_in_days = 14
 }
 
 # =========================
