@@ -26,6 +26,7 @@ provider "aws" {
 module "networking" {
   source = "../modules/networking"
   env    = "prod"
+  ecs_sg_id  = module.ecs.ecs_security_group_id
 }
 
 # =========================

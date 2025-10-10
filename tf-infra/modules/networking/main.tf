@@ -46,26 +46,6 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
-# ---------- ECS Security Group ----------
-resource "aws_security_group" "ecs_sg" {
-  name        = "${var.env}-ecs-sg"
-  description = "Allow ECS tasks outbound access"
-  vpc_id      = aws_vpc.main.id
-
-  # Allow outbound internet access
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "${var.env}-ecs-sg"
-    Env  = var.env
-  }
-}
-
 # ---------- Security Group for RDS ----------
 resource "aws_security_group" "db_sg" {
   name        = "${var.env}-rds-sg"
@@ -76,7 +56,7 @@ resource "aws_security_group" "db_sg" {
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_sg.id]
+    security_groups = [var.ecs_sg_id]
   }
 
   egress {

@@ -1,6 +1,6 @@
-env           = "staging"
+env = "staging"
 
-db_name       = "uptimemonitor_staging"
+db_name = "uptimemonitor_staging"
 
 use_elasticache = false
 

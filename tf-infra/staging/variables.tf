@@ -10,8 +10,8 @@ variable "db_password" {
 }
 
 variable "db_name" {
-    description = "Database name"
-    type        = string
+  description = "Database name"
+  type        = string
 }
 
 variable "ecr_repo_url" {
@@ -36,7 +36,7 @@ variable "use_elasticache" {
 }
 
 variable "env" {
-    description = "the environment"
-    type        = string
-    default     = "staging"
+  description = "the environment"
+  type        = string
+  default     = "staging"
 }
