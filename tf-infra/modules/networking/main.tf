@@ -46,6 +46,26 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
+# ------- Public Route Table ----------
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+ 
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "${var.env}-public-rt"
+  }
+}
+
+# Associate route table with public subnet
+resource "aws_route_table_association" "public" {
+  subnet_id      = aws_subnet.public.id
+  route_table_id = aws_route_table.public.id
+}
+
 # ---------- Security Group for RDS ----------
 resource "aws_security_group" "db_sg" {
   name        = "${var.env}-rds-sg"
