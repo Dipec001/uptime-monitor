@@ -125,21 +125,6 @@ resource "aws_ecs_task_definition" "this" {
           "awslogs-stream-prefix" = "beat"
         }
       }
-    },
-    # Redis container only for staging
-    {
-      name      = "redis"
-      image     = "redis:7-alpine"
-      essential = var.env == "staging" ? true : false
-      portMappings = var.env == "staging" ? [{ containerPort = 6379, hostPort = 6379 }] : []
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = "/ecs/${var.env}-uptimemonitor"
-          "awslogs-region"        = "us-east-1"
-          "awslogs-stream-prefix" = "redis"
-        }
-      }
     }
   ])
 }

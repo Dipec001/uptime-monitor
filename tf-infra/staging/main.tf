@@ -52,8 +52,10 @@ module "redis" {
   env    = "staging"
 
   subnet_ids         = module.networking.private_subnet_ids
-  security_group_ids = [module.networking.db_sg_id]
-  use_elasticache    = false
+  security_group_ids = [module.redis.redis_security_group_id]
+  vpc_id             = module.networking.vpc_id
+  ecs_sg_id          = module.ecs.ecs_security_group_id
+  use_elasticache    = true
 }
 
 # =========================
@@ -67,6 +69,6 @@ module "ecs" {
   ecr_repo_url      = var.ecr_repo_url
   image_tag         = var.image_tag
   database_url      = "postgres://${var.db_username}:${urlencode(var.db_password)}@${module.rds.db_endpoint}/${var.db_name}"
-  redis_url         = "redis://localhost:6379/0"
+  redis_url         = "redis://${module.redis.redis_endpoint}:6379/0"
   ec2_instance_type = "t3.micro"
 }

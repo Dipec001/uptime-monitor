@@ -24,3 +24,6 @@ variable "node_type" {
   type        = string
   default     = "cache.t3.micro"
 }
+
+variable "vpc_id" { type = string }
+variable "ecs_sg_id" { type = string }
