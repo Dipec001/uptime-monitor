@@ -26,7 +26,7 @@ variable "image_tag" {
 
 variable "ec2_instance_type" {
   type    = string
-  default = "t3.micro"
+  default = "t3.small"
 }
 
 variable "use_elasticache" {

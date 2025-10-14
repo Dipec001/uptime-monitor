@@ -7,5 +7,5 @@ variable "database_url" { type = string }
 variable "redis_url" { type = string }
 variable "ec2_instance_type" {
   type    = string
-  default = "t3.micro"
+  default = "t3.small"
 }

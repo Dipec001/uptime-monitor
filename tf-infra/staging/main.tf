@@ -70,5 +70,5 @@ module "ecs" {
   image_tag         = var.image_tag
   database_url      = "postgres://${var.db_username}:${urlencode(var.db_password)}@${module.rds.db_endpoint}/${var.db_name}"
   redis_url         = "redis://${module.redis.redis_endpoint}:6379/0"
-  ec2_instance_type = "t3.micro"
+  ec2_instance_type = "t3.small"
 }
