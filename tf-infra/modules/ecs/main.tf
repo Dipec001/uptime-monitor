@@ -79,7 +79,8 @@ resource "aws_ecs_task_definition" "this" {
       portMappings = [{ containerPort = 8000, hostPort = 8000 }]
       environment = [
         { name = "DATABASE_URL", value = var.database_url },
-        { name = "REDIS_URL", value = var.redis_url }
+        { name = "REDIS_URL", value = var.redis_url },
+        { name = "CELERY_BROKER_URL", value = var.redis_url }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -97,7 +98,8 @@ resource "aws_ecs_task_definition" "this" {
       essential = false
       environment = [
         { name = "DATABASE_URL", value = var.database_url },
-        { name = "REDIS_URL", value = var.redis_url }
+        { name = "REDIS_URL", value = var.redis_url },
+        { name = "CELERY_BROKER_URL", value = var.redis_url }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -115,7 +117,8 @@ resource "aws_ecs_task_definition" "this" {
       essential = false
       environment = [
         { name = "DATABASE_URL", value = var.database_url },
-        { name = "REDIS_URL", value = var.redis_url }
+        { name = "REDIS_URL", value = var.redis_url },
+        { name = "CELERY_BROKER_URL", value = var.redis_url }
       ]
       logConfiguration = {
         logDriver = "awslogs"
