@@ -20,6 +20,9 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
+# Make sure /usr/local/bin executables are world-executable
+RUN chmod -R a+x /usr/local/bin
+
 # =======================
 # 2. Final Stage
 # =======================
