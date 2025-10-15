@@ -112,8 +112,7 @@ jobs:
     needs: docker-build-push
     runs-on: ubuntu-latest
     outputs:
-      database_url: ${{ steps.tf_outputs.outputs.db_url }}
-
+      database_url: ${{ steps.tf_outputs.outputs.database_url }}
 
     # 👇 Automatically sets environment name and URL based on branch
     # TODO: Update URLs to match my app
@@ -182,8 +181,10 @@ jobs:
         id: tf_outputs
         run: |
           DATABASE_URL=$(terraform -chdir=${{ steps.env_select.outputs.tf_dir }} output -raw database_url)
+          echo "::add-mask::$DATABASE_URL"
           echo "DATABASE_URL=$DATABASE_URL" >> $GITHUB_ENV
-          echo "db_url=$DATABASE_URL" >> $GITHUB_OUTPUT
+          echo "database_url=$DATABASE_URL" >> $GITHUB_OUTPUT
+
 
 
 
