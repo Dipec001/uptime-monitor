@@ -111,8 +111,6 @@ jobs:
     name: Terraform Deploy
     needs: docker-build-push
     runs-on: ubuntu-latest
-    outputs:
-      database_url: ${{ steps.tf_outputs.outputs.database_url }}
 
     # 👇 Automatically sets environment name and URL based on branch
     # TODO: Update URLs to match my app
@@ -181,21 +179,23 @@ jobs:
         id: tf_outputs
         run: |
           DATABASE_URL=$(terraform -chdir=${{ steps.env_select.outputs.tf_dir }} output -raw database_url)
-          echo "::add-mask::$DATABASE_URL"
-          echo "DATABASE_URL=$DATABASE_URL" >> $GITHUB_ENV
-          echo "database_url=$DATABASE_URL" >> $GITHUB_OUTPUT
-
-
-
+          if [ -n "$DATABASE_URL" ]; then
+            echo "DATABASE_URL=$DATABASE_URL" >> $GITHUB_ENV
+          fi
 
   django-migrate:
     name: Django Migrations
     needs: terraform-deploy
     runs-on: ubuntu-latest
-    env:
-      DATABASE_URL: ${{ needs.terraform-deploy.outputs.database_url }}
     steps:
       - uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -205,7 +205,18 @@ jobs:
       - name: Install Dependencies
         run: pip install -r requirements.txt
 
-      - name: Run Django Migrations
+      - name: Determine Environment and Get DB URL
+        id: get_db_url
         run: |
-          echo "Running migrations..."
-          python manage.py migrate
+          if [ "${GITHUB_REF_NAME}" == "main" ]; then
+            cd tf-infra/prod
+          else
+            cd tf-infra/staging
+          fi
+          terraform init -input=false
+          DATABASE_URL=$(terraform output -raw database_url)
+          echo "::add-mask::$DATABASE_URL"
+          echo "DATABASE_URL=$DATABASE_URL" >> $GITHUB_ENV
+
+      - name: Run Django Migrations
+        run: python manage.py migrate
