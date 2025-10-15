@@ -42,10 +42,21 @@ COPY --chown=appuser:appuser . .
 # Collect static files (Django admin, etc.)
 RUN python manage.py collectstatic --noinput || true
 
+# Create entrypoint script
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "Running database migrations..."\n\
+python manage.py migrate --noinput\n\
+echo "Migrations complete!"\n\
+exec "$@"' > /app/docker-entrypoint.sh && \
+    chmod +x /app/docker-entrypoint.sh && \
+    chown appuser:appuser /app/docker-entrypoint.sh
+
 # Switch to non-root user
 USER appuser
 
 EXPOSE 8000
 
-# Use Gunicorn for production
+# Define entrypoint and default command
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "uptimemonitor.wsgi:application"]
