@@ -111,6 +111,8 @@ jobs:
     name: Terraform Deploy
     needs: docker-build-push
     runs-on: ubuntu-latest
+    outputs:
+      database_url: ${{ steps.tf_outputs.outputs.database_url }}
 
     # 👇 Automatically sets environment name and URL based on branch
     # TODO: Update URLs to match my app
@@ -179,14 +181,15 @@ jobs:
         id: tf_outputs
         run: |
           DATABASE_URL=$(terraform -chdir=${{ steps.env_select.outputs.tf_dir }} output -raw database_url)
-          if [ -n "$DATABASE_URL" ]; then
-            echo "DATABASE_URL=$DATABASE_URL" >> $GITHUB_ENV
-          fi
+          echo "database_url=$DATABASE_URL" >> $GITHUB_OUTPUT
+
 
   django-migrate:
     name: Django Migrations
     needs: terraform-deploy
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ needs.terraform-deploy.outputs.database_url }}
     steps:
       - uses: actions/checkout@v3
 
