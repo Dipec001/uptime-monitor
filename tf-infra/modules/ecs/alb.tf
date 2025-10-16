@@ -53,13 +53,23 @@ resource "aws_lb" "this" {
   }
 }
 
+resource "random_string" "suffix" {
+  length  = 4
+  special = false
+  upper   = false
+}
+
 # ---------- Target group -------------
 resource "aws_lb_target_group" "ecs_tg" {
-  name     = "${var.env}-uptimemonitor-tg"
+  name = "${var.env}-uptimemonitor-tg-${random_string.suffix.result}"
   port     = 8000
   protocol = "HTTP"
   vpc_id   = var.vpc_id
   target_type = "ip"  # <- IMPORTANT for awsvpc mode
+
+  lifecycle {
+    create_before_destroy = true
+  }
   
   health_check {
     path                = "/healthz/"
