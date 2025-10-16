@@ -11,7 +11,7 @@ variable "ec2_instance_type" {
 variable "private_subnets" {
   type = list(string)
 }
-variable "public_subnet" {
-  description = "Single public subnet for ALB"
-  type        = string
+variable "public_subnets" {
+  description = "publics subnet for ALB"
+  type        = list(string)
 }
