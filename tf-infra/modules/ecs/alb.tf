@@ -31,8 +31,6 @@ resource "aws_vpc_security_group_ingress_rule" "alb_https" {
 # ---------------- Outbound: allow all IPv4 --------------------
 resource "aws_vpc_security_group_egress_rule" "alb_all_egress" {
   security_group_id = aws_security_group.alb_sg.id
-  from_port         = 0
-  to_port           = 0
   ip_protocol       = "-1"
   cidr_ipv4       = "0.0.0.0/0"
 }
@@ -61,6 +59,8 @@ resource "aws_lb_target_group" "ecs_tg" {
   port     = 8000
   protocol = "HTTP"
   vpc_id   = var.vpc_id
+  target_type = "ip"  # <- IMPORTANT for awsvpc mode
+  
   health_check {
     path                = "/healthz/"
     interval            = 30
