@@ -7,8 +7,9 @@ output "private_subnet_ids" {
   description = "List of private subnet IDs"
 }
 
-output "public_subnet_id" {
-  value = aws_subnet.public.id
+output "public_subnet_ids" {
+  value = aws_subnet.public[*].id
+  description = "List of public subnet IDs"
 }
 
 output "db_sg_id" {

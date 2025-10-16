@@ -71,5 +71,5 @@ module "ecs" {
   database_url      = "postgres://${var.db_username}:${urlencode(var.db_password)}@${module.rds.db_endpoint}/${var.db_name}"
   redis_url         = "redis://${module.redis.redis_endpoint}:6379/0"
   ec2_instance_type = "t3.small"
-  public_subnet     = module.networking.public_subnet_id
+  public_subnets     = module.networking.public_subnet_ids
 }
