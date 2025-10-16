@@ -40,13 +40,6 @@ resource "aws_security_group" "ecs_sg" {
     security_groups = [aws_security_group.alb_sg.id]
   }
 
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
   egress {
     from_port   = 0
     to_port     = 0
@@ -142,6 +135,17 @@ resource "aws_ecs_service" "this" {
   desired_count   = 1
   launch_type     = "EC2"
 
+  # DEPLOYMENT SETTINGS
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 100
+  force_new_deployment              = true
+
+  # DEPLOYMENT CIRCUIT BREAKER (Optional but recommended)
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
   network_configuration {
     subnets          = var.private_subnets
     security_groups  = [aws_security_group.ecs_sg.id]
@@ -158,6 +162,10 @@ resource "aws_ecs_service" "this" {
     aws_iam_role_policy_attachment.ecs_task_execution_policy
   ]
 
+  # LIFECYCLE RULE (Prevents unnecessary replacements)
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
 }
 
 # =========================

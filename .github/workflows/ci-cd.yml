@@ -116,7 +116,7 @@ jobs:
     # TODO: Update URLs to match my app
     environment:
       name: ${{ github.ref_name }}
-      url: ${{ github.ref_name == 'main' && 'https://myapp.example.com' || 'https://staging-myapp.example.com' }}
+      url: ${{ github.ref_name == 'main' && 'https://myapp.example.com' || 'http://staging-uptimemonitor-alb-1224004041.us-east-1.elb.amazonaws.com/api' }}
 
     steps:
       - uses: actions/checkout@v3
@@ -174,11 +174,3 @@ jobs:
         run: |
           echo "Applying Terraform for ${{ steps.env_select.outputs.env }}..."
           terraform -chdir=${{ steps.env_select.outputs.tf_dir }} apply -auto-approve tfplan
-
-      - name: Get Terraform outputs
-        id: tf_outputs
-        run: |
-          DATABASE_URL=$(terraform -chdir=${{ steps.env_select.outputs.tf_dir }} output -raw database_url)
-          if [ -n "$DATABASE_URL" ]; then
-            echo "DATABASE_URL=$DATABASE_URL" >> $GITHUB_ENV
-          fi
