@@ -37,7 +37,7 @@ resource "aws_security_group" "ecs_sg" {
     from_port   = 8000
     to_port     = 8000
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [aws_security_group.alb_sg.id]
   }
 
   ingress {
@@ -143,11 +143,21 @@ resource "aws_ecs_service" "this" {
   launch_type     = "EC2"
 
   network_configuration {
-    subnets          = var.public_subnets
+    subnets          = var.private_subnets
     security_groups  = [aws_security_group.ecs_sg.id]
   }
 
-  depends_on = [aws_iam_role_policy_attachment.ecs_task_execution_policy]
+  load_balancer {
+    target_group_arn = aws_lb_target_group.ecs_tg.arn
+    container_name   = "web"
+    container_port   = 8000
+  }
+
+  depends_on = [
+    aws_lb_listener.http_listener,
+    aws_iam_role_policy_attachment.ecs_task_execution_policy
+  ]
+
 }
 
 # =========================
@@ -240,7 +250,7 @@ resource "aws_autoscaling_group" "ecs_asg" {
   desired_capacity     = 1
   max_size             = 2
   min_size             = 1
-  vpc_zone_identifier  = var.public_subnets
+  vpc_zone_identifier  = var.private_subnets
   launch_template {
     id      = aws_launch_template.ecs_launch_template.id
     version = "$Latest"
