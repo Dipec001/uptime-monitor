@@ -6,7 +6,7 @@ variable "database_url" { type = string }
 variable "redis_url" { type = string }
 variable "ec2_instance_type" {
   type    = string
-  default = "t3.small"
+  default = "t3.medium"
 }
 variable "private_subnets" {
   type = list(string)
