@@ -40,6 +40,13 @@ resource "aws_security_group" "ecs_sg" {
     security_groups = [aws_security_group.alb_sg.id]
   }
 
+  ingress {
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_sg.id]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -232,7 +239,7 @@ resource "aws_launch_template" "ecs_launch_template" {
   }
 
   network_interfaces {
-    associate_public_ip_address = false
+    associate_public_ip_address = true
     security_groups             = [aws_security_group.ecs_sg.id]
   }
 
