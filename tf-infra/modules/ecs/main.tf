@@ -255,6 +255,7 @@ resource "aws_launch_template" "ecs_launch_template" {
 # Auto Scaling Group
 # =========================
 resource "aws_autoscaling_group" "ecs_asg" {
+  name                 = "${var.env}-ecs-asg"
   desired_capacity     = 1
   max_size             = 2
   min_size             = 1
