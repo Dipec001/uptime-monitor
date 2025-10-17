@@ -40,13 +40,6 @@ resource "aws_security_group" "ecs_sg" {
     security_groups = [aws_security_group.alb_sg.id]
   }
 
-  ingress {
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    security_groups = ["0.0.0.0/0"]
-  }
-
   egress {
     from_port   = 0
     to_port     = 0
@@ -239,7 +232,7 @@ resource "aws_launch_template" "ecs_launch_template" {
   }
 
   network_interfaces {
-    associate_public_ip_address = true
+    associate_public_ip_address = false
     security_groups             = [aws_security_group.ecs_sg.id]
   }
 
@@ -266,7 +259,7 @@ resource "aws_autoscaling_group" "ecs_asg" {
   desired_capacity     = 1
   max_size             = 2
   min_size             = 1
-  vpc_zone_identifier  = var.private_subnets
+  vpc_zone_identifier  = var.public_subnets
   launch_template {
     id      = aws_launch_template.ecs_launch_template.id
     version = "$Latest"
