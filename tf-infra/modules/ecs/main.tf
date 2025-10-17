@@ -210,6 +210,35 @@ resource "aws_iam_role_policy_attachment" "ecs_ssm_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+
+# =========================
+# This policy allows the ECS task to read specific Secrets Manager secrets
+# =========================
+resource "aws_iam_policy" "ecs_read_secrets" {
+  name        = "${var.env}-ecs-read-secrets"
+  description = "Allow ECS task to read specific secrets from Secrets Manager"
+  policy      = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = "arn:aws:secretsmanager:us-east-1:790814117525:secret:uptimemonitor/production/credentials-WNQLM4*"
+      }
+    ]
+  })
+}
+
+# Attach the custom secret-read policy to the ECS task role
+resource "aws_iam_role_policy_attachment" "ecs_task_secrets" {
+  role       = aws_iam_role.ecs_task_execution.name
+  policy_arn = aws_iam_policy.ecs_read_secrets.arn
+}
+
+
 # ========================================================
 # ensures ECS can create log streams and push logs to CloudWatch.
 # ========================================================
