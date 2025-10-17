@@ -106,6 +106,16 @@ resource "aws_ecs_task_definition" "this" {
       image = "${var.ecr_repo_url}:${var.image_tag}"
       command = ["celery", "-A", "uptimemonitor", "worker", "-l", "info"]
       essential = false
+      secrets = [
+        {
+          name      = "EMAIL_HOST_USER"
+          valueFrom = "arn:aws:secretsmanager:us-east-1:790814117525:secret:uptimemonitor/production/credentials-WNQLM4:EMAIL_HOST_USER::"
+        },
+        {
+          name      = "EMAIL_HOST_PASSWORD"
+          valueFrom = "arn:aws:secretsmanager:us-east-1:790814117525:secret:uptimemonitor/production/credentials-WNQLM4:EMAIL_HOST_PASSWORD::"
+        }
+      ]
       environment = [
         { name = "DATABASE_URL", value = var.database_url },
         { name = "REDIS_URL", value = var.redis_url },
