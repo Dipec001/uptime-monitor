@@ -15,6 +15,7 @@ import os
 from datetime import timedelta
 from dotenv import load_dotenv
 import dj_database_url
+import botocore.config
 
 load_dotenv()
 
@@ -266,8 +267,6 @@ USE_SES_V2 = True  # Use newer API
 AWS_SES_CONFIGURATION_SET = None
 
 # Add retry configuration
-import botocore.config
-
 AWS_SES_BOTO3_CONFIG = botocore.config.Config(
     retries={
         'max_attempts': 3,

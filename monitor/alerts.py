@@ -29,19 +29,19 @@ def send_email_alert_task(self, to_email, subject, message):
         logger.info(f"[EMAIL] Sent to {to_email}")
     except Exception as e:
         logger.error(f"[EMAIL] Error sending to {to_email}: {str(e)}")
-        
+
         # Don't retry on authentication/permission errors
         if 'AccessDenied' in str(e) or 'InvalidParameterValue' in str(e):
             logger.error(f"[EMAIL] Permanent error, not retrying: {e}")
             return
-        
+
         try:
             # Exponential backoff: 30s, 60s, 120s, 240s, 480s
             countdown = 30 * (2 ** self.request.retries)
             self.retry(exc=e, countdown=countdown)
         except MaxRetriesExceededError:
             logger.error(f"[EMAIL] Max retries exceeded for {to_email}")
-        
+
 
 @shared_task(bind=True, max_retries=3)
 def send_slack_alert_task(self, webhook_url, message):
