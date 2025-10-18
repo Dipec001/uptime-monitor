@@ -25,6 +25,37 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_iam_role" "ecs_task_role" {
+  name = "${var.env}-ecs-task-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_task_ses" {
+  name = "${var.env}-ecs-task-ses-policy"
+  role = aws_iam_role.ecs_task_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # =========================
 # ECS Security Group
 # =========================
@@ -70,6 +101,7 @@ resource "aws_ecs_task_definition" "this" {
   cpu                      = "512"
   memory                   = "1024"
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
 
   container_definitions = jsonencode([
     {
@@ -78,18 +110,6 @@ resource "aws_ecs_task_definition" "this" {
       essential = true
       portMappings = [{ containerPort = 8000, hostPort = 8000 }]
       secrets = [
-        {
-          name      = "EMAIL_HOST"
-          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:EMAIL_HOST::"
-        },
-        {
-          name      = "EMAIL_HOST_USER"
-          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:EMAIL_HOST_USER::"
-        },
-        {
-          name      = "EMAIL_HOST_PASSWORD"
-          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:EMAIL_HOST_PASSWORD::"
-        },
         {
           name      = "DEFAULT_FROM_EMAIL"
           valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:DEFAULT_FROM_EMAIL::"
@@ -115,18 +135,6 @@ resource "aws_ecs_task_definition" "this" {
       command = ["celery", "-A", "uptimemonitor", "worker", "-l", "info"]
       essential = false
       secrets = [
-        {
-          name      = "EMAIL_HOST"
-          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:EMAIL_HOST::"
-        },
-        {
-          name      = "EMAIL_HOST_USER"
-          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:EMAIL_HOST_USER::"
-        },
-        {
-          name      = "EMAIL_HOST_PASSWORD"
-          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:EMAIL_HOST_PASSWORD::"
-        },
         {
           name      = "DEFAULT_FROM_EMAIL"
           valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:DEFAULT_FROM_EMAIL::"
