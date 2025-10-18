@@ -262,6 +262,21 @@ AWS_SES_REGION_ENDPOINT = 'email.us-east-1.amazonaws.com'
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'dpecchukwu@gmail.com')
 USE_SES_V2 = True  # Use newer API
 
+# Configure boto3 to be more resilient
+AWS_SES_CONFIGURATION_SET = None
+
+# Add retry configuration
+import botocore.config
+
+AWS_SES_BOTO3_CONFIG = botocore.config.Config(
+    retries={
+        'max_attempts': 3,
+        'mode': 'adaptive'
+    },
+    connect_timeout=10,
+    read_timeout=10,
+)
+
 # Redis Config for rate limiting
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 

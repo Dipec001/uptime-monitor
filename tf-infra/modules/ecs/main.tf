@@ -48,7 +48,9 @@ resource "aws_iam_role_policy" "ecs_task_ses" {
         Effect = "Allow"
         Action = [
           "ses:SendEmail",
-          "ses:SendRawEmail"
+          "ses:SendRawEmail",
+          "ses:GetAccount",
+          "ses:GetSendQuota"
         ]
         Resource = "*"
       }
