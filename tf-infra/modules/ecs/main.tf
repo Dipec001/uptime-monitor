@@ -79,12 +79,20 @@ resource "aws_ecs_task_definition" "this" {
       portMappings = [{ containerPort = 8000, hostPort = 8000 }]
       secrets = [
         {
+          name      = "EMAIL_HOST"
+          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:EMAIL_HOST::"
+        },
+        {
           name      = "EMAIL_HOST_USER"
-          valueFrom = "arn:aws:secretsmanager:us-east-1:790814117525:secret:uptimemonitor/production/credentials-WNQLM4:EMAIL_HOST_USER::"
+          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:EMAIL_HOST_USER::"
         },
         {
           name      = "EMAIL_HOST_PASSWORD"
-          valueFrom = "arn:aws:secretsmanager:us-east-1:790814117525:secret:uptimemonitor/production/credentials-WNQLM4:EMAIL_HOST_PASSWORD::"
+          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:EMAIL_HOST_PASSWORD::"
+        },
+        {
+          name      = "DEFAULT_FROM_EMAIL"
+          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:DEFAULT_FROM_EMAIL::"
         }
       ]
       environment = [
@@ -108,12 +116,20 @@ resource "aws_ecs_task_definition" "this" {
       essential = false
       secrets = [
         {
+          name      = "EMAIL_HOST"
+          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:EMAIL_HOST::"
+        },
+        {
           name      = "EMAIL_HOST_USER"
-          valueFrom = "arn:aws:secretsmanager:us-east-1:790814117525:secret:uptimemonitor/production/credentials-WNQLM4:EMAIL_HOST_USER::"
+          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:EMAIL_HOST_USER::"
         },
         {
           name      = "EMAIL_HOST_PASSWORD"
-          valueFrom = "arn:aws:secretsmanager:us-east-1:790814117525:secret:uptimemonitor/production/credentials-WNQLM4:EMAIL_HOST_PASSWORD::"
+          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:EMAIL_HOST_PASSWORD::"
+        },
+        {
+          name      = "DEFAULT_FROM_EMAIL"
+          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:DEFAULT_FROM_EMAIL::"
         }
       ]
       environment = [

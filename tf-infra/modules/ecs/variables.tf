@@ -15,3 +15,15 @@ variable "public_subnets" {
   description = "publics subnet for ALB"
   type        = list(string)
 }
+
+variable "ses_sender_email" {
+  description = "Email address to send from (must be verified)"
+  type        = string
+  default     = "dpecchukwu@gmail.com"
+}
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-east-1"
+}
