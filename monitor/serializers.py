@@ -265,7 +265,7 @@ class ForgotPasswordSerializer(serializers.Serializer):
 
         # Get base URL dynamically from request
         base_url = self.context['request'].build_absolute_uri('/')[:-1]
-        reset_link = f"{base_url}/reset-password/{uid}/{token}/"
+        reset_link = f"{base_url}/api/reset-password/{uid}/{token}/"
 
         send_email_alert_task.delay(
             email,
