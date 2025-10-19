@@ -101,7 +101,7 @@ resource "aws_security_group" "ecs_sg" {
 # =========================
 resource "aws_ecs_task_definition" "this" {
   family                   = "${var.env}-uptimemonitor"
-  network_mode             = "awsvpc"
+  network_mode             = "bridge"
   requires_compatibilities = ["EC2"]
   cpu                      = "512"
   memory                   = "1024"
@@ -113,7 +113,11 @@ resource "aws_ecs_task_definition" "this" {
       name  = "web"
       image = "${var.ecr_repo_url}:${var.image_tag}"
       essential = true
-      portMappings = [{ containerPort = 8000, hostPort = 8000 }]
+      portMappings = [{ 
+        containerPort = 8000, 
+        hostPort      = 8000,
+        protocol      = tcp
+      }]
       secrets = [
         {
           name      = "DEFAULT_FROM_EMAIL"
@@ -138,7 +142,7 @@ resource "aws_ecs_task_definition" "this" {
       name  = "celery"
       image = "${var.ecr_repo_url}:${var.image_tag}"
       command = ["celery", "-A", "uptimemonitor", "worker", "-l", "info"]
-      essential = false
+      essential = true
       secrets = [
         {
           name      = "DEFAULT_FROM_EMAIL"
@@ -200,11 +204,6 @@ resource "aws_ecs_service" "this" {
   deployment_circuit_breaker {
     enable   = true
     rollback = true
-  }
-
-  network_configuration {
-    subnets          = var.public_subnets
-    security_groups  = [aws_security_group.ecs_sg.id]
   }
 
   load_balancer {
