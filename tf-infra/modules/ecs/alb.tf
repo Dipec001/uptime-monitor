@@ -53,7 +53,7 @@ resource "aws_lb" "this" {
   }
 }
 
-resource "random_string" "suffix" {
+resource "random_string" "tg_suffix" {
   length  = 4
   special = false
   upper   = false
@@ -61,7 +61,7 @@ resource "random_string" "suffix" {
 
 # ---------- Target group -------------
 resource "aws_lb_target_group" "ecs_tg" {
-  name = "${var.env}-uptimemonitor-tg-${random_string.suffix.result}"
+  name     = "${var.env}-uptimemonitor-tg-${random_string.tg_suffix.result}"
   port     = 8000
   protocol = "HTTP"
   vpc_id   = var.vpc_id
