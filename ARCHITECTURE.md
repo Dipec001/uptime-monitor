@@ -90,6 +90,8 @@ Asynchronous processing and scheduling are powered by **Celery** and **Redis**, 
   - `ecs_task_role`: handles application-level actions (e.g., SES emails).  
   - `ec2_instance_role`: registers EC2 instances to the ECS cluster.
 
+ECS uses **rolling deployments** by default, meaning new tasks are started and verified healthy before old ones are stopped, ensuring **zero-downtime updates** during deployments.  
+This can later be extended to **blue/green deployments** through AWS CodeDeploy for more controlled rollouts and instant rollback if issues arise.
 ---
 
 ## 6. Data Flow (Request → Alert)
