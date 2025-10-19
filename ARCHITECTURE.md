@@ -92,6 +92,9 @@ Asynchronous processing and scheduling are powered by **Celery** and **Redis**, 
 
 ECS uses **rolling deployments** by default, meaning new tasks are started and verified healthy before old ones are stopped, ensuring **zero-downtime updates** during deployments.  
 This can later be extended to **blue/green deployments** through AWS CodeDeploy for more controlled rollouts and instant rollback if issues arise.
+
+To manage infrastructure costs, a dedicated **Terraform Destroy workflow** exists in the CI/CD pipeline.  
+It allows developers to manually destroy **non-production environments (e.g., staging)** from GitHub Actions, preventing unused resources from consuming AWS credits.
 ---
 
 ## 6. Data Flow (Request → Alert)
