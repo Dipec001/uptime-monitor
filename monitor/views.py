@@ -303,7 +303,7 @@ class ForgotPasswordView(generics.GenericAPIView):
         if serializer.is_valid():
             serializer.save()
             logger.info(
-                f"[✓] Password reset email sent to"
+                f"[✓] Password reset email sent to "
                 f"{serializer.validated_data['email']}")
             return Response(
                 {

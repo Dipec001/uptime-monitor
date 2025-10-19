@@ -50,7 +50,10 @@ resource "aws_iam_role_policy" "ecs_task_ses" {
           "ses:SendEmail",
           "ses:SendRawEmail",
           "ses:GetAccount",
-          "ses:GetSendQuota"
+          "ses:GetSendQuota",
+          "sesv2:SendEmail",
+          "sesv2:GetAccount",
+          "sesv2:GetSendQuota"
         ]
         Resource = "*"
       }

@@ -5,6 +5,7 @@ from celery import shared_task
 from monitor.models import Alert, NotificationPreference, Website, HeartBeat
 from django.utils.timezone import now
 from datetime import timedelta
+from .whatsapp_utils import send_whatsapp_message
 from django.contrib.contenttypes.models import ContentType
 from celery.exceptions import MaxRetriesExceededError
 import logging
@@ -68,9 +69,8 @@ def send_webhook_alert_task(self, webhook_url, payload):
 @shared_task(bind=True, max_retries=3)
 def send_whatsapp_alert_task(self, phone_number, message):
     try:
-        # TODO: Implement WhatsApp alert sending logic here.
-        # Placeholder for WhatsApp API integration
-        logger.info(f"[WHATSAPP] Sent to {phone_number} (not implemented)")
+        send_whatsapp_message()
+        logger.info(f"[WHATSAPP] Sent to {phone_number}")
     except Exception as e:
         logger.error(f"[WHATSAPP] Error sending to {phone_number}: {str(e)}")
         self.retry(exc=e, countdown=10)

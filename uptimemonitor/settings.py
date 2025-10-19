@@ -263,7 +263,7 @@ AWS_SES_REGION_ENDPOINT = 'email.us-east-1.amazonaws.com'
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'dpecchukwu@gmail.com')
 USE_SES_V2 = True  # Use newer API
 
-# Configure boto3 to be more resilient
+# CRITICAL: Disable rate limit check to avoid get_account() call
 AWS_SES_CONFIGURATION_SET = None
 
 # Add retry configuration
@@ -272,8 +272,8 @@ AWS_SES_BOTO3_CONFIG = botocore.config.Config(
         'max_attempts': 3,
         'mode': 'adaptive'
     },
-    connect_timeout=10,
-    read_timeout=10,
+    connect_timeout=5,
+    read_timeout=5,
 )
 
 # Redis Config for rate limiting
