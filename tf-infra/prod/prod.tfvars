@@ -1,6 +1,6 @@
 env = "prod"
 
-db_name = "uptimemonitor"
+db_name = "uptimemonitor_prod"
 
 use_elasticache = true
 

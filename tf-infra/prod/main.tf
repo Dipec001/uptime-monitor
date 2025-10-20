@@ -48,8 +48,11 @@ module "rds" {
 module "redis" {
   source             = "../modules/redis"
   env                = "prod"
+
   subnet_ids         = module.networking.private_subnet_ids
-  security_group_ids = [module.networking.db_sg_id]
+  security_group_ids = [module.redis.redis_security_group_id]
+  vpc_id             = module.networking.vpc_id
+  ecs_sg_id          = module.ecs.ecs_security_group_id
   use_elasticache    = true
 }
 
@@ -60,10 +63,11 @@ module "ecs" {
   source            = "../modules/ecs"
   env               = "prod"
   vpc_id            = module.networking.vpc_id
-  public_subnets    = [module.networking.public_subnet_id]
+  private_subnets    = module.networking.private_subnet_ids
   ecr_repo_url      = var.ecr_repo_url
   image_tag         = var.image_tag
-  database_url      = "postgres://${var.db_username}:${var.db_password}@${module.rds.db_endpoint}/${var.db_name}"
+  database_url      = "postgres://${var.db_username}:${urlencode(var.db_password)}@${module.rds.db_endpoint}/${var.db_name}"
   redis_url         = "redis://${module.redis.redis_endpoint}:6379/0"
   ec2_instance_type = "t3.medium"
+  public_subnets    = module.networking.public_subnet_ids
 }

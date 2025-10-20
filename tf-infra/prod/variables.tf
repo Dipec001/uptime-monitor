@@ -38,5 +38,5 @@ variable "use_elasticache" {
 variable "env" {
   description = "the environment"
   type        = string
-  default     = "staging"
+  default     = "prod"
 }
