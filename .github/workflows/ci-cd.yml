@@ -3,7 +3,7 @@ name: Uptime Monitor CI/CD
 on:
   push:
     branches:
-      - main
+      - mai
       - dev
     paths-ignore:
       - '**/*.md'
