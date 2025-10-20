@@ -23,6 +23,9 @@ jobs:
   lint-test:
     name: Lint & Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write  # Required for uploading SARIF results
 
     services:
       postgres:
@@ -84,7 +87,7 @@ jobs:
 
       # 🔒 Upload results to GitHub Security tab
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
@@ -103,6 +106,10 @@ jobs:
     name: Docker Build & Push
     needs: lint-test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write  # Required for uploading SARIF results
+      id-token: write  # Required for AWS authentication
     env:
       ENVIRONMENT: ${{ github.ref_name == 'main' && 'prod' || 'staging' }}
     steps:
@@ -125,7 +132,7 @@ jobs:
       - name: Build, Tag, and Push Docker Image
         env:
           REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
-          REGISTRY_ALIAS: v9n7w5d9  # 👈 your public ECR alias
+          REGISTRY_ALIAS: v9n7w5d9
           REPOSITORY: uptimemonitor
           IMAGE_TAG: ${{ github.sha }}
         run: |
@@ -150,7 +157,7 @@ jobs:
 
       # 🔒 Upload image scan results
       - name: Upload Trivy image results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-image-results.sarif'
@@ -183,12 +190,10 @@ jobs:
     name: Terraform Deploy
     needs: docker-build-push
     runs-on: ubuntu-latest
-
-    # 👇 Automatically sets environment name and URL based on branch
-    # TODO: Update URLs to match my app
-    environment:
-      name: ${{ github.ref_name }}
-      url: ${{ github.ref_name == 'main' && 'https://myapp.example.com' || 'http://staging-uptimemonitor-alb-1224004041.us-east-1.elb.amazonaws.com/api' }}
+    permissions:
+      contents: read
+      security-events: write  # Required for uploading SARIF results
+      id-token: write  # Required for AWS authentication
 
     steps:
       - uses: actions/checkout@v3
@@ -217,11 +222,11 @@ jobs:
 
       # 🔒 Upload IaC scan results
       - name: Upload Trivy IaC results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-iac-results.sarif'
-          
+
       - name: Determine Environment Folder
         id: env_select
         run: |
