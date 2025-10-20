@@ -163,7 +163,6 @@ UPTIME_MONITOR/
 - Full React frontend + interactive dashboards
 - Enhanced incident reporting and root cause analysis  
 - Role-based access controls for teams and projects  
-- Terraform remote state management for team collaboration  
 
 ---
 
