@@ -70,6 +70,34 @@ jobs:
 
       - name: Run Tests
         run: pytest -v
+      
+      # 🔒 NEW: Scan filesystem and dependencies for vulnerabilities
+      - name: Run Trivy vulnerability scanner (Filesystem)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'  # Don't fail the build yet, just warn
+
+      # 🔒 Upload results to GitHub Security tab
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      # 🔒 NEW: Scan for secrets in the repository
+      - name: Run Trivy secret scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          scanners: 'secret'
+          format: 'table'
+          exit-code: '1'  # Fail if secrets are found
 
   docker-build-push:
     name: Docker Build & Push
@@ -104,6 +132,50 @@ jobs:
           echo "Building Docker image for $ENVIRONMENT..."
           docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG .
           docker tag $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:${{ env.ENVIRONMENT }}-latest
+      
+      # 🔒 NEW: Scan Docker image before pushing
+      - name: Run Trivy vulnerability scanner (Docker Image)
+        uses: aquasecurity/trivy-action@master
+        env:
+          REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
+          REGISTRY_ALIAS: v9n7w5d9
+          REPOSITORY: uptimemonitor
+          IMAGE_TAG: ${{ github.sha }}
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.REGISTRY_ALIAS }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+          format: 'sarif'
+          output: 'trivy-image-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'  # Start with warnings only
+
+      # 🔒 Upload image scan results
+      - name: Upload Trivy image results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-image-results.sarif'
+
+      # 🔒 NEW: Show vulnerabilities in console for quick review
+      - name: Run Trivy vulnerability scanner (Table Output)
+        uses: aquasecurity/trivy-action@master
+        env:
+          REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
+          REGISTRY_ALIAS: v9n7w5d9
+          REPOSITORY: uptimemonitor
+          IMAGE_TAG: ${{ github.sha }}
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.REGISTRY_ALIAS }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+
+      # Push only if scans pass
+      - name: Push Docker Image to ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
+          REGISTRY_ALIAS: v9n7w5d9
+          REPOSITORY: uptimemonitor
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
           docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
           docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:${{ env.ENVIRONMENT }}-latest
 
@@ -133,6 +205,23 @@ jobs:
         with:
           terraform_version: 1.13.3
       
+      # 🔒 NEW: Scan Terraform code for misconfigurations
+      - name: Run Trivy vulnerability scanner (IaC)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: 'tf-infra/'
+          format: 'sarif'
+          output: 'trivy-iac-results.sarif'
+          exit-code: '0'  # Warn only
+
+      # 🔒 Upload IaC scan results
+      - name: Upload Trivy IaC results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-iac-results.sarif'
+          
       - name: Determine Environment Folder
         id: env_select
         run: |
