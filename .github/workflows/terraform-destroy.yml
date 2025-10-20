@@ -1,13 +1,26 @@
-name: Terraform Destroy
+name: Terraform Destroy (Staging Only)
+
 on:
-  workflow_dispatch:   # Manually trigger from GitHub Actions
+  workflow_dispatch:
+    inputs:
+      confirm_destroy:
+        description: "Type 'DESTROY-STAGING' to confirm you want to destroy the staging environment"
+        required: true
 
 jobs:
-  terraform-destroy:
+  terraform-destroy-staging:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
+
+      - name: Validate confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm_destroy }}" != "DESTROY-STAGING" ]; then
+            echo "❌ Confirmation failed. Type DESTROY-STAGING to confirm."
+            exit 1
+          fi
+          echo "✅ Confirmation successful. Proceeding with destroy."
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -21,39 +34,33 @@ jobs:
         with:
           terraform_version: 1.13.3
 
-      - name: Determine Environment Folder
-        id: env_select
-        run: |
-          if [ "${GITHUB_REF_NAME}" == "main" ]; then
-            echo "env=prod" >> $GITHUB_OUTPUT
-            echo "tf_dir=tf-infra/prod" >> $GITHUB_OUTPUT
-            echo "tfvars_file=prod.tfvars" >> $GITHUB_OUTPUT
-            echo "db_username=${{ secrets.PROD_DB_USERNAME }}" >> $GITHUB_OUTPUT
-            echo "db_password=${{ secrets.PROD_DB_PASSWORD }}" >> $GITHUB_OUTPUT
-            echo "ecr_repo_url=${{ secrets.PROD_ECR_REPO_URL }}" >> $GITHUB_OUTPUT
-            echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
-          else
-            echo "env=staging" >> $GITHUB_OUTPUT
-            echo "tf_dir=tf-infra/staging" >> $GITHUB_OUTPUT
-            echo "tfvars_file=dev.tfvars" >> $GITHUB_OUTPUT
-            echo "db_username=${{ secrets.STAGING_DB_USERNAME }}" >> $GITHUB_OUTPUT
-            echo "db_password=${{ secrets.STAGING_DB_PASSWORD }}" >> $GITHUB_OUTPUT
-            echo "ecr_repo_url=${{ secrets.STAGING_ECR_REPO_URL }}" >> $GITHUB_OUTPUT
-            echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
-          fi
+      - name: Terraform Init (Staging)
+        run: terraform -chdir=tf-infra/staging init -input=false
 
-      - name: Initialize Terraform
+      - name: Terraform Plan (Preview Destroy)
+        env:
+          DB_USERNAME: ${{ secrets.STAGING_DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
+          ECR_REPO_URL: ${{ secrets.STAGING_ECR_REPO_URL }}
         run: |
-          terraform -chdir=${{ steps.env_select.outputs.tf_dir }} init -input=false
+          echo "🔍 Running Terraform plan to preview what will be destroyed..."
+          terraform -chdir=tf-infra/staging plan -destroy \
+            -var-file=dev.tfvars \
+            -var "db_username=$DB_USERNAME" \
+            -var "db_password=$DB_PASSWORD" \
+            -var "ecr_repo_url=$ECR_REPO_URL"
 
-      - name: Terraform Destroy
+      - name: Terraform Destroy (Staging)
+        env:
+          DB_USERNAME: ${{ secrets.STAGING_DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
+          ECR_REPO_URL: ${{ secrets.STAGING_ECR_REPO_URL }}
         run: |
-          echo "Destroying Terraform for ${{ steps.env_select.outputs.env }}..."
-          terraform -chdir=${{ steps.env_select.outputs.tf_dir }} destroy \
-            -var-file=${{ steps.env_select.outputs.tfvars_file }} \
-            -var "db_username=${{ steps.env_select.outputs.db_username }}" \
-            -var "db_password=${{ steps.env_select.outputs.db_password }}" \
-            -var "ecr_repo_url=${{ steps.env_select.outputs.ecr_repo_url }}" \
-            -var "image_tag=${{ steps.env_select.outputs.image_tag }}" \
+          echo "⚠️ Destroying staging environment..."
+          terraform -chdir=tf-infra/staging destroy \
+            -var-file=dev.tfvars \
+            -var "db_username=$DB_USERNAME" \
+            -var "db_password=$DB_PASSWORD" \
+            -var "ecr_repo_url=$ECR_REPO_URL" \
             -auto-approve \
             -lock=false
