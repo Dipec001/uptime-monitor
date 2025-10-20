@@ -10,7 +10,6 @@ from .models import (
 from urllib.parse import urlparse, urlunparse
 from django.utils import timezone
 from django.contrib.auth import get_user_model
-from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
@@ -263,7 +262,10 @@ class ForgotPasswordSerializer(serializers.Serializer):
 
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
-        reset_link = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}/"
+
+        # Get base URL dynamically from request
+        base_url = self.context['request'].build_absolute_uri('/')[:-1]
+        reset_link = f"{base_url}/api/reset-password/{uid}/{token}/"
 
         send_email_alert_task.delay(
             email,

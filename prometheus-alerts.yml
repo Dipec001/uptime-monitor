@@ -32,10 +32,10 @@ groups:
     rules:
       - alert: CeleryWorkersDown
         expr: celery_worker_up == 0
-        for: 2m
+        for: 1m
         labels:
           severity: critical
         annotations:
           summary: "No Celery workers are alive"
-          description: "Celery exporter reports no active workers for at least 2 minutes."
+          description: "Celery exporter reports no active workers for at least 1 minutes."
     

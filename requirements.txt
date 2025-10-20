@@ -3,6 +3,8 @@ arrow==1.3.0
 asgiref==3.9.1
 billiard==4.2.1
 blinker==1.9.0
+boto3==1.40.55
+botocore==1.40.55
 celery==5.5.3
 certifi==2025.7.14
 charset-normalizer==3.4.2
@@ -17,17 +19,20 @@ Django==5.2.4
 django-celery-beat==2.8.1
 django-cors-headers==4.9.0
 django-prometheus==2.4.1
+django-ses==4.4.0
 django-timezone-field==7.1
 djangorestframework==3.16.0
 djangorestframework_simplejwt==5.5.0
 drf-yasg==1.21.10
 flake8==7.3.0
 Flask==3.1.2
+gunicorn==23.0.0
 idna==3.10
 inflection==0.5.1
 iniconfig==2.1.0
 itsdangerous==2.2.0
 Jinja2==3.1.6
+jmespath==1.0.1
 kombu==5.5.4
 loguru==0.7.3
 MarkupSafe==3.0.3
@@ -54,6 +59,7 @@ pytz==2025.2
 PyYAML==6.0.2
 redis==5.3.1
 requests==2.32.4
+s3transfer==0.14.0
 six==1.17.0
 sqlparse==0.5.3
 timy==0.4.2

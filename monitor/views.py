@@ -303,7 +303,7 @@ class ForgotPasswordView(generics.GenericAPIView):
         if serializer.is_valid():
             serializer.save()
             logger.info(
-                f"[✓] Password reset email sent to"
+                f"[✓] Password reset email sent to "
                 f"{serializer.validated_data['email']}")
             return Response(
                 {
@@ -399,3 +399,8 @@ class DashboardMetricsView(APIView):
         }
 
         return Response(data)
+
+
+def trigger_error(request):
+    # Don’t leave this route active in production long-term
+    raise Exception("Test 500 error — monitoring check")

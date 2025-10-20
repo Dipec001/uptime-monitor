@@ -2,6 +2,13 @@ from prometheus_client import Counter, pushadd_to_gateway, CollectorRegistry
 
 registry = CollectorRegistry()
 
+
+http_5xx_responses_total = Counter(
+    "django_http_responses_5xx_total",
+    "Total number of HTTP 5xx responses",
+    ["view", "method"]
+)
+
 website_success_total = Counter(
     "website_success_total",
     "Website check result (success)",

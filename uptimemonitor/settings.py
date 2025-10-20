@@ -15,6 +15,7 @@ import os
 from datetime import timedelta
 from dotenv import load_dotenv
 import dj_database_url
+import botocore.config
 
 load_dotenv()
 
@@ -26,10 +27,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-gy_2+ww%ubs4q0@8rzgzx(7y=$eprl!-2v)b*2-l0^0(wc#x9u"
+SECRET_KEY = os.getenv("SECRET_KEY", default="your secret key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", default="False").lower() == "true"
 
 # ALLOWED_HOSTS = [
 #     "localhost",
@@ -86,6 +87,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "uptimemonitor.middleware.Track5xxMiddleware",
     'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
@@ -135,10 +137,10 @@ DATABASES = {
     'default': dj_database_url.config(
         conn_max_age=600,
         conn_health_checks=True,
-        # For using django-prometheus with PostgreSQL, uncomment the line below
-        # engine='django_prometheus.db.backends.postgresql'
     )
 }
+
+DATABASES['default']['ENGINE'] = 'django_prometheus.db.backends.postgresql'
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -219,17 +221,18 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': str(BASE_DIR / 'monitor.log'),
-            'formatter': 'verbose',
-            'encoding': 'utf-8',
-        },
+        # Write only to console since cloudwatch can capture stdout
+        # 'file': {
+        #     'level': 'DEBUG',
+        #     'class': 'logging.FileHandler',
+        #     'filename': str(BASE_DIR / 'monitor.log'),
+        #     'formatter': 'verbose',
+        #     'encoding': 'utf-8',
+        # },
     },
     'loggers': {
         'monitor': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': True,
         },
@@ -245,19 +248,35 @@ CELERY_WORKER_SEND_TASK_EVENTS = True
 CELERY_TASK_SEND_SENT_EVENT = True
 
 # Email Config
-# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 465
-EMAIL_USE_TLS = False
-EMAIL_USE_SSL = True
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# EMAIL_HOST = os.getenv('EMAIL_HOST', 'email-smtp.us-east-1.amazonaws.com')
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_USE_SSL = False
+# EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+# EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+# DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
+
+EMAIL_BACKEND = 'django_ses.SESBackend'
+AWS_SES_REGION_NAME = 'us-east-1'
+AWS_SES_REGION_ENDPOINT = 'email.us-east-1.amazonaws.com'
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'dpecchukwu@gmail.com')
+USE_SES_V2 = True  # Use newer API
+
+# CRITICAL: Disable rate limit check to avoid get_account() call
+AWS_SES_CONFIGURATION_SET = None
+
+# Add retry configuration
+AWS_SES_BOTO3_CONFIG = botocore.config.Config(
+    retries={
+        'max_attempts': 3,
+        'mode': 'adaptive'
+    },
+    connect_timeout=5,
+    read_timeout=5,
+)
 
 # Redis Config for rate limiting
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 
 SWAGGER_USE_COMPAT_RENDERERS = False
-
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')

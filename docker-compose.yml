@@ -55,7 +55,9 @@ services:
     restart: always
 
   web:
-    build: .
+    build:
+      context: .
+      filename: Dockerfile.dev
     command: >
       sh -c "python manage.py migrate &&
             python manage.py runserver 0.0.0.0:8000"
@@ -73,7 +75,9 @@ services:
     restart: always
 
   celery:
-    build: .
+    build:
+      context: .
+      filename: Dockerfile.dev
     command: celery -A uptimemonitor worker -l info
     depends_on:
       - db
@@ -85,7 +89,9 @@ services:
     restart: always
 
   beat:
-    build: .
+    build:
+      context: .
+      filename: Dockerfile.dev
     command: celery -A uptimemonitor beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     depends_on:
       - db
@@ -105,6 +111,42 @@ services:
       - "9808:9808"
     depends_on:
       - redis
+    restart: always
+  
+  # =======================
+  # NODE EXPORTER (HOST METRICS)
+  # =======================
+  node-exporter:
+    image: prom/node-exporter:latest
+    restart: always
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+
+  # =======================
+  # cADVISOR (CONTAINER METRICS)
+  # =======================
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    depends_on:
+      - redis
+    privileged: true
 
 volumes:
   postgres_data:

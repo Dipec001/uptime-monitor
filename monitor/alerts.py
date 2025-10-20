@@ -5,7 +5,9 @@ from celery import shared_task
 from monitor.models import Alert, NotificationPreference, Website, HeartBeat
 from django.utils.timezone import now
 from datetime import timedelta
+from .whatsapp_utils import send_whatsapp_message
 from django.contrib.contenttypes.models import ContentType
+from celery.exceptions import MaxRetriesExceededError
 import logging
 
 logger = logging.getLogger('monitor')
@@ -15,7 +17,7 @@ RETRY_INTERVAL_MINUTES = 10
 MAX_RETRIES = 3
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def send_email_alert_task(self, to_email, subject, message):
     try:
         send_mail(
@@ -28,7 +30,18 @@ def send_email_alert_task(self, to_email, subject, message):
         logger.info(f"[EMAIL] Sent to {to_email}")
     except Exception as e:
         logger.error(f"[EMAIL] Error sending to {to_email}: {str(e)}")
-        self.retry(exc=e, countdown=10)
+
+        # Don't retry on authentication/permission errors
+        if 'AccessDenied' in str(e) or 'InvalidParameterValue' in str(e):
+            logger.error(f"[EMAIL] Permanent error, not retrying: {e}")
+            return
+
+        try:
+            # Exponential backoff: 30s, 60s, 120s, 240s, 480s
+            countdown = 30 * (2 ** self.request.retries)
+            self.retry(exc=e, countdown=countdown)
+        except MaxRetriesExceededError:
+            logger.error(f"[EMAIL] Max retries exceeded for {to_email}")
 
 
 @shared_task(bind=True, max_retries=3)
@@ -56,9 +69,8 @@ def send_webhook_alert_task(self, webhook_url, payload):
 @shared_task(bind=True, max_retries=3)
 def send_whatsapp_alert_task(self, phone_number, message):
     try:
-        # TODO: Implement WhatsApp alert sending logic here.
-        # Placeholder for WhatsApp API integration
-        logger.info(f"[WHATSAPP] Sent to {phone_number} (not implemented)")
+        send_whatsapp_message()
+        logger.info(f"[WHATSAPP] Sent to {phone_number}")
     except Exception as e:
         logger.error(f"[WHATSAPP] Error sending to {phone_number}: {str(e)}")
         self.retry(exc=e, countdown=10)

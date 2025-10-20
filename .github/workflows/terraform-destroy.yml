@@ -1,0 +1,66 @@
+name: Terraform Destroy (Staging Only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_destroy:
+        description: "Type 'DESTROY-STAGING' to confirm you want to destroy the staging environment"
+        required: true
+
+jobs:
+  terraform-destroy-staging:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Validate confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm_destroy }}" != "DESTROY-STAGING" ]; then
+            echo "❌ Confirmation failed. Type DESTROY-STAGING to confirm."
+            exit 1
+          fi
+          echo "✅ Confirmation successful. Proceeding with destroy."
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.3
+
+      - name: Terraform Init (Staging)
+        run: terraform -chdir=tf-infra/staging init -input=false
+
+      - name: Terraform Plan (Preview Destroy)
+        env:
+          DB_USERNAME: ${{ secrets.STAGING_DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
+          ECR_REPO_URL: ${{ secrets.STAGING_ECR_REPO_URL }}
+        run: |
+          echo "🔍 Running Terraform plan to preview what will be destroyed..."
+          terraform -chdir=tf-infra/staging plan -destroy \
+            -var-file=dev.tfvars \
+            -var "db_username=$DB_USERNAME" \
+            -var "db_password=$DB_PASSWORD" \
+            -var "ecr_repo_url=$ECR_REPO_URL"
+
+      - name: Terraform Destroy (Staging)
+        env:
+          DB_USERNAME: ${{ secrets.STAGING_DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
+          ECR_REPO_URL: ${{ secrets.STAGING_ECR_REPO_URL }}
+        run: |
+          echo "⚠️ Destroying staging environment..."
+          terraform -chdir=tf-infra/staging destroy \
+            -var-file=dev.tfvars \
+            -var "db_username=$DB_USERNAME" \
+            -var "db_password=$DB_PASSWORD" \
+            -var "ecr_repo_url=$ECR_REPO_URL" \
+            -auto-approve \
+            -lock=false

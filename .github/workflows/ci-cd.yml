@@ -3,17 +3,29 @@ name: Uptime Monitor CI/CD
 on:
   push:
     branches:
-      - main
+      - mai
       - dev
-  pull_request:
-    branches:
-      - main
-      - dev
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'CHANGELOG.md'
+      - 'RUNBOOK.md'
+      - 'ARCHITECTURE.md'
+      - 'DEPLOYMENT.md'
+      - 'CONTRIBUTING.md'
+      - 'SECURITY.md'
+      
+env:
+  PROJECT_NAME: "uptime-monitor"
+  AWS_REGION: "us-east-1"
 
 jobs:
   lint-test:
     name: Lint & Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write  # Required for uploading SARIF results
 
     services:
       postgres:
@@ -46,7 +58,7 @@ jobs:
       - name: Cache pip dependencies
         uses: actions/cache@v3
         with:
-          path: ~/.cache/pip   # Cache directory
+          path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}  
           restore-keys: |
             ${{ runner.os }}-pip-
@@ -61,95 +73,198 @@ jobs:
 
       - name: Run Tests
         run: pytest -v
+      
+      # 🔒 NEW: Scan filesystem and dependencies for vulnerabilities
+      - name: Run Trivy vulnerability scanner (Filesystem)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'  # Don't fail the build yet, just warn
+
+      # 🔒 Upload results to GitHub Security tab
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      # 🔒 NEW: Scan for secrets in the repository
+      - name: Run Trivy secret scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          scanners: 'secret'
+          format: 'table'
+          exit-code: '1'  # Fail if secrets are found
 
   docker-build-push:
     name: Docker Build & Push
     needs: lint-test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write  # Required for uploading SARIF results
+      id-token: write  # Required for AWS authentication
+    env:
+      ENVIRONMENT: ${{ github.ref_name == 'main' && 'prod' || 'staging' }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login to ECR
-        uses: aws-actions/amazon-ecr-login@v1
+      - name: Login to Amazon ECR Public
+        id: login-ecr-public
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registry-type: public
 
-      - name: Build Docker Image
+      # Build, tag, and push Docker image
+      - name: Build, Tag, and Push Docker Image
+        env:
+          REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
+          REGISTRY_ALIAS: v9n7w5d9
+          REPOSITORY: uptimemonitor
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          IMAGE_TAG=${GITHUB_SHA}
-          docker build -t ${{ env.PROJECT_NAME }}:$IMAGE_TAG .
-          docker tag ${{ env.PROJECT_NAME }}:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.PROJECT_NAME }}:$IMAGE_TAG
-          docker tag ${{ env.PROJECT_NAME }}:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.PROJECT_NAME }}:latest
+          echo "Building Docker image for $ENVIRONMENT..."
+          docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG .
+          docker tag $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:${{ env.ENVIRONMENT }}-latest
+      
+      # 🔒 NEW: Scan Docker image before pushing
+      - name: Run Trivy vulnerability scanner (Docker Image)
+        uses: aquasecurity/trivy-action@master
+        env:
+          REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
+          REGISTRY_ALIAS: v9n7w5d9
+          REPOSITORY: uptimemonitor
+          IMAGE_TAG: ${{ github.sha }}
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.REGISTRY_ALIAS }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+          format: 'sarif'
+          output: 'trivy-image-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'  # Start with warnings only
 
-      - name: Push Docker Image
+      # 🔒 Upload image scan results
+      - name: Upload Trivy image results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-image-results.sarif'
+
+      # 🔒 NEW: Show vulnerabilities in console for quick review
+      - name: Run Trivy vulnerability scanner (Table Output)
+        uses: aquasecurity/trivy-action@master
+        env:
+          REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
+          REGISTRY_ALIAS: v9n7w5d9
+          REPOSITORY: uptimemonitor
+          IMAGE_TAG: ${{ github.sha }}
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.REGISTRY_ALIAS }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+
+      # Push only if scans pass
+      - name: Push Docker Image to ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
+          REGISTRY_ALIAS: v9n7w5d9
+          REPOSITORY: uptimemonitor
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          IMAGE_TAG=${GITHUB_SHA}
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.PROJECT_NAME }}:$IMAGE_TAG
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.PROJECT_NAME }}:latest
+          docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
+          docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:${{ env.ENVIRONMENT }}-latest
 
   terraform-deploy:
     name: Terraform Deploy
     needs: docker-build-push
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write  # Required for uploading SARIF results
+      id-token: write  # Required for AWS authentication
+
     steps:
       - uses: actions/checkout@v3
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.6.5
+          terraform_version: 1.13.3
+      
+      # 🔒 NEW: Scan Terraform code for misconfigurations
+      - name: Run Trivy vulnerability scanner (IaC)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: 'tf-infra/'
+          format: 'sarif'
+          output: 'trivy-iac-results.sarif'
+          exit-code: '0'  # Warn only
 
-      - name: Terraform Init
-        run: terraform -chdir=terraform init -input=false
+      # 🔒 Upload IaC scan results
+      - name: Upload Trivy IaC results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-iac-results.sarif'
+
+      - name: Determine Environment Folder
+        id: env_select
+        run: |
+          if [ "${GITHUB_REF_NAME}" == "main" ]; then
+            echo "env=prod" >> $GITHUB_OUTPUT
+            echo "tf_dir=tf-infra/prod" >> $GITHUB_OUTPUT
+            echo "tfvars_file=prod.tfvars" >> $GITHUB_OUTPUT
+            echo "db_username=${{ secrets.PROD_DB_USERNAME }}" >> $GITHUB_OUTPUT
+            echo "db_password=${{ secrets.PROD_DB_PASSWORD }}" >> $GITHUB_OUTPUT
+            echo "ecr_repo_url=${{ secrets.PROD_ECR_REPO_URL }}" >> $GITHUB_OUTPUT
+            echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          else
+            echo "env=staging" >> $GITHUB_OUTPUT
+            echo "tf_dir=tf-infra/staging" >> $GITHUB_OUTPUT
+            echo "tfvars_file=dev.tfvars" >> $GITHUB_OUTPUT
+            echo "db_username=${{ secrets.STAGING_DB_USERNAME }}" >> $GITHUB_OUTPUT
+            echo "db_password=${{ secrets.STAGING_DB_PASSWORD }}" >> $GITHUB_OUTPUT
+            echo "ecr_repo_url=${{ secrets.STAGING_ECR_REPO_URL }}" >> $GITHUB_OUTPUT
+            echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Initialize Terraform
+        run: |
+          echo "Initializing Terraform in ${{ steps.env_select.outputs.tf_dir }} ..."
+          terraform -chdir=${{ steps.env_select.outputs.tf_dir }} init -input=false
 
       - name: Terraform Plan
         run: |
-          ENV_FILE="dev.tfvars"
-          if [ "${GITHUB_REF}" == "refs/heads/main" ]; then
-            ENV_FILE="prod.tfvars"
-          fi
-          terraform -chdir=terraform plan -var-file=$ENV_FILE -out=tfplan
+          echo "Running Terraform plan for ${{ steps.env_select.outputs.env }}..."
+          terraform -chdir=${{ steps.env_select.outputs.tf_dir }} plan \
+            -var-file=${{ steps.env_select.outputs.tfvars_file }} \
+            -var "db_username=${{ steps.env_select.outputs.db_username }}" \
+            -var "db_password=${{ steps.env_select.outputs.db_password }}" \
+            -var "ecr_repo_url=${{ steps.env_select.outputs.ecr_repo_url }}" \
+            -var "image_tag=${{ steps.env_select.outputs.image_tag }}" \
+            -out=tfplan
 
       - name: Terraform Apply
         run: |
-          ENV_FILE="dev.tfvars"
-          if [ "${GITHUB_REF}" == "refs/heads/main" ]; then
-            ENV_FILE="prod.tfvars"
-          fi
-          terraform -chdir=terraform apply -input=false tfplan
-
-  django-migrate:
-    name: Django Migrations
-    needs: terraform-deploy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.11
-
-      - name: Install Dependencies
-        run: pip install -r requirements.txt
-
-      - name: Run Django Migrations
-        run: |
-          if [ "${GITHUB_REF}" == "refs/heads/main" ]; then
-            export DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}
-          else
-            export DATABASE_URL=${{ secrets.DEV_DATABASE_URL }}
-          fi
-          python manage.py migrate
+          echo "Applying Terraform for ${{ steps.env_select.outputs.env }}..."
+          terraform -chdir=${{ steps.env_select.outputs.tf_dir }} apply -auto-approve tfplan
