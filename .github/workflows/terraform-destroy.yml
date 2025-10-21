@@ -42,13 +42,16 @@ jobs:
           DB_USERNAME: ${{ secrets.STAGING_DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
           ECR_REPO_URL: ${{ secrets.STAGING_ECR_REPO_URL }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           echo "🔍 Running Terraform plan to preview what will be destroyed..."
           terraform -chdir=tf-infra/staging plan -destroy \
             -var-file=dev.tfvars \
             -var "db_username=$DB_USERNAME" \
             -var "db_password=$DB_PASSWORD" \
-            -var "ecr_repo_url=$ECR_REPO_URL"
+            -var "ecr_repo_url=$ECR_REPO_URL" \
+            -var "image_tag=$IMAGE_TAG" \
+            -input=false
 
       - name: Terraform Destroy (Staging)
         env:
