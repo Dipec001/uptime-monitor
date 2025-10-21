@@ -35,7 +35,10 @@ jobs:
           terraform_version: 1.13.3
 
       - name: Terraform Init (Staging)
-        run: terraform -chdir=tf-infra/staging init -input=false
+        run: |
+          echo "🧭 Initializing Terraform backend for staging..."
+          terraform -chdir=tf-infra/staging init -input=false
+          echo "Using state file in: tf-infra/staging"
 
       - name: Terraform Plan (Preview Destroy)
         env:
@@ -58,12 +61,16 @@ jobs:
           DB_USERNAME: ${{ secrets.STAGING_DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
           ECR_REPO_URL: ${{ secrets.STAGING_ECR_REPO_URL }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          echo "⚠️ Destroying staging environment..."
+          echo "⚠️ Destroying staging environment in 10 seconds..."
+          sleep 10
+          echo "🚨 Destroying staging environment..."
           terraform -chdir=tf-infra/staging destroy \
             -var-file=dev.tfvars \
             -var "db_username=$DB_USERNAME" \
             -var "db_password=$DB_PASSWORD" \
             -var "ecr_repo_url=$ECR_REPO_URL" \
+            -var "image_tag=$IMAGE_TAG" \
             -auto-approve \
             -lock=false
