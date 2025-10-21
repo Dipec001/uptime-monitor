@@ -48,6 +48,7 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           echo "🔍 Running Terraform plan to preview what will be destroyed..."
+          echo "Image tag is: $IMAGE_TAG"
           terraform -chdir=tf-infra/staging plan -destroy \
             -var-file=dev.tfvars \
             -var "db_username=$DB_USERNAME" \
