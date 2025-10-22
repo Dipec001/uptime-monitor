@@ -5,6 +5,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.0"
+    }
   }
 
   backend "s3" {
@@ -18,6 +22,20 @@ terraform {
 
 provider "aws" {
   region = "us-east-1"
+}
+
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+}
+
+# =========================
+# ACM + Certificate
+# =========================
+module "certificate" {
+  source = "../modules/certificate"
+  env    = "prod"
+  cloudflare_zone_id   = var.cloudflare_zone_id
+  cloudflare_api_token = var.cloudflare_api_token
 }
 
 # =========================
@@ -70,4 +88,9 @@ module "ecs" {
   redis_url         = "redis://${module.redis.redis_endpoint}:6379/0"
   ec2_instance_type = "t3.medium"
   public_subnets    = module.networking.public_subnet_ids
+
+  certificate_arn    = module.certificate.certificate_arn
+  certificate_status = module.certificate.certificate_status
+
+  depends_on         = [module.certificate]
 }
