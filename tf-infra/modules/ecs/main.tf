@@ -122,6 +122,14 @@ resource "aws_ecs_task_definition" "this" {
         {
           name      = "DEFAULT_FROM_EMAIL"
           valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:DEFAULT_FROM_EMAIL::"
+        },
+        {
+          name      = "NOREPLY_EMAIL"
+          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:NOREPLY_EMAIL::"
+        },
+        {
+          name      = "SUPPORT_EMAIL"
+          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:SUPPORT_EMAIL::"
         }
       ]
       environment = [
@@ -147,6 +155,14 @@ resource "aws_ecs_task_definition" "this" {
         {
           name      = "DEFAULT_FROM_EMAIL"
           valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:DEFAULT_FROM_EMAIL::"
+        },
+        {
+          name      = "NOREPLY_EMAIL"
+          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:NOREPLY_EMAIL::"
+        },
+        {
+          name      = "SUPPORT_EMAIL"
+          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:SUPPORT_EMAIL::"
         }
       ]
       environment = [

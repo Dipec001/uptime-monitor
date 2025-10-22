@@ -260,8 +260,12 @@ CELERY_TASK_SEND_SENT_EVENT = True
 EMAIL_BACKEND = 'django_ses.SESBackend'
 AWS_SES_REGION_NAME = 'us-east-1'
 AWS_SES_REGION_ENDPOINT = 'email.us-east-1.amazonaws.com'
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'dpecchukwu@gmail.com')
 USE_SES_V2 = True  # Use newer API
+
+# Email addresses
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'alerts@alivechecks.com')
+NOREPLY_EMAIL = os.getenv('NOREPLY_EMAIL', 'noreply@alivechecks.com')
+SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', 'support@alivechecks.com')
 
 # CRITICAL: Disable rate limit check to avoid get_account() call
 AWS_SES_CONFIGURATION_SET = None

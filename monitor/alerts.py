@@ -23,7 +23,7 @@ def send_email_alert_task(self, to_email, subject, message):
         send_mail(
             subject=subject,
             message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=settings.DEFAULT_FROM_EMAIL,  # alerts@alivechecks.com
             recipient_list=[to_email],
             fail_silently=False,
         )
