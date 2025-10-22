@@ -187,3 +187,16 @@ jobs:
         run: |
           docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
           docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:${{ env.ENVIRONMENT }}-latest
+
+      # Trigger Infra Workflow after Docker push
+      - name: Trigger Infra Workflow
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.REPO_DISPATCH_PAT }}
+          repository: ${{ github.repository }}
+          event-type: new-image
+          client-payload: |
+            {
+              "image_tag": "${{ github.sha }}",
+              "environment": "${{ github.ref_name == 'main' && 'prod' || 'staging' }}"
+            }
