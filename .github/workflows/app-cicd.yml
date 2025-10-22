@@ -198,5 +198,5 @@ jobs:
           client-payload: |
             {
               "image_tag": "${{ github.sha }}",
-              "environment": "${{ github.ref_name == 'main' && 'prod' || 'staging' }}"
+              "environment": "${{ github.ref_name == 'main' ? 'prod' : 'staging' }}"
             }
