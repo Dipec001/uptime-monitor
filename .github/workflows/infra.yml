@@ -1,4 +1,4 @@
-name: Uptime Monitor Infra CI/CD
+name: Infrastructure CI/CD
 
 on:
   push:
@@ -6,105 +6,104 @@ on:
       - main
       - dev
     paths:
-      - 'tf-infra/**'  # Only trigger for Terraform infra changes
-  repository_dispatch:
-    types:
-      - new-image
-
+      - 'tf-infra/**'
+  workflow_dispatch:
 
 jobs:
-    terraform-deploy:
-        name: Terraform Deploy
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-            security-events: write  # Required for uploading SARIF results
-            id-token: write  # Required for AWS authentication
+  terraform-deploy:
+    name: Terraform Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      id-token: write
 
-        steps:
-            - uses: actions/checkout@v3
+    steps:
+      - uses: actions/checkout@v4
 
-            - name: Configure AWS Credentials
-              uses: aws-actions/configure-aws-credentials@v4
-              with:
-                aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-                aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-                aws-region: ${{ secrets.AWS_REGION }}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-            - name: Setup Terraform
-              uses: hashicorp/setup-terraform@v3
-              with:
-                terraform_version: 1.13.3
-            
-            # 🔒 NEW: Scan Terraform code for misconfigurations
-            - name: Run Trivy vulnerability scanner (IaC)
-              uses: aquasecurity/trivy-action@master
-              with:
-                scan-type: 'config'
-                scan-ref: 'tf-infra/'
-                format: 'sarif'
-                output: 'trivy-iac-results.sarif'
-                exit-code: '0'  # Warn only
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.3
+      
+      - name: Run Trivy vulnerability scanner (IaC)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: 'tf-infra/'
+          format: 'sarif'
+          output: 'trivy-iac-results.sarif'
+          exit-code: '0'
 
-            # 🔒 Upload IaC scan results
-            - name: Upload Trivy IaC results to GitHub Security
-              uses: github/codeql-action/upload-sarif@v3
-              if: always()
-              with:
-                sarif_file: 'trivy-iac-results.sarif'
+      - name: Upload Trivy IaC results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-iac-results.sarif'
 
-            - name: Determine Environment & Variables
-              id: env_select
-              run: |
-                if [ "${GITHUB_EVENT_NAME}" == "repository_dispatch" ]; then
-                    echo "env=${GITHUB_EVENT_CLIENT_PAYLOAD_environment}" >> $GITHUB_OUTPUT
-                    echo "tf_dir=tf-infra/${GITHUB_EVENT_CLIENT_PAYLOAD_environment}" >> $GITHUB_OUTPUT
-                    echo "tfvars_file=$([[ '${GITHUB_EVENT_CLIENT_PAYLOAD_environment}' == 'prod' ]] && echo 'prod.tfvars' || echo 'dev.tfvars')" >> $GITHUB_OUTPUT
-                    echo "db_username=$([[ '${GITHUB_EVENT_CLIENT_PAYLOAD_environment}' == 'prod' ]] && echo '${{ secrets.PROD_DB_USERNAME }}' || echo '${{ secrets.STAGING_DB_USERNAME }}')" >> $GITHUB_OUTPUT
-                    echo "db_password=$([[ '${GITHUB_EVENT_CLIENT_PAYLOAD_environment}' == 'prod' ]] && echo '${{ secrets.PROD_DB_PASSWORD }}' || echo '${{ secrets.STAGING_DB_PASSWORD }}')" >> $GITHUB_OUTPUT
-                    echo "ecr_repo_url=$([[ '${GITHUB_EVENT_CLIENT_PAYLOAD_environment}' == 'prod' ]] && echo '${{ secrets.PROD_ECR_REPO_URL }}' || echo '${{ secrets.STAGING_ECR_REPO_URL }}')" >> $GITHUB_OUTPUT
-                    echo "image_tag=${GITHUB_EVENT_CLIENT_PAYLOAD_image_tag}" >> $GITHUB_OUTPUT
-                else
-                    if [ "${GITHUB_REF_NAME}" == "main" ]; then
-                    echo "env=prod" >> $GITHUB_OUTPUT
-                    echo "tf_dir=tf-infra/prod" >> $GITHUB_OUTPUT
-                    echo "tfvars_file=prod.tfvars" >> $GITHUB_OUTPUT
-                    echo "db_username=${{ secrets.PROD_DB_USERNAME }}" >> $GITHUB_OUTPUT
-                    echo "db_password=${{ secrets.PROD_DB_PASSWORD }}" >> $GITHUB_OUTPUT
-                    echo "ecr_repo_url=${{ secrets.PROD_ECR_REPO_URL }}" >> $GITHUB_OUTPUT
-                    echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
-                    echo "cloudflare_api_token=${{ secrets.CLOUDFLARE_API_TOKEN }}" >> $GITHUB_OUTPUT
-                    echo "cloudflare_zone_id=${{ secrets.CLOUDFLARE_ZONE_ID }}" >> $GITHUB_OUTPUT
-                    else
-                    echo "env=staging" >> $GITHUB_OUTPUT
-                    echo "tf_dir=tf-infra/staging" >> $GITHUB_OUTPUT
-                    echo "tfvars_file=dev.tfvars" >> $GITHUB_OUTPUT
-                    echo "db_username=${{ secrets.STAGING_DB_USERNAME }}" >> $GITHUB_OUTPUT
-                    echo "db_password=${{ secrets.STAGING_DB_PASSWORD }}" >> $GITHUB_OUTPUT
-                    echo "ecr_repo_url=${{ secrets.STAGING_ECR_REPO_URL }}" >> $GITHUB_OUTPUT
-                    echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
-                    fi
-                fi
+      - name: Determine Environment & Variables
+        id: env_select
+        run: |
+          if [ "${GITHUB_REF_NAME}" == "main" ]; then
+            echo "env=prod" >> $GITHUB_OUTPUT
+            echo "tf_dir=tf-infra/prod" >> $GITHUB_OUTPUT
+            echo "tfvars_file=prod.tfvars" >> $GITHUB_OUTPUT
+            echo "db_username=${{ secrets.PROD_DB_USERNAME }}" >> $GITHUB_OUTPUT
+            echo "db_password=${{ secrets.PROD_DB_PASSWORD }}" >> $GITHUB_OUTPUT
+            echo "ecr_repo_url=${{ secrets.PROD_ECR_REPO_URL }}" >> $GITHUB_OUTPUT
+            echo "cloudflare_api_token=${{ secrets.CLOUDFLARE_API_TOKEN }}" >> $GITHUB_OUTPUT
+            echo "cloudflare_zone_id=${{ secrets.CLOUDFLARE_ZONE_ID }}" >> $GITHUB_OUTPUT
+          else
+            echo "env=staging" >> $GITHUB_OUTPUT
+            echo "tf_dir=tf-infra/staging" >> $GITHUB_OUTPUT
+            echo "tfvars_file=dev.tfvars" >> $GITHUB_OUTPUT
+            echo "db_username=${{ secrets.STAGING_DB_USERNAME }}" >> $GITHUB_OUTPUT
+            echo "db_password=${{ secrets.STAGING_DB_PASSWORD }}" >> $GITHUB_OUTPUT
+            echo "ecr_repo_url=${{ secrets.STAGING_ECR_REPO_URL }}" >> $GITHUB_OUTPUT
+          fi
 
-            - name: Initialize Terraform
-              run: |
-                echo "Initializing Terraform in ${{ steps.env_select.outputs.tf_dir }} ..."
-                terraform -chdir=${{ steps.env_select.outputs.tf_dir }} init -input=false
+      - name: Initialize Terraform
+        run: |
+          echo "Initializing Terraform in ${{ steps.env_select.outputs.tf_dir }}..."
+          terraform -chdir=${{ steps.env_select.outputs.tf_dir }} init -input=false
 
-            - name: Terraform Plan
-              run: |
-                echo "Running Terraform plan for ${{ steps.env_select.outputs.env }}..."
-                terraform -chdir=${{ steps.env_select.outputs.tf_dir }} plan \
-                    -var-file=${{ steps.env_select.outputs.tfvars_file }} \
-                    -var "db_username=${{ steps.env_select.outputs.db_username }}" \
-                    -var "db_password=${{ steps.env_select.outputs.db_password }}" \
-                    -var "ecr_repo_url=${{ steps.env_select.outputs.ecr_repo_url }}" \
-                    -var "image_tag=${{ steps.env_select.outputs.image_tag }}" \
-                    -var "cloudflare_api_token=${{ steps.env_select.outputs.cloudflare_api_token }}" \
-                    -var "cloudflare_zone_id=${{ steps.env_select.outputs.cloudflare_zone_id }}"
-                    -out=tfplan
+      - name: Terraform Plan
+        run: |
+          echo "Running Terraform plan for ${{ steps.env_select.outputs.env }}..."
+          terraform -chdir=${{ steps.env_select.outputs.tf_dir }} plan \
+            -var-file=${{ steps.env_select.outputs.tfvars_file }} \
+            -var "db_username=${{ steps.env_select.outputs.db_username }}" \
+            -var "db_password=${{ steps.env_select.outputs.db_password }}" \
+            -var "ecr_repo_url=${{ steps.env_select.outputs.ecr_repo_url }}" \
+            -var "cloudflare_api_token=${{ steps.env_select.outputs.cloudflare_api_token }}" \
+            -var "cloudflare_zone_id=${{ steps.env_select.outputs.cloudflare_zone_id }}" \
+            -out=tfplan
 
-            - name: Terraform Apply
-              run: |
-                echo "Applying Terraform for ${{ steps.env_select.outputs.env }}..."
-                terraform -chdir=${{ steps.env_select.outputs.tf_dir }} apply -auto-approve tfplan
+      - name: Terraform Apply
+        run: |
+          echo "Applying Terraform for ${{ steps.env_select.outputs.env }}..."
+          terraform -chdir=${{ steps.env_select.outputs.tf_dir }} apply -auto-approve tfplan
+
+      - name: Force ECS Service Update
+        run: |
+          echo "Triggering ECS service update to apply infrastructure changes..."
+          aws ecs update-service \
+            --cluster uptime-monitor-cluster-${{ steps.env_select.outputs.env }} \
+            --service uptime-monitor-service-${{ steps.env_select.outputs.env }} \
+            --force-new-deployment \
+            --region ${{ secrets.AWS_REGION }}
+          
+          echo "Waiting for service to stabilize..."
+          aws ecs wait services-stable \
+            --cluster uptime-monitor-cluster-${{ steps.env_select.outputs.env }} \
+            --services uptime-monitor-service-${{ steps.env_select.outputs.env }} \
+            --region ${{ secrets.AWS_REGION }}
+          
+          echo "✅ Infrastructure changes applied successfully!"

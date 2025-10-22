@@ -1,4 +1,4 @@
-name: Uptime Monitor CI/CD
+name: Application CI/CD
 
 on:
   push:
@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write  # Required for uploading SARIF results
+      security-events: write
 
     services:
       postgres:
@@ -76,7 +76,6 @@ jobs:
       - name: Run Tests
         run: pytest -v
       
-      # 🔒 NEW: Scan filesystem and dependencies for vulnerabilities
       - name: Run Trivy vulnerability scanner (Filesystem)
         uses: aquasecurity/trivy-action@master
         with:
@@ -85,16 +84,14 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
-          exit-code: '0'  # Don't fail the build yet, just warn
+          exit-code: '0'
 
-      # 🔒 Upload results to GitHub Security tab
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
 
-      # 🔒 NEW: Scan for secrets in the repository
       - name: Run Trivy secret scanner
         uses: aquasecurity/trivy-action@master
         with:
@@ -102,7 +99,7 @@ jobs:
           scan-ref: '.'
           scanners: 'secret'
           format: 'table'
-          exit-code: '1'  # Fail if secrets are found
+          exit-code: '1'
 
   docker-build-push:
     name: Docker Build & Push
@@ -110,8 +107,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write  # Required for uploading SARIF results
-      id-token: write  # Required for AWS authentication
+      security-events: write
+      id-token: write
     env:
       ENVIRONMENT: ${{ github.ref_name == 'main' && 'prod' || 'staging' }}
     steps:
@@ -130,7 +127,6 @@ jobs:
         with:
           registry-type: public
 
-      # Build, tag, and push Docker image
       - name: Build, Tag, and Push Docker Image
         env:
           REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
@@ -142,7 +138,6 @@ jobs:
           docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG .
           docker tag $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:${{ env.ENVIRONMENT }}-latest
       
-      # 🔒 NEW: Scan Docker image before pushing
       - name: Run Trivy vulnerability scanner (Docker Image)
         uses: aquasecurity/trivy-action@master
         env:
@@ -155,16 +150,14 @@ jobs:
           format: 'sarif'
           output: 'trivy-image-results.sarif'
           severity: 'CRITICAL,HIGH'
-          exit-code: '0'  # Start with warnings only
+          exit-code: '0'
 
-      # 🔒 Upload image scan results
       - name: Upload Trivy image results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-image-results.sarif'
 
-      # 🔒 NEW: Show vulnerabilities in console for quick review
       - name: Run Trivy vulnerability scanner (Table Output)
         uses: aquasecurity/trivy-action@master
         env:
@@ -177,7 +170,6 @@ jobs:
           format: 'table'
           severity: 'CRITICAL,HIGH'
 
-      # Push only if scans pass
       - name: Push Docker Image to ECR
         env:
           REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
@@ -188,15 +180,33 @@ jobs:
           docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
           docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:${{ env.ENVIRONMENT }}-latest
 
-      # Trigger Infra Workflow after Docker push
-      - name: Trigger Infra Workflow
-        uses: peter-evans/repository-dispatch@v3
+  deploy-to-ecs:
+    name: Deploy to ECS
+    needs: docker-build-push
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: ${{ github.ref_name == 'main' && 'prod' || 'staging' }}
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          token: ${{ secrets.REPO_DISPATCH_PAT }}
-          repository: ${{ github.repository }}
-          event-type: new-image
-          client-payload: |
-            {
-              "image_tag": "${{ github.sha }}",
-              "environment": "${{ github.ref_name == 'main' ? 'prod' : 'staging' }}"
-            }
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Deploy to ECS
+        run: |
+          echo "Deploying $ENVIRONMENT environment..."
+          aws ecs update-service \
+            --cluster uptime-monitor-cluster-$ENVIRONMENT \
+            --service uptime-monitor-service-$ENVIRONMENT \
+            --force-new-deployment \
+            --region ${{ secrets.AWS_REGION }}
+          
+          echo "Waiting for deployment to complete..."
+          aws ecs wait services-stable \
+            --cluster uptime-monitor-cluster-$ENVIRONMENT \
+            --services uptime-monitor-service-$ENVIRONMENT \
+            --region ${{ secrets.AWS_REGION }}
+          
+          echo "✅ Deployment successful!"
