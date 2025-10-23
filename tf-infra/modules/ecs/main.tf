@@ -62,6 +62,30 @@ resource "aws_iam_role_policy" "ecs_task_ses" {
 }
 
 # =========================
+# ECS tasks SG (for awsvpc tasks)
+# =========================
+resource "aws_security_group" "ecs_tasks_sg" {
+  name        = "${var.env}-ecs-tasks-sg"
+  description = "Allow ALB to reach ECS tasks"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    from_port       = 8000
+    to_port         = 8000
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_sg.id] # allow traffic from ALB
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+
+# =========================
 # ECS Security Group
 # =========================
 resource "aws_security_group" "ecs_sg" {
@@ -101,7 +125,7 @@ resource "aws_security_group" "ecs_sg" {
 # =========================
 resource "aws_ecs_task_definition" "this" {
   family                   = "${var.env}-uptimemonitor"
-  network_mode             = "bridge"
+  network_mode             = "awsvpc"
   requires_compatibilities = ["EC2"]
   cpu                      = "512"
   memory                   = "1024"
@@ -115,7 +139,7 @@ resource "aws_ecs_task_definition" "this" {
       essential = true
       portMappings = [{ 
         containerPort = 8000, 
-        hostPort      = 0,
+        # Host port not needed with awsvpc mode
         protocol      = "tcp"
       }]
       secrets = [
@@ -223,6 +247,13 @@ resource "aws_ecs_service" "this" {
   deployment_circuit_breaker {
     enable   = true
     rollback = true
+  }
+
+  # NETWORK CONFIGURATION (Required for awsvpc mode!)
+  network_configuration {
+    subnets          = var.public_subnets
+    security_groups  = [aws_security_group.ecs_tasks_sg.id]
+    assign_public_ip = true
   }
 
   load_balancer {
