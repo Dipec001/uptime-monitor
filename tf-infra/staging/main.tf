@@ -54,7 +54,7 @@ module "redis" {
   subnet_ids         = module.networking.private_subnet_ids
   security_group_ids = [module.redis.redis_security_group_id]
   vpc_id             = module.networking.vpc_id
-  ecs_sg_id          = module.ecs.ecs_security_group_id
+  ecs_tasks_sg_id    = module.ecs.ecs_tasks_security_group_id
   use_elasticache    = true
 }
 

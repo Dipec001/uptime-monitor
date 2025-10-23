@@ -39,6 +39,6 @@ resource "aws_security_group_rule" "allow_redis_ingress" {
   from_port                = 6379
   to_port                  = 6379
   protocol                 = "tcp"
-  source_security_group_id = var.ecs_sg_id
+  source_security_group_id = var.ecs_tasks_sg_id
   security_group_id        = aws_security_group.redis_sg.id
 }
