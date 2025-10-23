@@ -57,6 +57,11 @@ resource "random_string" "tg_suffix" {
   length  = 4
   special = false
   upper   = false
+
+  keepers = {
+    # Force new suffix when target_type changes
+    target_type = "ip"
+  }
 }
 
 # ---------- Target group -------------
