@@ -13,6 +13,11 @@ from monitor.serializers import (
 )
 from .models import Website, NotificationPreference, HeartBeat, UptimeCheckResult
 from .tasks import process_ping
+from .alerts import (
+    send_test_website_notification,
+    send_test_heartbeat_notification
+)
+from rest_framework.throttling import UserRateThrottle
 from django.http import Http404
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
@@ -244,13 +249,22 @@ class HeartBeatViewSet(viewsets.ModelViewSet):
 class TestNotificationView(generics.GenericAPIView):
     """
     API endpoint to test notification methods for a given target (Website or HeartBeat).
+
+    POST /api/notifications/test/
+    Body: {
+        "model": "website",  # or "heartbeat"
+        "object_id": 123,
+        "method": "email",
+        "target": "user@example.com"
+    }
     """
-    # TODO: Add rate limiting to prevent abuse
     serializer_class = NotificationPreferenceSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [UserRateThrottle]  # Rate limiting to prevent abuse
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
+
         if not serializer.is_valid():
             logger.warning(
                 f"[!] Test notification validation failed: {serializer.errors} "
@@ -259,9 +273,10 @@ class TestNotificationView(generics.GenericAPIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         data = serializer.validated_data
-        target_object = data.get("target_object")
+        target_object = data.get("target_object")  # From validate() via GenericForeignKey
         method = data.get("method")
         target = data.get("target")
+        content_type = data.get("content_type")
 
         if not target_object:
             return Response(
@@ -269,29 +284,101 @@ class TestNotificationView(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Check ownership
+        # Ownership already validated in serializer, but double-check
         if hasattr(target_object, "user") and target_object.user != request.user:
             raise PermissionDenied("You do not own this object.")
 
-        # Simulate sending a test notification
+        # Send test notification based on method
         try:
-            # Here you would integrate with your actual notification sending logic
+            if method == "email":
+                self._send_test_email(
+                    target_object=target_object,
+                    content_type=content_type,
+                    email=target,
+                    user=request.user
+                )
+            elif method == "slack":
+                self._send_test_slack(
+                    target_object=target_object,
+                    webhook_url=target,
+                    user=request.user
+                )
+            elif method == "webhook":
+                self._send_test_webhook(
+                    target_object=target_object,
+                    webhook_url=target,
+                    user=request.user
+                )
+            else:
+                return Response(
+                    {"error": f"Unsupported notification method: {method}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             logger.info(
                 f"[✓] Test notification sent to {target} via {method} "
                 f"for user {request.user.email} on {target_object}."
             )
+
             return Response(
                 {
-                    "message": f"Test notification sent to {target} via {method}."
+                    "status": "success",
+                    "message": f"Test notification sent to {target} via {method}.",
+                    "monitor_type": content_type.model,
+                    "monitor_name": getattr(target_object, 'name', str(target_object))
                 },
                 status=status.HTTP_200_OK
             )
+
         except Exception as e:
-            logger.error(f"[!] Failed to send test notification: {e}")
+            logger.error(f"[!] Failed to send test notification: {e}", exc_info=True)
             return Response(
-                {"error": "Failed to send test notification."},
+                {"error": "Failed to send test notification.", "details": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    def _send_test_email(self, target_object, content_type, email, user):
+        """Send test email notification"""
+        model_name = content_type.model
+
+        if model_name == 'website':
+            send_test_website_notification.delay(
+                email=email,
+                user_name=user.first_name or user.username,
+                website_name=target_object.name or target_object.url,
+                website_url=target_object.url
+            )
+        elif model_name == 'heartbeat':
+            send_test_heartbeat_notification.delay(
+                email=email,
+                user_name=user.first_name or user.username,
+                heartbeat_name=target_object.name,
+                heartbeat_interval=target_object.interval
+            )
+        else:
+            raise ValueError(f"Unsupported model type: {model_name}")
+
+    def _send_test_slack(self, target_object, webhook_url, user):
+        """Send test Slack notification"""
+        # TODO: Implement Slack notification
+        # For now, queue a task
+        # from .tasks import send_test_slack_notification
+        # send_test_slack_notification.delay(
+        #     webhook_url=webhook_url,
+        #     user_name=user.first_name or user.username,
+        #     monitor_name=getattr(target_object, 'name', str(target_object))
+        # )
+
+    def _send_test_webhook(self, target_object, webhook_url, user):
+        """Send test webhook notification"""
+        # TODO: Implement webhook notification
+        # For now, queue a task
+        # from .tasks import send_test_webhook_notification
+        # send_test_webhook_notification.delay(
+        #     webhook_url=webhook_url,
+        #     user_name=user.first_name or user.username,
+        #     monitor_name=getattr(target_object, 'name', str(target_object))
+        # )
 
 
 class ForgotPasswordView(generics.GenericAPIView):

@@ -14,7 +14,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from .alerts import send_email_alert_task
+from .alerts import send_password_reset_email
+from rest_framework.response import Response
 
 User = get_user_model()
 
@@ -136,6 +137,7 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
         if self.instance:
             data["content_type"] = self.instance.content_type
             data["object_id"] = self.instance.object_id
+            data["target_object"] = self.instance.target_object
         else:
             if not model_name:
                 raise serializers.ValidationError("model is required.")
@@ -154,6 +156,7 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
             model_class = data["content_type"].model_class()
             try:
                 obj = model_class.objects.get(id=object_id)
+                data["target_object"] = obj
             except model_class.DoesNotExist:
                 raise serializers.ValidationError(
                     f"{model_class.__name__} with id {object_id} does not exist."
@@ -185,6 +188,7 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data["user"] = self.context["request"].user
         validated_data.pop("model", None)  # Remove the friendly field
+        validated_data.pop("target_object", None)  # Don't save this to DB
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
@@ -196,6 +200,7 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
         if model and model.lower() != instance.content_type.model:
             raise serializers.ValidationError("Changing model is not allowed.")
 
+        validated_data.pop("target_object", None)
         return super().update(instance, validated_data)
 
 
@@ -267,13 +272,9 @@ class ForgotPasswordSerializer(serializers.Serializer):
         base_url = self.context['request'].build_absolute_uri('/')[:-1]
         reset_link = f"{base_url}/api/reset-password/{uid}/{token}/"
 
-        send_email_alert_task.delay(
-            email,
-            "Password Reset Request",
-            f"Click the link to reset your password: {reset_link}"
-        )
+        send_password_reset_email.delay(email, reset_link)
 
-        return reset_link
+        return Response("Check your email")
 
 
 class ResetPasswordSerializer(serializers.Serializer):
