@@ -42,11 +42,45 @@ DEBUG = os.getenv("DEBUG", default="False").lower() == "true"
 ALLOWED_HOSTS = ["*"]  # for testing only, allow all hosts
 
 CORS_ALLOWED_ORIGINS = [
+    "https://alivechecks.com",
+    "https://www.alivechecks.com",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
 
-# Application definition
+# Alternative: If you want to allow all subdomains
+# CORS_ALLOWED_ORIGIN_REGEXES = [
+#     r"^https://.*\.alivechecks\.com$",
+# ]
+
+# Allow credentials (cookies, authorization headers)
+CORS_ALLOW_CREDENTIALS = True
+
+# Allow these HTTP methods
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Allow these headers
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# How long to cache preflight requests (in seconds)
+CORS_PREFLIGHT_MAX_AGE = 86400  # 24 hours
 
 INSTALLED_APPS = [
     'django_prometheus',
