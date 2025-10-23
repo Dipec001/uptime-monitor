@@ -10,16 +10,12 @@ on:
       - 'tf-infra/**'
       - '**/*.md'
       - 'docs/**'
-      - 'CHANGELOG.md'
-      - 'RUNBOOK.md'
-      - 'ARCHITECTURE.md'
-      - 'DEPLOYMENT.md'
-      - 'CONTRIBUTING.md'
-      - 'SECURITY.md'
       
 env:
   PROJECT_NAME: "uptime-monitor"
   AWS_REGION: "us-east-1"
+  ECR_REGISTRY_ALIAS: v9n7w5d9
+  ECR_REPOSITORY: uptimemonitor
 
 jobs:
   lint-test:
@@ -107,12 +103,22 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write
       id-token: write
-    env:
-      ENVIRONMENT: ${{ github.ref_name == 'main' && 'prod' || 'staging' }}
+    outputs:
+      image: ${{ steps.build-image.outputs.image }}
+      environment: ${{ steps.set-env.outputs.environment }}
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set Environment
+        id: set-env
+        run: |
+          if [ "${GITHUB_REF_NAME}" == "main" ]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          fi
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -128,64 +134,46 @@ jobs:
           registry-type: public
 
       - name: Build, Tag, and Push Docker Image
+        id: build-image
         env:
-          REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
-          REGISTRY_ALIAS: v9n7w5d9
-          REPOSITORY: uptimemonitor
+          ECR_REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
+          ENVIRONMENT: ${{ steps.set-env.outputs.environment }}
         run: |
+          # Build full image path
+          IMAGE_PATH=$ECR_REGISTRY/$ECR_REGISTRY_ALIAS/$ECR_REPOSITORY
+          
           echo "Building Docker image for $ENVIRONMENT..."
-          docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG .
-          docker tag $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:${{ env.ENVIRONMENT }}-latest
+          docker build -t $IMAGE_PATH:$IMAGE_TAG .
+          
+          # Tag with environment-specific latest
+          docker tag $IMAGE_PATH:$IMAGE_TAG $IMAGE_PATH:$ENVIRONMENT-latest
+          
+          # Push both tags
+          echo "Pushing image with SHA tag: $IMAGE_TAG"
+          docker push $IMAGE_PATH:$IMAGE_TAG
+          docker push $IMAGE_PATH:$ENVIRONMENT-latest
+          
+          # Output the full image path for next job
+          echo "image=$IMAGE_PATH:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "✅ Image pushed: $IMAGE_PATH:$IMAGE_TAG"
       
-      - name: Run Trivy vulnerability scanner (Docker Image)
+      - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
-        env:
-          REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
-          REGISTRY_ALIAS: v9n7w5d9
-          REPOSITORY: uptimemonitor
-          IMAGE_TAG: ${{ github.sha }}
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.REGISTRY_ALIAS }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-          format: 'sarif'
-          output: 'trivy-image-results.sarif'
+          image-ref: ${{ steps.build-image.outputs.image }}
+          format: 'table'
           severity: 'CRITICAL,HIGH'
           exit-code: '0'
 
-      - name: Upload Trivy image results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-image-results.sarif'
-
-      - name: Run Trivy vulnerability scanner (Table Output)
-        uses: aquasecurity/trivy-action@master
-        env:
-          REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
-          REGISTRY_ALIAS: v9n7w5d9
-          REPOSITORY: uptimemonitor
-          IMAGE_TAG: ${{ github.sha }}
-        with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.REGISTRY_ALIAS }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-          format: 'table'
-          severity: 'CRITICAL,HIGH'
-
-      - name: Push Docker Image to ECR
-        env:
-          REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
-          REGISTRY_ALIAS: v9n7w5d9
-          REPOSITORY: uptimemonitor
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
-          docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:${{ env.ENVIRONMENT }}-latest
 
   deploy-to-ecs:
     name: Deploy to ECS
     needs: docker-build-push
     runs-on: ubuntu-latest
-    env:
-      ENVIRONMENT: ${{ github.ref_name == 'main' && 'prod' || 'staging' }}
+    environment:
+      name: ${{ needs.docker-build-push.outputs.environment }}
+
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -195,18 +183,86 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
       
       - name: Deploy to ECS
+        env:
+          ENVIRONMENT: ${{ needs.docker-build-push.outputs.environment }}
+          NEW_IMAGE: ${{ needs.docker-build-push.outputs.image }}
         run: |
-          echo "Deploying $ENVIRONMENT environment..."
+          echo "🚀 Deploying to $ENVIRONMENT environment..."
+          echo "📦 New image: $NEW_IMAGE"
+          
+          CLUSTER="${ENVIRONMENT}-uptimemonitor-cluster"
+          SERVICE="${ENVIRONMENT}-uptimemonitor-service"
+          TASK_FAMILY="${ENVIRONMENT}-uptimemonitor"
+          
+          # Get current task definition
+          echo "📥 Fetching current task definition..."
+          TASK_DEF=$(aws ecs describe-task-definition \
+            --task-definition $TASK_FAMILY \
+            --query 'taskDefinition' \
+            --region $AWS_REGION)
+          
+          # Update all container images (web, celery, beat)
+          echo "🔄 Updating container images..."
+          NEW_TASK_DEF=$(echo "$TASK_DEF" | jq --arg IMAGE "$NEW_IMAGE" '
+            .containerDefinitions |= map(
+              .image = $IMAGE
+            ) |
+            del(.taskDefinitionArn, .revision, .status, .requiresAttributes, 
+                .compatibilities, .registeredAt, .registeredBy)
+          ')
+          
+          # Register new task definition revision
+          echo "📝 Registering new task definition..."
+          NEW_REVISION=$(aws ecs register-task-definition \
+            --cli-input-json "$NEW_TASK_DEF" \
+            --region $AWS_REGION \
+            --query 'taskDefinition.revision' \
+            --output text)
+          
+          echo "✅ New task definition revision: $TASK_FAMILY:$NEW_REVISION"
+          
+          # Update service with new task definition
+          echo "🔄 Updating ECS service..."
           aws ecs update-service \
-            --cluster $ENVIRONMENT-uptimemonitor-cluster \
-            --service $ENVIRONMENT-uptimemonitor-service \
+            --cluster $CLUSTER \
+            --service $SERVICE \
+            --task-definition "$TASK_FAMILY:$NEW_REVISION" \
             --force-new-deployment \
-            --region ${{ secrets.AWS_REGION }}
+            --region $AWS_REGION \
+            --query 'service.taskDefinition' \
+            --output text
           
-          echo "Waiting for deployment to complete..."
+          echo "⏳ Waiting for service to stabilize..."
           aws ecs wait services-stable \
-            --cluster $ENVIRONMENT-uptimemonitor-cluster \
-            --service $ENVIRONMENT-uptimemonitor-service \
-            --region ${{ secrets.AWS_REGION }}
+            --cluster $CLUSTER \
+            --service $SERVICE \
+            --region $AWS_REGION
           
-          echo "✅ Deployment successful!"
+          # Verify deployment
+          RUNNING_TASKS=$(aws ecs list-tasks \
+            --cluster $CLUSTER \
+            --service-name $SERVICE \
+            --desired-status RUNNING \
+            --region $AWS_REGION \
+            --query 'taskArns[0]' \
+            --output text)
+          
+          if [ "$RUNNING_TASKS" != "None" ]; then
+            TASK_IMAGE=$(aws ecs describe-tasks \
+              --cluster $CLUSTER \
+              --tasks $RUNNING_TASKS \
+              --region $AWS_REGION \
+              --query 'tasks[0].containers[0].image' \
+              --output text)
+            
+            echo "🎯 Currently running image: $TASK_IMAGE"
+            
+            if [ "$TASK_IMAGE" == "$NEW_IMAGE" ]; then
+              echo "✅ Deployment successful! New image is running."
+            else
+              echo "⚠️  Warning: Running image doesn't match expected image"
+              exit 1
+            fi
+          fi
+          
+          echo "🎉 Deployment complete!"
