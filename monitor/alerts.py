@@ -44,6 +44,190 @@ def send_email_alert_task(self, to_email, subject, message):
             logger.error(f"[EMAIL] Max retries exceeded for {to_email}")
 
 
+# =======================
+# ACCOUNT EMAILS
+# =======================
+
+@shared_task(bind=True, max_retries=3)
+def send_password_reset_email(self, user_email, reset_link):
+    """Send password reset email"""
+    try:
+        subject = 'Reset your AliveChecks password'
+        message = f"""
+Password Reset Request
+
+We received a request to reset your password.
+
+Click the link below to reset your password:
+{reset_link}
+
+This link will expire in 24 hours.
+
+If you didn't request this, you can safely ignore this email.
+
+---
+AliveChecks - Keeping your sites alive
+https://alivechecks.com
+        """
+
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.NOREPLY_EMAIL,  # noreply@alivechecks.com
+            recipient_list=[user_email],
+            fail_silently=False,
+        )
+
+        logger.info(f"[PASSWORD_RESET] Email sent to {user_email}")
+
+    except Exception as e:
+        logger.error(f"[PASSWORD_RESET] Failed for {user_email}: {str(e)}")
+        self.retry(exc=e, countdown=10)
+
+
+@shared_task(bind=True, max_retries=3)
+def send_welcome_email(self, user_email, user_name):
+    """Send welcome email to new users"""
+    try:
+        subject = 'Welcome to AliveChecks! 🎉'
+        message = f"""
+Hi {user_name},
+
+Welcome to AliveChecks!
+
+You're now set up to monitor your websites and get instant alerts when they go down.
+
+Here's how to get started:
+1. Add your first website to monitor
+2. Choose your alert preferences
+3. Relax - we'll watch your sites for you
+
+Questions? Just reply to this email.
+
+---
+AliveChecks - Keeping your sites alive
+https://alivechecks.com
+        """
+
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.NOREPLY_EMAIL,
+            recipient_list=[user_email],
+            fail_silently=False,
+        )
+
+        logger.info(f"[WELCOME] Email sent to {user_email}")
+
+    except Exception as e:
+        logger.error(f"[WELCOME] Failed for {user_email}: {str(e)}")
+        # Don't retry welcome emails aggressively
+        if self.request.retries < 1:
+            self.retry(exc=e, countdown=60)
+
+
+@shared_task(bind=True, max_retries=3)
+def send_test_website_notification(self, email, user_name, website_name, website_url):
+    """Send test notification for a website monitor"""
+    try:
+        subject = f'🔔 Test Alert: {website_name}'
+        message = f"""
+Hi {user_name},
+
+This is a TEST notification for your website monitor.
+
+Monitor: {website_name}
+URL: {website_url}
+Type: Website Uptime Monitor
+
+✅ If you're reading this, alerts for this monitor are working!
+
+When this website goes down, you'll receive an alert at this email address with:
+- Downtime detection time
+- Response status code or error
+- Immediate notification
+
+You can manage notification settings for this monitor in your dashboard.
+
+---
+AliveChecks - Keeping your sites alive
+https://alivechecks.com
+        """
+
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+
+        logger.info(f"[TEST_WEBSITE] Sent to {email} for {website_name}")
+
+    except Exception as e:
+        logger.error(f"[TEST_WEBSITE] Failed for {email}: {str(e)}")
+        self.retry(exc=e, countdown=10)
+
+
+@shared_task(bind=True, max_retries=3)
+def send_test_heartbeat_notification(
+    self,
+    email,
+    user_name,
+    heartbeat_name,
+    heartbeat_interval
+):
+    """Send test notification for a heartbeat/cron monitor"""
+    try:
+        # Format interval nicely
+        if heartbeat_interval >= 86400:
+            interval_str = f"{heartbeat_interval // 86400} day(s)"
+        elif heartbeat_interval >= 3600:
+            interval_str = f"{heartbeat_interval // 3600} hour(s)"
+        elif heartbeat_interval >= 60:
+            interval_str = f"{heartbeat_interval // 60} minute(s)"
+        else:
+            interval_str = f"{heartbeat_interval} second(s)"
+
+        subject = f'🔔 Test Alert: {heartbeat_name}'
+        message = f"""
+Hi {user_name},
+
+This is a TEST notification for your heartbeat monitor.
+
+Monitor: {heartbeat_name}
+Expected Interval: {interval_str}
+Type: Heartbeat/Cron Monitor
+
+✅ If you're reading this, alerts for this monitor are working!
+
+When this heartbeat misses a check-in, you'll receive an alert at this email address with:
+- Time of missed ping
+- Expected vs actual interval
+- Grace period information
+
+You can manage notification settings for this monitor in your dashboard.
+
+---
+AliveChecks - Keeping your sites alive
+https://alivechecks.com
+        """
+
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+
+        logger.info(f"[TEST_HEARTBEAT] Sent to {email} for {heartbeat_name}")
+
+    except Exception as e:
+        logger.error(f"[TEST_HEARTBEAT] Failed for {email}: {str(e)}")
+        self.retry(exc=e, countdown=10)
+
+
 @shared_task(bind=True, max_retries=3)
 def send_slack_alert_task(self, webhook_url, message):
     try:

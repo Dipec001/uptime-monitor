@@ -15,6 +15,11 @@ router.register(r'heartbeats', views.HeartBeatViewSet, basename='heartbeat')
 urlpatterns = [
     path("trigger-error/", views.trigger_error, name="trigger_error"),
     path('register/', views.RegisterView.as_view(), name='register'),
+    path(
+        'notifications/test/',
+        views.TestNotificationView.as_view(),
+        name='test-notification'
+    ),
     path('ping/<uuid:key>/', views.ping_heartbeat, name='ping_heartbeat'),
     path(
         "forgot-password/",

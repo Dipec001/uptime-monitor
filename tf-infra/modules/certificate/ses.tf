@@ -1,5 +1,3 @@
-# ses.tf
-
 # =========================
 # SES Domain Identity (not email!)
 # =========================
@@ -12,11 +10,12 @@ resource "aws_ses_domain_dkim" "main" {
   domain = aws_ses_domain_identity.main.domain
 }
 
-# Verification (you'll add these to Cloudflare manually)
-resource "aws_route53_record" "ses_verification" {
-  count   = 0  # Set to 0 since you're using Cloudflare DNS
-  # If you move DNS to Route53 later, change to 1
-}
+# Note: DNS records already added manually to Cloudflare
+# - TXT: _amazonses.alivechecks.com
+# - CNAME: <token1>._domainkey.alivechecks.com
+# - CNAME: <token2>._domainkey.alivechecks.com
+# - CNAME: <token3>._domainkey.alivechecks.com
+# Terraform will detect domain is already verified and just track it
 
 # =========================
 # SES Configuration Set

@@ -267,8 +267,8 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'alerts@alivechecks.com')
 NOREPLY_EMAIL = os.getenv('NOREPLY_EMAIL', 'noreply@alivechecks.com')
 SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', 'support@alivechecks.com')
 
-# CRITICAL: Disable rate limit check to avoid get_account() call
-AWS_SES_CONFIGURATION_SET = None
+
+AWS_SES_CONFIGURATION_SET = 'prod-alivechecks'
 
 # Add retry configuration
 AWS_SES_BOTO3_CONFIG = botocore.config.Config(
