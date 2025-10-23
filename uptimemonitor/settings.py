@@ -90,6 +90,14 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
+    # Third party
+    # 'allauth',
+    # 'allauth.account',
+    # 'allauth.socialaccount',
+    # 'allauth.socialaccount.providers.google',
+    # 'allauth.socialaccount.providers.github',
+
     'monitor',
     'rest_framework',
     'rest_framework_simplejwt',
@@ -98,6 +106,62 @@ INSTALLED_APPS = [
     'django_celery_beat',
 
 ]
+
+# # Required for allauth
+# SITE_ID = 1
+
+# # Authentication backends
+# AUTHENTICATION_BACKENDS = [
+#     'django.contrib.auth.backends.ModelBackend',
+#     'allauth.account.auth_backends.AuthenticationBackend',
+# ]
+
+# # Allauth settings
+# ACCOUNT_AUTHENTICATION_METHOD = 'email'  # Use email instead of username
+# ACCOUNT_EMAIL_REQUIRED = True
+# ACCOUNT_USERNAME_REQUIRED = False
+# ACCOUNT_EMAIL_VERIFICATION = 'optional'  # 'mandatory' for stricter verification
+
+# # Social auth specific settings
+# SOCIALACCOUNT_AUTO_SIGNUP = True  # Automatically create account on first login
+# SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'  # Email already verified by provider
+
+# # Query user on signup for additional info (optional)
+# SOCIALACCOUNT_QUERY_EMAIL = True
+
+# # Redirect after social login
+# LOGIN_REDIRECT_URL = '/dashboard/'
+# ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+
+# # Social account providers configuration
+# SOCIALACCOUNT_PROVIDERS = {
+#     'google': {
+#         'SCOPE': [
+#             'profile',
+#             'email',
+#         ],
+#         'AUTH_PARAMS': {
+#             'access_type': 'online',
+#         },
+#         'APP': {
+#             'client_id': os.getenv('GOOGLE_OAUTH_CLIENT_ID'),
+#             'secret': os.getenv('GOOGLE_OAUTH_CLIENT_SECRET'),
+#         }
+#     },
+#     'github': {
+#         'SCOPE': [
+#             'user',
+#             'user:email',
+#         ],
+#         'APP': {
+#             'client_id': os.getenv('GITHUB_OAUTH_CLIENT_ID'),
+#             'secret': os.getenv('GITHUB_OAUTH_CLIENT_SECRET'),
+#         }
+#     }
+# }
+
+# # Optional: Customize what data to fetch from providers
+# SOCIALACCOUNT_ADAPTER = 'monitor.adapters.MySocialAccountAdapter'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -112,6 +176,7 @@ REST_FRAMEWORK = {
 
 MIDDLEWARE = [
     'django_prometheus.middleware.PrometheusBeforeMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -318,3 +383,10 @@ AWS_SES_BOTO3_CONFIG = botocore.config.Config(
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 
 SWAGGER_USE_COMPAT_RENDERERS = False
+
+# Tell Django to trust ALB's HTTPS headers
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Use forwarded host and port from the ALB
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True

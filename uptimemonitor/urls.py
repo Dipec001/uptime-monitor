@@ -22,6 +22,11 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.http import JsonResponse
+import os
+
+ENV = os.getenv('ENVIRONMENT', 'dev')
+
+API_URL = "https://alivechecks.com/api" if ENV == "prod" else None
 
 
 def healthcheck(request):
@@ -31,7 +36,7 @@ def healthcheck(request):
 
 schema_view = get_schema_view(
    openapi.Info(
-      title="PingPulse",
+      title="AliveChecks API",
       default_version='v1',
       description="API documentation for the Uptime and heartbeat monitoring system",
       terms_of_service="https://www.google.com/policies/terms/",
@@ -39,6 +44,7 @@ schema_view = get_schema_view(
       license=openapi.License(name="MIT License"),
    ),
    public=True,
+   url=API_URL,
    permission_classes=(permissions.AllowAny,),
    authentication_classes=[],
 )
