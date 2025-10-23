@@ -3,7 +3,7 @@ variable "env" {
   type        = string
 }
 
-variable "ecs_sg_id" {
-  description = "The ECS security group ID to allow traffic from ECS tasks"
+variable "ecs_tasks_sg_id" {
+  description = "Security group ID for ECS tasks"
   type        = string
 }

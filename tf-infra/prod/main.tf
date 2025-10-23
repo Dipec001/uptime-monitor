@@ -42,9 +42,9 @@ module "certificate" {
 # Networking
 # =========================
 module "networking" {
-  source    = "../modules/networking"
-  env       = "prod"
-  ecs_sg_id = module.ecs.ecs_security_group_id
+  source          = "../modules/networking"
+  env             = "prod"
+  ecs_tasks_sg_id = module.ecs.ecs_tasks_security_group_id
 }
 
 # =========================
