@@ -251,7 +251,7 @@ resource "aws_ecs_service" "this" {
 
   # NETWORK CONFIGURATION (Required for awsvpc mode!)
   network_configuration {
-    subnets          = var.public_subnets
+    subnets          = var.private_subnets
     security_groups  = [aws_security_group.ecs_tasks_sg.id]
     # can't assign public ip for ec2 type ecs
   }
