@@ -65,7 +65,7 @@ resource "aws_lb_target_group" "ecs_tg" {
   port     = 8000
   protocol = "HTTP"
   vpc_id   = var.vpc_id
-  target_type = "instance"  # <- IMPORTANT for bridge mode
+  target_type = "ip"  # <- IMPORTANT for awsvpc mode
 
   lifecycle {
     create_before_destroy = true
