@@ -26,7 +26,7 @@ import os
 
 ENV = os.getenv('ENVIRONMENT', 'dev')
 
-API_URL = "https://alivechecks.com/api" if ENV == "prod" else None
+API_URL = "https://alivechecks.com" if ENV == "prod" else None
 
 
 def healthcheck(request):
