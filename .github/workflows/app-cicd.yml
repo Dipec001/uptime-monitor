@@ -198,15 +198,15 @@ jobs:
         run: |
           echo "Deploying $ENVIRONMENT environment..."
           aws ecs update-service \
-            --cluster uptime-monitor-cluster-$ENVIRONMENT \
-            --service uptime-monitor-service-$ENVIRONMENT \
+            --cluster $ENVIRONMENT-uptimemonitor-cluster \
+            --service $ENVIRONMENT-uptimemonitor-service \
             --force-new-deployment \
             --region ${{ secrets.AWS_REGION }}
           
           echo "Waiting for deployment to complete..."
           aws ecs wait services-stable \
-            --cluster uptime-monitor-cluster-$ENVIRONMENT \
-            --services uptime-monitor-service-$ENVIRONMENT \
+            --cluster $ENVIRONMENT-uptimemonitor-cluster \
+            --service $ENVIRONMENT-uptimemonitor-service \
             --region ${{ secrets.AWS_REGION }}
           
           echo "✅ Deployment successful!"
