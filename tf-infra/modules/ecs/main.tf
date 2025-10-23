@@ -135,7 +135,8 @@ resource "aws_ecs_task_definition" "this" {
       environment = [
         { name = "DATABASE_URL", value = var.database_url },
         { name = "REDIS_URL", value = var.redis_url },
-        { name = "CELERY_BROKER_URL", value = var.redis_url }
+        { name = "CELERY_BROKER_URL", value = var.redis_url },
+        { name = "ENVIRONMENT", value = var.env }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -168,7 +169,8 @@ resource "aws_ecs_task_definition" "this" {
       environment = [
         { name = "DATABASE_URL", value = var.database_url },
         { name = "REDIS_URL", value = var.redis_url },
-        { name = "CELERY_BROKER_URL", value = var.redis_url }
+        { name = "CELERY_BROKER_URL", value = var.redis_url },
+        { name = "ENVIRONMENT", value = var.env }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -187,7 +189,8 @@ resource "aws_ecs_task_definition" "this" {
       environment = [
         { name = "DATABASE_URL", value = var.database_url },
         { name = "REDIS_URL", value = var.redis_url },
-        { name = "CELERY_BROKER_URL", value = var.redis_url }
+        { name = "CELERY_BROKER_URL", value = var.redis_url },
+        { name = "ENVIRONMENT", value = var.env }
       ]
       logConfiguration = {
         logDriver = "awslogs"
