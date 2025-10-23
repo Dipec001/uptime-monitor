@@ -47,6 +47,54 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
+# ---------- Elastic IP for NAT Gateway ----------
+resource "aws_eip" "nat" {
+  domain = "vpc"
+  
+  depends_on = [aws_internet_gateway.igw]
+  
+  tags = {
+    Name = "${var.env}-nat-eip"
+    Env  = var.env
+  }
+}
+
+# ---------- NAT Gateway (in PUBLIC subnet) ----------
+resource "aws_nat_gateway" "main" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id  # NAT goes in public subnet!
+  
+  depends_on = [aws_internet_gateway.igw]
+  
+  tags = {
+    Name = "${var.env}-nat-gateway"
+    Env  = var.env
+  }
+}
+
+# ---------- Private Route Table (NEW!) ----------
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+  
+  # Route to internet via NAT Gateway
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.main.id
+  }
+  
+  tags = {
+    Name = "${var.env}-private-rt"
+    Env  = var.env
+  }
+}
+
+# Associate private route table with private subnets
+resource "aws_route_table_association" "private" {
+  count          = length(aws_subnet.private)
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
+}
+
 # ------- Public Route Table ----------
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id

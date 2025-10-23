@@ -19,3 +19,15 @@ output "db_sg_id" {
 output "rds_subnet_group_name" {
   value = aws_db_subnet_group.rds_subnet_group.name
 }
+
+output "private_route_table_id" {
+  value = aws_route_table.private.id
+}
+
+output "public_route_table_id" {
+  value = aws_route_table.public.id
+}
+
+output "nat_gateway_id" {
+  value = aws_nat_gateway.main.id
+}
