@@ -10,9 +10,9 @@ on:
 jobs:
   terraform-destroy-staging:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Validate confirmation
         run: |
@@ -45,16 +45,13 @@ jobs:
           DB_USERNAME: ${{ secrets.STAGING_DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
           ECR_REPO_URL: ${{ secrets.STAGING_ECR_REPO_URL }}
-          IMAGE_TAG: ${{ github.sha }}
         run: |
           echo "🔍 Running Terraform plan to preview what will be destroyed..."
-          echo "Image tag is: $IMAGE_TAG"
           terraform -chdir=tf-infra/staging plan -destroy \
             -var-file=dev.tfvars \
             -var "db_username=$DB_USERNAME" \
             -var "db_password=$DB_PASSWORD" \
             -var "ecr_repo_url=$ECR_REPO_URL" \
-            -var "image_tag=$IMAGE_TAG" \
             -input=false
 
       - name: Terraform Destroy (Staging)
@@ -62,9 +59,8 @@ jobs:
           DB_USERNAME: ${{ secrets.STAGING_DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
           ECR_REPO_URL: ${{ secrets.STAGING_ECR_REPO_URL }}
-          IMAGE_TAG: ${{ github.sha }}
         run: |
-          echo "⚠️ Destroying staging environment in 10 seconds..."
+          echo "⚠️  Destroying staging environment in 10 seconds..."
           sleep 10
           echo "🚨 Destroying staging environment..."
           terraform -chdir=tf-infra/staging destroy \
@@ -72,6 +68,18 @@ jobs:
             -var "db_username=$DB_USERNAME" \
             -var "db_password=$DB_PASSWORD" \
             -var "ecr_repo_url=$ECR_REPO_URL" \
-            -var "image_tag=$IMAGE_TAG" \
-            -auto-approve \
-            -lock=false
+            -auto-approve
+
+      - name: Confirm Destruction
+        if: success()
+        run: |
+          echo "✅ Staging environment has been destroyed successfully!"
+          echo "📋 Resources destroyed:"
+          echo "   - ECS Cluster & Services"
+          echo "   - RDS Database"
+          echo "   - Redis/ElastiCache"
+          echo "   - VPC & Networking"
+          echo "   - Load Balancers"
+          echo "   - Security Groups"
+          echo ""
+          echo "⚠️  Note: ECR images and S3 state bucket are NOT destroyed."

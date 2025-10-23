@@ -67,7 +67,6 @@ module "ecs" {
   vpc_id            = module.networking.vpc_id
   private_subnets    = module.networking.private_subnet_ids
   ecr_repo_url      = var.ecr_repo_url
-  image_tag         = var.image_tag
   database_url      = "postgres://${var.db_username}:${urlencode(var.db_password)}@${module.rds.db_endpoint}/${var.db_name}"
   redis_url         = "redis://${module.redis.redis_endpoint}:6379/0"
   ec2_instance_type = "t3.medium"
