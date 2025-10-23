@@ -103,15 +103,15 @@ jobs:
         run: |
           echo "Triggering ECS service update to apply infrastructure changes..."
           aws ecs update-service \
-            --cluster uptime-monitor-cluster-${{ steps.env_select.outputs.env }} \
-            --service uptime-monitor-service-${{ steps.env_select.outputs.env }} \
+            --cluster ${{ steps.env_select.outputs.env }}-uptimemonitor-cluster \
+            --service ${{ steps.env_select.outputs.env }}-uptimemonitor-service \
             --force-new-deployment \
             --region ${{ secrets.AWS_REGION }}
           
           echo "Waiting for service to stabilize..."
           aws ecs wait services-stable \
-            --cluster uptime-monitor-cluster-${{ steps.env_select.outputs.env }} \
-            --services uptime-monitor-service-${{ steps.env_select.outputs.env }} \
+            --cluster ${{ steps.env_select.outputs.env }}-uptimemonitor-cluster \
+            --service ${{ steps.env_select.outputs.env }}-uptimemonitor-service \
             --region ${{ secrets.AWS_REGION }}
           
           echo "✅ Infrastructure changes applied successfully!"
