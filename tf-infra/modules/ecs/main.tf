@@ -115,7 +115,7 @@ resource "aws_ecs_task_definition" "this" {
       essential = true
       portMappings = [{ 
         containerPort = 8000, 
-        hostPort      = 8000,
+        hostPort      = 0,
         protocol      = "tcp"
       }]
       secrets = [
