@@ -99,19 +99,95 @@ jobs:
           echo "Applying Terraform for ${{ steps.env_select.outputs.env }}..."
           terraform -chdir=${{ steps.env_select.outputs.tf_dir }} apply -auto-approve tfplan
 
-      - name: Force ECS Service Update
+      - name: Get Latest Application Image
+        id: get_image
+        env:
+          ENVIRONMENT: ${{ steps.env_select.outputs.env }}
+          ECR_REPO_URL: ${{ steps.env_select.outputs.ecr_repo_url }}
         run: |
-          echo "Triggering ECS service update to apply infrastructure changes..."
+          # Try to get the latest image with environment tag
+          LATEST_IMAGE="${ECR_REPO_URL}:${ENVIRONMENT}-latest"
+          
+          # Verify image exists
+          if aws ecr-public describe-images \
+            --repository-name uptimemonitor \
+            --image-ids imageTag=${ENVIRONMENT}-latest \
+            --region us-east-1 2>/dev/null; then
+            echo "image=$LATEST_IMAGE" >> $GITHUB_OUTPUT
+            echo "Found image: $LATEST_IMAGE"
+          else
+            echo "Warning: No ${ENVIRONMENT}-latest image found. Skipping ECS update."
+            echo "image=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update ECS Service with Latest Image
+        if: steps.get_image.outputs.image != ''
+        env:
+          ENVIRONMENT: ${{ steps.env_select.outputs.env }}
+          NEW_IMAGE: ${{ steps.get_image.outputs.image }}
+        run: |
+          echo "Updating ECS service with image: $NEW_IMAGE"
+          
+          CLUSTER="${ENVIRONMENT}-uptimemonitor-cluster"
+          SERVICE="${ENVIRONMENT}-uptimemonitor-service"
+          TASK_FAMILY="${ENVIRONMENT}-uptimemonitor"
+          
+          # Check if service exists
+          if ! aws ecs describe-services \
+            --cluster $CLUSTER \
+            --services $SERVICE \
+            --region $AWS_REGION \
+            --query 'services[0].status' \
+            --output text | grep -q "ACTIVE"; then
+            echo "Service not active yet. This might be first deployment."
+            echo "Service will use image from task definition on first deployment."
+            exit 0
+          fi
+          
+          # Get current task definition
+          echo "Fetching current task definition..."
+          TASK_DEF=$(aws ecs describe-task-definition \
+            --task-definition $TASK_FAMILY \
+            --query 'taskDefinition' \
+            --region $AWS_REGION)
+          
+          # Update all container images (web, celery, beat)
+          echo "Updating all container images to: $NEW_IMAGE"
+          NEW_TASK_DEF=$(echo "$TASK_DEF" | jq --arg IMAGE "$NEW_IMAGE" '
+            .containerDefinitions |= map(
+              .image = $IMAGE
+            ) |
+            del(.taskDefinitionArn, .revision, .status, .requiresAttributes, 
+                .compatibilities, .registeredAt, .registeredBy)
+          ')
+          
+          # Register new task definition revision
+          echo "Registering new task definition..."
+          NEW_REVISION=$(aws ecs register-task-definition \
+            --cli-input-json "$NEW_TASK_DEF" \
+            --region $AWS_REGION \
+            --query 'taskDefinition.revision' \
+            --output text)
+          
+          echo "New task definition revision: $TASK_FAMILY:$NEW_REVISION"
+          
+          # Update service with new task definition
+          echo "Updating ECS service..."
           aws ecs update-service \
-            --cluster ${{ steps.env_select.outputs.env }}-uptimemonitor-cluster \
-            --service ${{ steps.env_select.outputs.env }}-uptimemonitor-service \
+            --cluster $CLUSTER \
+            --service $SERVICE \
+            --task-definition "$TASK_FAMILY:$NEW_REVISION" \
             --force-new-deployment \
-            --region ${{ secrets.AWS_REGION }}
+            --region $AWS_REGION \
+            --query 'service.taskDefinition' \
+            --output text
           
           echo "Waiting for service to stabilize..."
           aws ecs wait services-stable \
-            --cluster ${{ steps.env_select.outputs.env }}-uptimemonitor-cluster \
-            --service ${{ steps.env_select.outputs.env }}-uptimemonitor-service \
-            --region ${{ secrets.AWS_REGION }}
+            --cluster $CLUSTER \
+            --service $SERVICE \
+            --region $AWS_REGION
           
-          echo "✅ Infrastructure changes applied successfully!"
+          echo "🎉 Infrastructure deployment complete!"
+          echo "Note: This deployed the '${ENVIRONMENT}-latest' image tag."
+          echo "For specific SHA deployments, use the Application CI/CD workflow."
