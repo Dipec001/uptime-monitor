@@ -55,12 +55,14 @@ jobs:
             echo "env=prod" >> $GITHUB_OUTPUT
             echo "tf_dir=tf-infra/prod" >> $GITHUB_OUTPUT
             echo "tfvars_file=prod.tfvars" >> $GITHUB_OUTPUT
+            echo "ecr_repo_url=${{ secrets.PROD_ECR_REPO_URL }}" >> $GITHUB_OUTPUT
             echo "is_prod=true" >> $GITHUB_OUTPUT
           else
             echo "env=staging" >> $GITHUB_OUTPUT
             echo "tf_dir=tf-infra/staging" >> $GITHUB_OUTPUT
             echo "tfvars_file=dev.tfvars" >> $GITHUB_OUTPUT
             echo "is_prod=false" >> $GITHUB_OUTPUT
+            echo "ecr_repo_url=${{ secrets.STAGING_ECR_REPO_URL }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Initialize Terraform
@@ -106,6 +108,10 @@ jobs:
           ECR_REPO_URL: ${{ steps.env_select.outputs.ecr_repo_url }}
         run: |
           # Try to get the latest image with environment tag
+          if [ -z "$ECR_REPO_URL" ]; then
+            echo "Error: ECR_REPO_URL is empty!"
+            exit 1
+          fi
           LATEST_IMAGE="${ECR_REPO_URL}:${ENVIRONMENT}-latest"
           
           # Verify image exists
