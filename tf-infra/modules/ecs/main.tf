@@ -111,7 +111,7 @@ resource "aws_ecs_task_definition" "this" {
   container_definitions = jsonencode([
     {
       name  = "web"
-      image = "${var.ecr_repo_url}:${var.image_tag}"
+      image = "${var.ecr_repo_url}:${var.env}-latest"
       essential = true
       portMappings = [{ 
         containerPort = 8000, 
@@ -148,7 +148,7 @@ resource "aws_ecs_task_definition" "this" {
     },
     {
       name  = "celery"
-      image = "${var.ecr_repo_url}:${var.image_tag}"
+      image = "${var.ecr_repo_url}:${var.env}-latest"
       command = ["celery", "-A", "uptimemonitor", "worker", "-l", "info"]
       essential = true
       secrets = [
@@ -181,7 +181,7 @@ resource "aws_ecs_task_definition" "this" {
     },
     {
       name  = "beat"
-      image = "${var.ecr_repo_url}:${var.image_tag}"
+      image = "${var.ecr_repo_url}:${var.env}-latest"
       command = ["celery", "-A", "uptimemonitor", "beat", "-l", "info", "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"]
       essential = false
       environment = [

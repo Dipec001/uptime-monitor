@@ -19,11 +19,6 @@ variable "ecr_repo_url" {
   type        = string
 }
 
-variable "image_tag" {
-  description = "Docker image tag to deploy"
-  type        = string
-}
-
 variable "ec2_instance_type" {
   type    = string
   default = "t3.medium"
