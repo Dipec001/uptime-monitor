@@ -52,10 +52,12 @@ resource "aws_security_group" "efs_sg" {
 resource "aws_ecs_task_definition" "prometheus" {
   family                   = "${var.env}-prometheus"
   network_mode             = "awsvpc"
-  requires_compatibilities = ["EC2"]
+  requires_compatibilities = ["FARGATE"]
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  # For task permissions:
+  task_role_arn            = aws_iam_role.ecs_task_execution.arn
 
   # Mount EFS for persistent storage
   volume {
@@ -75,7 +77,6 @@ resource "aws_ecs_task_definition" "prometheus" {
       
       portMappings = [{
         containerPort = 9090
-        hostPort      = 9090
       }]
       
       mountPoints = [{
@@ -117,10 +118,12 @@ locals {
 resource "aws_ecs_task_definition" "grafana" {
   family                   = "${var.env}-grafana"
   network_mode             = "awsvpc"
-  requires_compatibilities = ["EC2"]
+  requires_compatibilities = ["FARGATE"]
   cpu                      = "128"
   memory                   = "256"
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  # For task permissions:
+  task_role_arn            = aws_iam_role.ecs_task_execution.arn
 
   volume {
     name = "grafana-data"
@@ -139,7 +142,6 @@ resource "aws_ecs_task_definition" "grafana" {
       
       portMappings = [{
         containerPort = 3000
-        hostPort      = 3000
       }]
       
       mountPoints = [{
@@ -173,16 +175,24 @@ resource "aws_ecs_service" "prometheus" {
   cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.prometheus.arn
   desired_count   = 1
-  launch_type     = "EC2"
+  launch_type     = "FARGATE"
+  platform_version = "LATEST"
 
   network_configuration {
     subnets          = var.private_subnets
     security_groups  = [aws_security_group.observability_sg.id]
+    assign_public_ip = false  # false for private subnets
   }
 
   # Service discovery for internal access
   service_registries {
     registry_arn = aws_service_discovery_service.prometheus.arn
+  }
+
+  force_new_deployment = true
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
@@ -191,17 +201,25 @@ resource "aws_ecs_service" "grafana" {
   cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.grafana.arn
   desired_count   = 1
-  launch_type     = "EC2"
+  launch_type     = "FARGATE"
+  platform_version = "LATEST"
 
   network_configuration {
     subnets          = var.private_subnets
     security_groups  = [aws_security_group.observability_sg.id]
+    assign_public_ip = false  # false for private subnets
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.grafana_tg.arn
     container_name   = "grafana"
     container_port   = 3000
+  }
+
+  force_new_deployment = true
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
