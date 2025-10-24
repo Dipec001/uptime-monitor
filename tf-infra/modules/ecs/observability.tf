@@ -192,7 +192,7 @@ resource "aws_ecs_service" "prometheus" {
   force_new_deployment = true
 
   lifecycle {
-    create_before_destroy = true
+    create_before_destroy = false
   }
 }
 
@@ -304,7 +304,7 @@ resource "aws_lb_target_group" "grafana_tg" {
   }
 
   lifecycle {
-    create_before_destroy = false
+    create_before_destroy = true
   }
 }
 
