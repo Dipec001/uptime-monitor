@@ -47,3 +47,19 @@ variable "cloudflare_zone_id" {
   type        = string
   sensitive   = true
 }
+
+variable "alert_email" {
+  type    = string
+  default = "dpecchukwu@gmail.com"
+}
+
+variable "domain" {
+  type    = string
+  default = "alivechecks.com"
+}
+
+variable "grafana_admin_password" {
+  description = "Grafana Admin password"
+  type        = string
+  sensitive   = true
+}

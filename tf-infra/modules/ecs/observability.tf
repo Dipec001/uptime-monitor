@@ -18,6 +18,9 @@ resource "aws_efs_mount_target" "observability" {
   security_groups = [aws_security_group.efs_sg.id]
 }
 
+# =====================================
+# EFS security group
+# =====================================
 resource "aws_security_group" "efs_sg" {
   name        = "${var.env}-efs-sg"
   description = "Security group for EFS"
@@ -27,7 +30,7 @@ resource "aws_security_group" "efs_sg" {
     from_port       = 2049
     to_port         = 2049
     protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_sg.id]
+    security_groups = [aws_security_group.observability_sg.id]  # only Prometheus & Grafana
   }
 
   egress {
@@ -103,6 +106,11 @@ resource "aws_ecs_task_definition" "prometheus" {
   ])
 }
 
+# -- dynamic grafana url -----
+locals {
+  grafana_root_url = var.domain != "" ? "https://grafana.${var.domain}" : "http://${aws_lb.this.dns_name}:3000"
+}
+
 # =======================
 # Grafana Task Definition
 # =======================
@@ -110,8 +118,8 @@ resource "aws_ecs_task_definition" "grafana" {
   family                   = "${var.env}-grafana"
   network_mode             = "awsvpc"
   requires_compatibilities = ["EC2"]
-  cpu                      = "256"
-  memory                   = "512"
+  cpu                      = "128"
+  memory                   = "256"
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
 
   volume {
@@ -138,10 +146,10 @@ resource "aws_ecs_task_definition" "grafana" {
         sourceVolume  = "grafana-data"
         containerPath = "/var/lib/grafana"
       }]
-      
+            
       environment = [
         { name = "GF_SECURITY_ADMIN_PASSWORD", value = var.grafana_admin_password },
-        { name = "GF_SERVER_ROOT_URL", value = "https://grafana.${var.domain}" },
+        { name = "GF_SERVER_ROOT_URL", value = local.grafana_root_url },
         { name = "GF_INSTALL_PLUGINS", value = "grafana-clock-panel,grafana-simple-json-datasource" }
       ]
       
@@ -158,7 +166,7 @@ resource "aws_ecs_task_definition" "grafana" {
 }
 
 # =======================
-# ECS Services
+# ECS Services (Prom and Grafana)
 # =======================
 resource "aws_ecs_service" "prometheus" {
   name            = "${var.env}-prometheus-service"

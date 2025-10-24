@@ -9,3 +9,68 @@ groups:
         annotations:
           summary: "Django 5xx error detected"
           description: "A 500 error occurred on {{ $labels.view }} via {{ $labels.method }}"
+
+# alert.rules.yml
+groups:
+  - name: uptime_monitor_alerts
+    interval: 30s
+    rules:
+      # Alert if monitoring checks are failing
+      - alert: HighCheckFailureRate
+        expr: rate(website_checks_total{status="error"}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High website check failure rate"
+          description: "More than 10% of checks are failing"
+
+      # Alert if alerts aren't being sent
+      - alert: AlertDeliveryFailure
+        expr: rate(alerts_failed_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alert delivery failing"
+          description: "Alerts are not being delivered to users"
+
+      # Alert if Celery queue is backing up
+      - alert: CeleryQueueBacklog
+        expr: celery_queue_length > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Celery queue backing up"
+          description: "Queue has {{ $value }} tasks pending"
+
+      # Alert if check duration is too high
+      - alert: SlowWebsiteChecks
+        expr: histogram_quantile(0.95, rate(website_check_duration_seconds_bucket[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Website checks are slow"
+          description: "95th percentile check time is {{ $value }}s"
+
+      # Alert if no checks are happening (system down!)
+      - alert: NoChecksPerformed
+        expr: rate(website_checks_total[5m]) == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No website checks being performed"
+          description: "The monitoring system appears to be down"
+
+      # Database connection issues
+      - alert: DatabaseConnectionErrors
+        expr: rate(django_db_errors_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection errors detected"
+          description: "Database errors occurring at {{ $value }}/sec"

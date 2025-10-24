@@ -346,38 +346,43 @@ CELERY_TASK_DEFAULT_QUEUE = 'uptimemonitor'
 CELERY_WORKER_SEND_TASK_EVENTS = True
 CELERY_TASK_SEND_SENT_EVENT = True
 
-# Email Config
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-# EMAIL_HOST = os.getenv('EMAIL_HOST', 'email-smtp.us-east-1.amazonaws.com')
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_USE_SSL = False
-# EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
-# EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-# DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
+ENV = os.getenv('ENVIRONMENT', 'dev')
 
-EMAIL_BACKEND = 'django_ses.SESBackend'
-AWS_SES_REGION_NAME = 'us-east-1'
-AWS_SES_REGION_ENDPOINT = 'email.us-east-1.amazonaws.com'
-USE_SES_V2 = True  # Use newer API
+if ENV == "prod":
 
-# Email addresses
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'alerts@alivechecks.com')
-NOREPLY_EMAIL = os.getenv('NOREPLY_EMAIL', 'noreply@alivechecks.com')
-SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', 'support@alivechecks.com')
+    EMAIL_BACKEND = 'django_ses.SESBackend'
+    AWS_SES_REGION_NAME = 'us-east-1'
+    AWS_SES_REGION_ENDPOINT = 'email.us-east-1.amazonaws.com'
+    USE_SES_V2 = True  # Use newer API
+
+    # Email addresses
+    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'alerts@alivechecks.com')
+    NOREPLY_EMAIL = os.getenv('NOREPLY_EMAIL', 'noreply@alivechecks.com')
+    SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', 'support@alivechecks.com')
 
 
-AWS_SES_CONFIGURATION_SET = 'prod-alivechecks'
+    AWS_SES_CONFIGURATION_SET = 'prod-alivechecks'
 
-# Add retry configuration
-AWS_SES_BOTO3_CONFIG = botocore.config.Config(
-    retries={
-        'max_attempts': 3,
-        'mode': 'adaptive'
-    },
-    connect_timeout=5,
-    read_timeout=5,
-)
+    # Add retry configuration
+    AWS_SES_BOTO3_CONFIG = botocore.config.Config(
+        retries={
+            'max_attempts': 3,
+            'mode': 'adaptive'
+        },
+        connect_timeout=5,
+        read_timeout=5,
+    )
+else:
+    # EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    # EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+    # EMAIL_PORT = 587
+    # EMAIL_USE_TLS = False
+    # EMAIL_USE_SSL = True
+    # EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+    # EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'alerts@alivechecks.com')
+    NOREPLY_EMAIL = os.getenv('NOREPLY_EMAIL', 'noreply@alivechecks.com')
 
 # Redis Config for rate limiting
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
