@@ -1,4 +1,5 @@
-from prometheus_client import Counter, pushadd_to_gateway, CollectorRegistry
+from prometheus_client import (Counter, pushadd_to_gateway, CollectorRegistry,
+                               Histogram, Gauge)
 
 registry = CollectorRegistry()
 
@@ -32,10 +33,6 @@ def push_website_metric(website_name: str, success: bool):
 
     pushadd_to_gateway("http://localhost:9091", job="website_check", registry=registry)
 
-
-# monitor/metrics.py
-from prometheus_client import Counter, Histogram, Gauge, Summary
-import time
 
 # =======================
 # MONITORING METRICS

@@ -359,8 +359,6 @@ if ENV == "prod":
     DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'alerts@alivechecks.com')
     NOREPLY_EMAIL = os.getenv('NOREPLY_EMAIL', 'noreply@alivechecks.com')
     SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', 'support@alivechecks.com')
-
-
     AWS_SES_CONFIGURATION_SET = 'prod-alivechecks'
 
     # Add retry configuration
