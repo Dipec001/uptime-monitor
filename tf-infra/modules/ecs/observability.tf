@@ -151,9 +151,8 @@ resource "aws_ecs_task_definition" "prometheus" {
 
 # -- dynamic grafana url -----
 locals {
-  grafana_root_url = var.domain != "" ? "https://grafana.${var.domain}" : "http://${aws_lb.this.dns_name}/grafana"
-  # only serve from subpath when using ALB path-based routing
-  grafana_serve_from_subpath = var.domain != "" ? "false" : "true"
+  grafana_root_url = var.env == "prod" ? "https://grafana.${var.domain}" : "http://${aws_lb.this.dns_name}/grafana"
+  grafana_serve_from_subpath = var.env == "prod" ? "false" : "true"
 }
 
 # =======================
@@ -361,7 +360,8 @@ resource "aws_lb_target_group" "grafana_tg" {
 # ALB Listener Rule for Grafana
 # =======================
 resource "aws_lb_listener_rule" "grafana" {
-  listener_arn = var.domain != "" ? aws_lb_listener.https_listener.arn : aws_lb_listener.http_listener.arn
+  # Match your existing ALB listener logic
+  listener_arn = var.env == "prod" ? aws_lb_listener.https_listener[0].arn : aws_lb_listener.http_listener.arn
   priority     = 100
 
   action {
@@ -371,7 +371,7 @@ resource "aws_lb_listener_rule" "grafana" {
 
   # Dynamic condition: subdomain for prod, path for staging
   dynamic "condition" {
-    for_each = var.domain != "" ? [1] : []
+    for_each = var.env == "prod" ? [1] : []
     content {
       host_header {
         values = ["grafana.${var.domain}"]
@@ -380,7 +380,7 @@ resource "aws_lb_listener_rule" "grafana" {
   }
 
   dynamic "condition" {
-    for_each = var.domain == "" ? [1] : []
+    for_each = var.env == "prod" ? [] : [1]
     content {
       path_pattern {
         values = ["/grafana*"]
