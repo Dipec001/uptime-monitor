@@ -65,7 +65,7 @@ resource "aws_ecs_task_definition" "prometheus" {
     
     efs_volume_configuration {
       file_system_id = aws_efs_file_system.observability.id
-      root_directory = "/prometheus"
+      # No root dir now, maybe later
     }
   }
 
@@ -130,7 +130,7 @@ resource "aws_ecs_task_definition" "grafana" {
     
     efs_volume_configuration {
       file_system_id = aws_efs_file_system.observability.id
-      root_directory = "/grafana"
+      # No root dir now, maybe later
     }
   }
 
