@@ -46,6 +46,44 @@ resource "aws_security_group" "efs_sg" {
   }
 }
 
+# ==================================
+# Create Access Points
+# ===================================
+resource "aws_efs_access_point" "prometheus" {
+  file_system_id = aws_efs_file_system.observability.id
+
+  root_directory {
+    path = "/prometheus"
+    creation_info {
+      owner_gid   = 65534  # nobody group
+      owner_uid   = 65534  # nobody user
+      permissions = "755"
+    }
+  }
+
+  tags = {
+    Name = "${var.env}-prometheus-ap"
+  }
+}
+
+# Create Access Point for Grafana
+resource "aws_efs_access_point" "grafana" {
+  file_system_id = aws_efs_file_system.observability.id
+
+  root_directory {
+    path = "/grafana"
+    creation_info {
+      owner_gid   = 472    # grafana group
+      owner_uid   = 472    # grafana user
+      permissions = "755"
+    }
+  }
+
+  tags = {
+    Name = "${var.env}-grafana-ap"
+  }
+}
+
 # =======================
 # Prometheus Task Definition
 # =======================
@@ -64,8 +102,12 @@ resource "aws_ecs_task_definition" "prometheus" {
     name = "prometheus-data"
     
     efs_volume_configuration {
-      file_system_id = aws_efs_file_system.observability.id
-      # No root dir now, maybe later
+      file_system_id          = aws_efs_file_system.observability.id
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.prometheus.id
+        iam             = "DISABLED"
+      }
     }
   }
 
@@ -129,8 +171,12 @@ resource "aws_ecs_task_definition" "grafana" {
     name = "grafana-data"
     
     efs_volume_configuration {
-      file_system_id = aws_efs_file_system.observability.id
-      # No root dir now, maybe later
+      file_system_id          = aws_efs_file_system.observability.id
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.grafana.id
+        iam             = "DISABLED"
+      }
     }
   }
 
