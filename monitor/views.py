@@ -39,39 +39,39 @@ from .oauth_utils import (
 logger = logging.getLogger('monitor')
 
 User = get_user_model()
-    
+
 
 class RegisterView(generics.GenericAPIView):
-    """
-    API endpoint for user registration with logging.
-    """
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
         logger.info("🔵 Received registration request: %s", request.data)
 
+        serializer = self.get_serializer(data=request.data)
         try:
-            serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-
-            user = serializer.save()
-            refresh = RefreshToken.for_user(user)
-
-            logger.info("[✓] User registered successfully: %s", user.email)
-
-            return Response({
-                'message': "User registered successfully",
-                'user': UserSerializer(user).data,
-                'token': {
-                    'refresh': str(refresh),
-                    'access': str(refresh.access_token),
-                }
-            }, status=status.HTTP_201_CREATED)
-
+        except ValidationError as ve:
+            logger.warning("[!] Registration validation failed: %s", ve.detail)
+            # DRF will automatically return 400 if you let it propagate
+            raise ve
         except Exception as e:
             logger.exception("🔥 Unexpected error during registration: %s", str(e))
             raise APIException("Something went wrong. Please try again later.")
+
+        user = serializer.save()
+        refresh = RefreshToken.for_user(user)
+
+        logger.info("[✓] User registered successfully: %s", user.email)
+
+        return Response({
+            'message': "User registered successfully",
+            'user': UserSerializer(user).data,
+            'token': {
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }
+        }, status=status.HTTP_201_CREATED)
 
 
 class LoginView(generics.GenericAPIView):
