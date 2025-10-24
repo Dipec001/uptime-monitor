@@ -287,6 +287,13 @@ resource "aws_security_group" "observability_sg" {
     security_groups = [aws_security_group.ecs_sg.id]
   }
 
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    self        = true  # Allows Grafana reach Prometheus (also in observability_sg)
+  }
+
   # Grafana port (from ALB)
   ingress {
     from_port       = 3000
