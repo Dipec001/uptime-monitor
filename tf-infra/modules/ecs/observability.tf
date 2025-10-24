@@ -119,8 +119,8 @@ resource "aws_ecs_task_definition" "grafana" {
   family                   = "${var.env}-grafana"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "128"
-  memory                   = "256"
+  cpu                      = "256"
+  memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
   # For task permissions:
   task_role_arn            = aws_iam_role.ecs_task_execution.arn
