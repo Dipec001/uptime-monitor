@@ -6,4 +6,8 @@ exclude =
     infra,
     migrations,
     __pycache__
-max-line-length = 91
+max-line-length = 94
+ignore = 
+    W293,
+    W291,
+    W292

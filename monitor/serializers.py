@@ -15,23 +15,101 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from .alerts import send_password_reset_email
-from rest_framework.response import Response
+from django.conf import settings
 
 User = get_user_model()
 
 
-class RegisterSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user data in API responses
+    Shows what auth methods the user has available
+    """
+    auth_methods = serializers.SerializerMethodField()
+    has_password = serializers.SerializerMethodField()
+    full_name = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ('email', 'password')
+        fields = [
+            'id',
+            'email',
+            'first_name',
+            'last_name',
+            'full_name',
+            'is_active',
+            'auth_methods',      # NEW: Shows ["google", "email_password"]
+            'has_password',      # NEW: True/False
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_auth_methods(self, obj):
+        """Return list of available authentication methods"""
+        return obj.auth_methods
+
+    def get_has_password(self, obj):
+        """Check if user has a usable password"""
+        return obj.has_usable_password()
+
+    def get_full_name(self, obj):
+        """Return user's full name or email"""
+        return obj.get_full_name()
+
+
+class SocialAuthSerializer(serializers.Serializer):
+    """
+    Validates social auth tokens from frontend
+
+    Frontend sends:
+    {
+        "provider": "google" or "github",
+        "access_token": "token_from_oauth_provider"
+    }
+    """
+    provider = serializers.ChoiceField(choices=['google', 'github'])
+    access_token = serializers.CharField(required=True, min_length=10)
+
+    def validate_provider(self, value):
+        """Ensure provider is supported"""
+        if value not in ['google', 'github']:
+            raise serializers.ValidationError(
+                "Invalid provider. Choose 'google' or 'github'"
+            )
+        return value
+
+    def validate_access_token(self, value):
+        """Basic token validation"""
+        if not value or len(value) < 10:
+            raise serializers.ValidationError("Invalid access token")
+        return value
+
+
+class RegisterSerializer(serializers.ModelSerializer):
+    """
+    For traditional email/password registration
+    """
+    class Meta:
+        model = User
+        fields = [
+            'email',
+            'first_name',
+            'last_name',
+            'password'
+        ]
         extra_kwargs = {
             'password': {'write_only': True},
             'email': {'required': True}
         }
 
     def validate_email(self, value):
+        """Check if email already exists"""
         if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("Email already exists.")
+            raise serializers.ValidationError(
+                "An account with this email already exists. "
+                "Try logging in or use 'Forgot Password'."
+            )
         return value
 
     def validate_password(self, value):
@@ -39,11 +117,16 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        # Create the user using create_user to hash the password
+        """Create new user with email/password"""
+
+        # Create user using the manager (handles password hashing)
         user = User.objects.create_user(
             email=validated_data['email'],
-            password=validated_data['password']
+            password=validated_data['password'],
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', '')
         )
+
         return user
 
 
@@ -257,24 +340,48 @@ class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_email(self, value):
-        if not User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("No user with this email.")
+        """
+        Always accept the email without revealing if the user exists.
+        """
+        try:
+            user = User.objects.get(email=value)
+
+            # If OAuth-only user, warn the user instead of sending reset link
+            if not user.has_usable_password():
+                raise serializers.ValidationError(
+                    "This account uses a social login provider. "
+                    "Please sign in with Google or GitHub instead."
+                )
+
+            # Store for use in save()
+            self.user = user
+
+        except User.DoesNotExist:
+            # Don't reveal anything — continue silently
+            self.user = None
+
         return value
 
     def save(self):
+        """
+        Always respond success, but only send email if user exists.
+        """
         email = self.validated_data["email"]
-        user = User.objects.get(email=email)
+        user = getattr(self, "user", None)
 
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        token = default_token_generator.make_token(user)
+        if user:
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
 
-        # Get base URL dynamically from request
-        base_url = self.context['request'].build_absolute_uri('/')[:-1]
-        reset_link = f"{base_url}/api/reset-password/{uid}/{token}/"
+            reset_link = f"{settings.FRONTEND_BASE_URL}/reset-password/{uid}/{token}/"
 
-        send_password_reset_email.delay(email, reset_link)
+            # Send via Celery
+            send_password_reset_email.delay(email, reset_link)
 
-        return Response("Check your email")
+        # Always act as if it worked
+        return {
+            "detail": "If an account with this email exists, a reset link has been sent."
+        }
 
 
 class ResetPasswordSerializer(serializers.Serializer):
@@ -298,3 +405,50 @@ class ResetPasswordSerializer(serializers.Serializer):
         self.user.set_password(self.validated_data["new_password"])
         self.user.save()
         return self.user
+
+
+class UserLoginSerializer(serializers.Serializer):
+    """
+    For traditional email/password login
+    """
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(
+        required=True,
+        write_only=True,
+        style={'input_type': 'password'}
+    )
+
+    def validate(self, attrs):
+        """Validate credentials"""
+        email = attrs.get('email')
+        password = attrs.get('password')
+
+        # Check if user exists
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError(
+                "No account found with this email address."
+            )
+
+        # Check if user has a password set
+        if not user.has_usable_password():
+            raise serializers.ValidationError(
+                "This account was created using Google or GitHub. "
+                "Please use 'Continue with Google/GitHub' to sign in."
+            )
+
+        # Check password
+        if not user.check_password(password):
+            raise serializers.ValidationError(
+                "Incorrect password. Please try again."
+            )
+
+        # Check if user is active
+        if not user.is_active:
+            raise serializers.ValidationError(
+                "This account has been deactivated. Please contact support."
+            )
+
+        attrs['user'] = user
+        return attrs

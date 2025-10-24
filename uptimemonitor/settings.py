@@ -90,14 +90,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
-    # Third party
-    # 'allauth',
-    # 'allauth.account',
-    # 'allauth.socialaccount',
-    # 'allauth.socialaccount.providers.google',
-    # 'allauth.socialaccount.providers.github',
-
     'monitor',
     'rest_framework',
     'rest_framework_simplejwt',
@@ -107,61 +99,10 @@ INSTALLED_APPS = [
 
 ]
 
-# # Required for allauth
-# SITE_ID = 1
-
-# # Authentication backends
-# AUTHENTICATION_BACKENDS = [
-#     'django.contrib.auth.backends.ModelBackend',
-#     'allauth.account.auth_backends.AuthenticationBackend',
-# ]
-
-# # Allauth settings
-# ACCOUNT_AUTHENTICATION_METHOD = 'email'  # Use email instead of username
-# ACCOUNT_EMAIL_REQUIRED = True
-# ACCOUNT_USERNAME_REQUIRED = False
-# ACCOUNT_EMAIL_VERIFICATION = 'optional'  # 'mandatory' for stricter verification
-
-# # Social auth specific settings
-# SOCIALACCOUNT_AUTO_SIGNUP = True  # Automatically create account on first login
-# SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'  # Email already verified by provider
-
-# # Query user on signup for additional info (optional)
-# SOCIALACCOUNT_QUERY_EMAIL = True
-
-# # Redirect after social login
-# LOGIN_REDIRECT_URL = '/dashboard/'
-# ACCOUNT_LOGOUT_REDIRECT_URL = '/'
-
-# # Social account providers configuration
-# SOCIALACCOUNT_PROVIDERS = {
-#     'google': {
-#         'SCOPE': [
-#             'profile',
-#             'email',
-#         ],
-#         'AUTH_PARAMS': {
-#             'access_type': 'online',
-#         },
-#         'APP': {
-#             'client_id': os.getenv('GOOGLE_OAUTH_CLIENT_ID'),
-#             'secret': os.getenv('GOOGLE_OAUTH_CLIENT_SECRET'),
-#         }
-#     },
-#     'github': {
-#         'SCOPE': [
-#             'user',
-#             'user:email',
-#         ],
-#         'APP': {
-#             'client_id': os.getenv('GITHUB_OAUTH_CLIENT_ID'),
-#             'secret': os.getenv('GITHUB_OAUTH_CLIENT_SECRET'),
-#         }
-#     }
-# }
-
-# # Optional: Customize what data to fetch from providers
-# SOCIALACCOUNT_ADAPTER = 'monitor.adapters.MySocialAccountAdapter'
+# Social Auth Client IDs (for token verification)
+GOOGLE_OAUTH_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID')
+GITHUB_OAUTH_CLIENT_ID = os.getenv('GITHUB_OAUTH_CLIENT_ID')
+GITHUB_OAUTH_CLIENT_SECRET = os.getenv('GITHUB_OAUTH_CLIENT_SECRET')
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -303,6 +244,9 @@ SWAGGER_SETTINGS = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=7),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': False,
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
 LOGGING = {
@@ -384,6 +328,9 @@ else:
 
 # Redis Config for rate limiting
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+
+# Frontend URL
+FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'http://localhost:3000')
 
 SWAGGER_USE_COMPAT_RENDERERS = False
 
