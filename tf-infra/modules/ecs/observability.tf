@@ -152,6 +152,8 @@ resource "aws_ecs_task_definition" "prometheus" {
 # -- dynamic grafana url -----
 locals {
   grafana_root_url = var.domain != "" ? "https://grafana.${var.domain}" : "http://${aws_lb.this.dns_name}/grafana"
+  # only serve from subpath when using ALB path-based routing
+  grafana_serve_from_subpath = var.domain != "" ? "false" : "true"
 }
 
 # =======================
@@ -198,6 +200,7 @@ resource "aws_ecs_task_definition" "grafana" {
       environment = [
         { name = "GF_SECURITY_ADMIN_PASSWORD", value = var.grafana_admin_password },
         { name = "GF_SERVER_ROOT_URL", value = local.grafana_root_url },
+        { name = "GF_SERVER_SERVE_FROM_SUB_PATH", value = local.grafana_serve_from_subpath },
         { name = "GF_INSTALL_PLUGINS", value = "grafana-clock-panel,grafana-simple-json-datasource" }
       ]
       
@@ -358,7 +361,7 @@ resource "aws_lb_target_group" "grafana_tg" {
 # ALB Listener Rule for Grafana
 # =======================
 resource "aws_lb_listener_rule" "grafana" {
-  listener_arn = aws_lb_listener.http_listener.arn
+  listener_arn = var.domain != "" ? aws_lb_listener.https_listener.arn : aws_lb_listener.http_listener.arn
   priority     = 100
 
   action {
@@ -366,9 +369,22 @@ resource "aws_lb_listener_rule" "grafana" {
     target_group_arn = aws_lb_target_group.grafana_tg.arn
   }
 
-  condition {
-    path_pattern {
-      values = ["/grafana*"]
+  # Dynamic condition: subdomain for prod, path for staging
+  dynamic "condition" {
+    for_each = var.domain != "" ? [1] : []
+    content {
+      host_header {
+        values = ["grafana.${var.domain}"]
+      }
+    }
+  }
+
+  dynamic "condition" {
+    for_each = var.domain == "" ? [1] : []
+    content {
+      path_pattern {
+        values = ["/grafana*"]
+      }
     }
   }
 }
