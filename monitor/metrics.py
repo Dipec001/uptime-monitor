@@ -1,5 +1,10 @@
-from prometheus_client import (Counter, pushadd_to_gateway, CollectorRegistry,
-                               Histogram, Gauge)
+from prometheus_client import (
+    Counter,
+    # pushadd_to_gateway,
+    CollectorRegistry,
+    # Histogram,
+    # Gauge
+)
 
 registry = CollectorRegistry()
 
