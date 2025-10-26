@@ -10,8 +10,6 @@ groups:
           summary: "Django 5xx error detected"
           description: "A 500 error occurred on {{ $labels.view }} via {{ $labels.method }}"
 
-# alert.rules.yml
-groups:
   - name: uptime_monitor_alerts
     interval: 30s
     rules:
@@ -37,7 +35,7 @@ groups:
 
       # Alert if Celery queue is backing up
       - alert: CeleryQueueBacklog
-        expr: celery_queue_length > 100
+        expr: celery_queue_length > 50
         for: 5m
         labels:
           severity: warning

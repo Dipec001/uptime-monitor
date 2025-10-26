@@ -84,6 +84,43 @@ resource "aws_efs_access_point" "grafana" {
   }
 }
 
+# =====================================================
+# TASK ROLE - For Prometheus (application permissions)
+# =====================================================
+resource "aws_iam_role" "prometheus_task_role" {
+  name = "${var.env}-prometheus-task-role"
+  
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+    }]
+  })
+}
+
+# Allow Prometheus container to download config from S3
+resource "aws_iam_role_policy" "prometheus_s3_access" {
+  name = "${var.env}-prometheus-s3"
+  role = aws_iam_role.prometheus_task_role.id
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "s3:GetObject",
+        "s3:ListBucket"
+      ]
+      Resource = [
+        aws_s3_bucket.observability_configs.arn,
+        "${aws_s3_bucket.observability_configs.arn}/*"
+      ]
+    }]
+  })
+}
+
 # =======================
 # Prometheus Task Definition
 # =======================
@@ -95,7 +132,7 @@ resource "aws_ecs_task_definition" "prometheus" {
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
   # For task permissions:
-  task_role_arn            = aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.prometheus_task_role.arn
 
   # Mount EFS for persistent storage
   volume {
@@ -114,7 +151,8 @@ resource "aws_ecs_task_definition" "prometheus" {
   container_definitions = jsonencode([
     {
       name      = "prometheus"
-      image     = "prom/prometheus:latest"
+      # image     = "prom/prometheus:latest"
+      image     = "public.ecr.aws/v9n7w5d9/prometheus:latest"  # My custom image
       essential = true
       
       portMappings = [{
@@ -126,15 +164,17 @@ resource "aws_ecs_task_definition" "prometheus" {
         containerPath = "/prometheus"
       }]
       
-      command = [
-        "--config.file=/etc/prometheus/prometheus.yml",
-        "--storage.tsdb.path=/prometheus",
-        "--storage.tsdb.retention.time=30d"
-      ]
-      
       # You'll need to provide config via S3 or build custom image
       environment = [
-        { name = "ENVIRONMENT", value = var.env }
+        { name = "ENVIRONMENT", value = var.env },
+        {
+          name  = "S3_BUCKET"
+          value = aws_s3_bucket.observability_configs.id
+        },
+        {
+          name  = "AWS_REGION"
+          value = var.aws_region
+        }
       ]
       
       logConfiguration = {
@@ -147,6 +187,19 @@ resource "aws_ecs_task_definition" "prometheus" {
       }
     }
   ])
+}
+
+resource "aws_iam_role" "grafana_task_role" {
+  name = "${var.env}-grafana-task-role"
+  
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+    }]
+  })
 }
 
 # -- dynamic grafana url -----
@@ -165,8 +218,8 @@ resource "aws_ecs_task_definition" "grafana" {
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
-  # For task permissions:
-  task_role_arn            = aws_iam_role.ecs_task_execution.arn
+  # For task permissions: Add policy to query cloudwatch later
+  task_role_arn            = aws_iam_role.grafana_task_role.arn
 
   volume {
     name = "grafana-data"
@@ -408,3 +461,49 @@ resource "aws_cloudwatch_log_group" "grafana" {
   name              = "/ecs/${var.env}-grafana"
   retention_in_days = 7
 }
+
+# ====================
+# Render prometheus.yml
+# ====================
+data "template_file" "prometheus_config" {
+  template = file("${path.module}/prometheus.yml.tpl")
+  
+  vars = {
+    environment = var.env
+    region      = var.aws_region
+  }
+}
+
+# Create S3 bucket for configs
+resource "aws_s3_bucket" "observability_configs" {
+  bucket = "${var.env}-observability-configs-${data.aws_caller_identity.current.account_id}"
+  
+  tags = {
+    Name = "${var.env}-observability-configs"
+    Env  = var.env
+  }
+}
+
+resource "aws_s3_bucket_versioning" "observability_configs" {
+  bucket = aws_s3_bucket.observability_configs.id
+  
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# Upload rendered config to S3
+resource "aws_s3_object" "prometheus_config" {
+  bucket  = aws_s3_bucket.observability_configs.id
+  key     = "prometheus/prometheus.yml"
+  content = data.template_file.prometheus_config.rendered
+  etag    = md5(data.template_file.prometheus_config.rendered)
+  
+  tags = {
+    Name = "prometheus-config"
+    Env  = var.env
+  }
+}
+
+# Get AWS account ID
+data "aws_caller_identity" "current" {}

@@ -24,9 +24,11 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy" {
   role       = aws_iam_role.ecs_task_execution.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
-
-resource "aws_iam_role" "ecs_task_role" {
-  name = "${var.env}-ecs-task-role"
+# ========================================
+# Access AWS services from your application
+# ========================================
+resource "aws_iam_role" "django_task_role" {
+  name = "${var.env}-django-task-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -38,8 +40,8 @@ resource "aws_iam_role" "ecs_task_role" {
 }
 
 resource "aws_iam_role_policy" "ecs_task_ses" {
-  name = "${var.env}-ecs-task-ses-policy"
-  role = aws_iam_role.ecs_task_role.id
+  name = "${var.env}-django-task-ses-policy"
+  role = aws_iam_role.django_task_role.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -76,7 +78,7 @@ resource "aws_security_group" "ecs_tasks_sg" {
     security_groups = [aws_security_group.alb_sg.id] # allow traffic from ALB
   }
 
-  # Allow Prometheus
+  # Allow Prometheus to scrape metrics
   ingress {
     from_port       = 8000
     to_port         = 8000
@@ -138,7 +140,7 @@ resource "aws_ecs_task_definition" "this" {
   cpu                      = "512"
   memory                   = "1024"
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
-  task_role_arn            = aws_iam_role.ecs_task_role.arn
+  task_role_arn            = aws_iam_role.django_task_role.arn
 
   container_definitions = jsonencode([
     {
@@ -275,9 +277,33 @@ resource "aws_ecs_service" "this" {
     aws_iam_role_policy_attachment.ecs_task_execution_policy
   ]
 
+  service_registries {
+    registry_arn = aws_service_discovery_service.django.arn
+  }
+
   # LIFECYCLE RULE (Prevents unnecessary replacements)
   lifecycle {
     ignore_changes = [desired_count]
+  }
+}
+
+# ===============================
+# Service discovery for Django
+# ===============================
+resource "aws_service_discovery_service" "django" {
+  name = "django"  # This becomes "django.{namespace}"
+
+  dns_config {
+    namespace_id = aws_service_discovery_private_dns_namespace.internal.id
+    
+    dns_records {
+      ttl  = 10
+      type = "A"
+    }
+  }
+
+  health_check_custom_config {
+    failure_threshold = 1
   }
 }
 

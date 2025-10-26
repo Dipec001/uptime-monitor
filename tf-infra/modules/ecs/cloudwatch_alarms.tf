@@ -53,6 +53,44 @@ resource "aws_cloudwatch_metric_alarm" "ecs_cpu" {
   }
 }
 
+# ECS Memory Alarm
+resource "aws_cloudwatch_metric_alarm" "ecs_memory" {
+  alarm_name          = "${var.env}-ecs-high-memory"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "MemoryUtilization"
+  namespace           = "AWS/ECS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 80
+  alarm_description   = "ECS task memory high"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+
+  dimensions = {
+    ServiceName = aws_ecs_service.this.name
+    ClusterName = aws_ecs_cluster.this.name
+  }
+}
+
+# ALB Latency
+resource "aws_cloudwatch_metric_alarm" "alb_latency" {
+  alarm_name          = "${var.env}-alb-latency-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "TargetResponseTime"
+  namespace           = "AWS/ApplicationELB"
+  period              = 60
+  statistic           = "Average"
+  threshold           = 0.5 # 500ms threshold
+  alarm_description   = "ALB latency high"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+
+  dimensions = {
+    LoadBalancer = aws_lb.this.arn_suffix
+  }
+}
+
+
 # SNS Topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "${var.env}-infrastructure-alerts"
