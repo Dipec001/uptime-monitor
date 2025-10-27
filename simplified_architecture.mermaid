@@ -4,10 +4,9 @@ graph TB
     end
 
     subgraph AWS["☁️ AWS CLOUD"]
-        ALB[⚖️ Application Load Balancer]
         
         subgraph PublicSubnet["PUBLIC SUBNET"]
-            Monitoring["📊 Monitoring Stack<br/>(Prometheus + Grafana)<br/>ECS Fargate"]
+            ALB[⚖️ Application Load Balancer]
         end
         
         subgraph PrivateSubnet["PRIVATE SUBNET"]
@@ -16,6 +15,7 @@ graph TB
             Beat["⏱️ Celery Beat<br/>ECS on EC2"]
             RDS["🗄️ RDS PostgreSQL<br/>Multi-AZ"]
             Redis["⚡ ElastiCache Redis<br/>Celery Broker"]
+            Monitoring["📊 Monitoring Stack<br/>(Prometheus + Grafana)<br/>ECS Fargate"]
         end
         
         Services["🔧 AWS Services<br/>SES • CloudWatch • Secrets Manager • ECR"]
