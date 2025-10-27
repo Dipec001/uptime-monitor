@@ -302,11 +302,9 @@ def collect_heartbeat_metrics():
     """
     from .models import HeartBeat
     
-    now = now()
-    
     for heartbeat in HeartBeat.objects.filter(is_active=True):
         if heartbeat.last_ping:
-            seconds_since_ping = (now - heartbeat.last_ping).total_seconds()
+            seconds_since_ping = (now() - heartbeat.last_ping).total_seconds()
             update_heartbeat_time_since_last_ping(
                 str(heartbeat.id),
                 heartbeat.name,
