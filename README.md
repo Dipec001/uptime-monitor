@@ -46,7 +46,7 @@ The platform aims to be a **DevOps-focused tool** that:
 - 🔁 **Website & API Uptime Checks** – monitors HTTP, TCP/port, ping  
 - ⏱️ **Latency & Response Tracking** – collects metrics on response times  
 - 💓 **Heartbeat Monitoring** – tracks scheduled jobs and background tasks  
-- 🚨 **Alert System** – instant notifications via email, Slack, or webhook  
+- 🚨 **Alert System** – instant notifications via email, Slack, or whatsapp  
 - 📊 **User Dashboards** – uptime %, latency trends, incident history  
 - 🌐 **Public Status Pages** – optional, branded status pages per project  
 - 📄 **Incident Timelines** – root cause and resolution tracking  

@@ -6,8 +6,20 @@ from datetime import timedelta
 from django.utils.timezone import now
 from .alerts import handle_alert
 from .redis_utils import allow_ping_sliding
-# from .metrics import push_website_metric
 import logging
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+from django.db.models import Count
+from monitor.helpers import (
+    update_active_monitors_count,
+    update_active_users_count,
+    update_monitors_per_user,
+    update_uptime_percentage,
+    update_heartbeat_time_since_last_ping,
+    update_celery_queue_metrics,
+    get_redis_queue_length,
+)
+from monitor import metrics
 
 logger = logging.getLogger('monitor')
 
@@ -17,7 +29,6 @@ def check_single_website(self, website_id):
     try:
         website = Website.objects.get(pk=website_id)
         website_url = website.url
-        # website_name = website.name
 
         if not website.is_active:
             logger.info(f"⏸️ Skipped inactive website {website_id}")
@@ -39,10 +50,6 @@ def check_single_website(self, website_id):
             status_code=status_code,
             response_time_ms=response_time_ms
         )
-        # try:
-        # push_website_metric(website_name or website_url, success=(status_code == 200))
-        # except Exception as e:
-        # logger.error(f"Failed to push metric for {website_url}: {e}")
 
         # 🔍 Recovery detection
         if website.is_down and status_code == 200:
@@ -50,11 +57,6 @@ def check_single_website(self, website_id):
             website.last_recovered_at = now()
             logger.info(f"[✓] {website_url} RECOVERED at {website.last_recovered_at}")
 
-            # try:
-            #     # Push success metric
-            #     push_website_metric(website_name or website_url, success=True)
-            # except Exception as e:
-            #     logger.error(f"Failed to push metric for {website_url}: {e}")
             # Send recovery alert
             handle_alert(website, "recovery")
 
@@ -66,15 +68,10 @@ def check_single_website(self, website_id):
                 website.last_downtime_at = now()
                 logger.warning(f"[!] {website_url} DOWN at {website.last_downtime_at}")
 
-            # try:
-            #     push_website_metric(website_name or website_url, success=False)
-            # except Exception as e:
-            #     logger.error(f"Failed to push failure metric for {website_url}: {e}")
-
             # Send downtime alert.
             handle_alert(website, "downtime")
 
-        # 🔁 Schedule next check
+        # Schedule next check
         # Floor the current time to the nearest minute
         current_time = now().replace(second=0, microsecond=0)
 
@@ -224,3 +221,156 @@ def check_due_heartbeats():
         check_single_heartbeat.delay(hb.id)
         count += 1
     return f"Queued {count} heartbeats for checking."
+
+
+# ===========================================
+# Celery tasks for periodic metrics collection.
+# ===========================================
+
+User = get_user_model()
+
+
+@shared_task
+def collect_business_metrics():
+    """
+    Collect and update business metrics.
+    Schedule this to run every 1-5 minutes.
+    """
+    from .models import Website, HeartBeat
+    
+    # Active monitors by type
+    active_websites = Website.objects.filter(is_down=False).count()
+    active_heartbeats = HeartBeat.objects.filter(status="up").count()
+    
+    update_active_monitors_count('website', active_websites)
+    update_active_monitors_count('heartbeat', active_heartbeats)
+    
+    # Active users (logged in within last 30 days)
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    active_users = User.objects.filter(last_login__gte=thirty_days_ago).count()
+    update_active_users_count(active_users)
+    
+    # Monitors per user
+    users_with_monitors = Website.objects.values('user_id', 'user__email').annotate(
+        monitor_count=Count('id')
+    )
+    
+    for user_data in users_with_monitors:
+        update_monitors_per_user(
+            user_data['user_id'],
+            user_data['user__email'],
+            user_data['monitor_count']
+        )
+
+
+@shared_task
+def collect_uptime_percentages():
+    """
+    Calculate and update 24-hour uptime percentages for all monitors.
+    Schedule this to run every 5-15 minutes.
+    """
+    from .models import Website, UptimeCheckResult
+    
+    twenty_four_hours_ago = now() - timedelta(hours=24)
+    
+    for website in Website.objects.filter(is_active=True):
+        # Get all checks in last 24 hours
+        checks = UptimeCheckResult.objects.filter(
+            website=website,
+            checked_at__gte=twenty_four_hours_ago
+        )
+        
+        total_checks = checks.count()
+        if total_checks == 0:
+            continue
+        
+        successful_checks = checks.filter(status='success').count()
+        uptime_percentage = (successful_checks / total_checks) * 100
+        
+        update_uptime_percentage(
+            str(website.id),
+            website.name,
+            uptime_percentage
+        )
+
+
+@shared_task
+def collect_heartbeat_metrics():
+    """
+    Update heartbeat time-since-last-ping metrics.
+    Schedule this to run every 1-2 minutes.
+    """
+    from .models import HeartBeat
+    
+    now = now()
+    
+    for heartbeat in HeartBeat.objects.filter(is_active=True):
+        if heartbeat.last_ping:
+            seconds_since_ping = (now - heartbeat.last_ping).total_seconds()
+            update_heartbeat_time_since_last_ping(
+                str(heartbeat.id),
+                heartbeat.name,
+                seconds_since_ping
+            )
+
+
+@shared_task
+def collect_celery_queue_metrics():
+    """
+    Update Celery queue and worker metrics.
+    Schedule this to run every 30 seconds to 1 minute.
+    """
+    from django.conf import settings
+    from celery import current_app
+    import redis
+    
+    # Update from Celery inspect
+    update_celery_queue_metrics(current_app)
+    
+    # Get queue length from Redis (more accurate)
+    try:
+        redis_client = redis.from_url(settings.CELERY_BROKER_URL)
+        get_redis_queue_length(redis_client, 'celery')
+        
+        # If you have multiple queues
+        # get_redis_queue_length(redis_client, 'alerts')
+        # get_redis_queue_length(redis_client, 'checks')
+        
+    except Exception as e:
+        print(f"Error collecting Redis queue metrics: {e}")
+
+
+@shared_task
+def collect_database_metrics():
+    """
+    Collect database connection pool metrics.
+    Schedule this to run every 1-2 minutes.
+    """
+    from django.db import connections
+    
+    for alias in connections:
+        connection = connections[alias]
+        
+        # This is database-specific, for PostgreSQL:
+        try:
+            with connection.cursor() as cursor:
+                # Get connection stats
+                cursor.execute("""
+                    SELECT 
+                        count(*) FILTER (WHERE state = 'active') as active,
+                        count(*) FILTER (WHERE state = 'idle') as idle,
+                        count(*) as total
+                    FROM pg_stat_activity
+                    WHERE datname = current_database()
+                """)
+                
+                result = cursor.fetchone()
+                if result:
+                    active, idle, total = result
+                    
+                    metrics.db_connection_pool_size.labels(state='active').set(active)
+                    metrics.db_connection_pool_size.labels(state='idle').set(idle)
+                    metrics.db_connection_pool_size.labels(state='total').set(total)
+                    
+        except Exception as e:
+            print(f"Error collecting DB metrics: {e}")

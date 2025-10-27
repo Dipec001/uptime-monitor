@@ -162,12 +162,18 @@ class Website(models.Model):
 
 
 class UptimeCheckResult(models.Model):
+    # STATUS_TYPES = [
+    #     ("success", "Success"),
+    #     ("failed", "Failed"),
+    # ]
+
     website = models.ForeignKey(
         Website,
         on_delete=models.CASCADE,
         related_name='checks'
     )
     status_code = models.IntegerField()
+    # status = models.CharField(max_length=20, choices=STATUS_TYPES, default="success")
     error_message = models.TextField(blank=True)
     ip = models.GenericIPAddressField(null=True, blank=True)
     response_time_ms = models.FloatField()

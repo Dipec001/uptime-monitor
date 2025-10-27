@@ -15,6 +15,7 @@ import os
 from datetime import timedelta
 from dotenv import load_dotenv
 import dj_database_url
+from celery.schedules import crontab
 import botocore.config
 
 load_dotenv()
@@ -340,3 +341,43 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Use forwarded host and port from the ALB
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
+
+
+CELERY_BEAT_SCHEDULE = {
+    # Uptime monitoring
+    'check-due-websites-every-minute': {
+        'task': 'monitor.tasks.check_due_websites',
+        'schedule': crontab(),
+    },
+    'cleanup-uptime-logs-daily': {
+        'task': 'monitor.tasks.cleanup_old_logs',
+        'schedule': crontab(hour=2, minute=0),
+        'args': (90,),
+    },
+    'check-heartbeats-every-minute': {
+        'task': 'monitor.tasks.check_due_heartbeats',
+        'schedule': crontab(),
+    },
+
+    # Metrics collection
+    'collect-business-metrics': {
+        'task': 'monitor.tasks.collect_business_metrics',
+        'schedule': crontab(minute='*/2'),
+    },
+    'collect-uptime-percentages': {
+        'task': 'monitor.tasks.collect_uptime_percentages',
+        'schedule': crontab(minute='*/5'),
+    },
+    'collect-heartbeat-metrics': {
+        'task': 'monitor.tasks.collect_heartbeat_metrics',
+        'schedule': crontab(minute='*/1'),
+    },
+    'collect-celery-queue-metrics': {
+        'task': 'monitor.tasks.collect_celery_queue_metrics',
+        'schedule': 30.0,  # every 30 seconds
+    },
+    'collect-database-metrics': {
+        'task': 'monitor.tasks.collect_database_metrics',
+        'schedule': crontab(minute='*/2'),
+    },
+}

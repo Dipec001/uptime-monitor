@@ -4,6 +4,7 @@ import { register } from "../services/Api";
 import { useNavigate } from "react-router-dom";
 
 function Register() {
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -34,9 +35,19 @@ function Register() {
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white shadow-md rounded-lg p-8 w-full max-w-sm">
         <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
-          Create Account
+          Create Your AliveChecks Account
         </h2>
         <form onSubmit={handleSubmit}>
+          <label className="block mb-2 text-gray-700">Name</label>
+          <input
+            type="name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Enter your full name"
+            className="w-full mb-4 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          />
+
           <label className="block mb-2 text-gray-700">Email</label>
           <input
             type="email"
