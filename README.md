@@ -58,7 +58,11 @@ The platform aims to be a **DevOps-focused tool** that:
 
 **Architecture Overview:**  
 
-![System Architecture](docs/uptime_monitor_system_architecture.png)  
+![System Architecture](docs/uptime_monitor_system_architecture.png)
+<p align="center">
+  <img src="C:\Users\django lesson\uptimemonitor\mermaid-diagram-2025-10-27-233349.svg" alt="Architecture Diagram" style="max-width:100%; height:auto;">
+</p>
+
 
 ---
 
