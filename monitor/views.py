@@ -9,7 +9,10 @@ from monitor.serializers import (
     NotificationPreferenceSerializer,
     HeartBeatSerializer,
     ForgotPasswordSerializer,
-    ResetPasswordSerializer
+    ResetPasswordSerializer,
+    SocialAuthSerializer,
+    UserSerializer,
+    UserLoginSerializer
 )
 from .models import Website, NotificationPreference, HeartBeat, UptimeCheckResult
 from .tasks import process_ping
@@ -26,49 +29,67 @@ from rest_framework.decorators import permission_classes, api_view
 import uuid
 import logging
 from django.db.models import OuterRef, Subquery
+from .oauth_utils import (
+    verify_google_token,
+    verify_github_token,
+    GoogleAuthError,
+    GitHubAuthError
+)
 
 logger = logging.getLogger('monitor')
 
 User = get_user_model()
 
 
-class RegisterView(generics.CreateAPIView):
-    """
-    API endpoint for user registration.
-    """
+class RegisterView(generics.GenericAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
         logger.info("🔵 Received registration request: %s", request.data)
 
+        serializer = self.get_serializer(data=request.data)
         try:
-            serializer = self.get_serializer(data=request.data)
-
-            if serializer.is_valid():
-                user = serializer.save()
-                refresh = RefreshToken.for_user(user)
-
-                logger.info("[✓] User registered: %s", user.email)
-
-                return Response({
-                    "message": "User registered successfully",
-                    "user": {
-                        "id": user.id,
-                        "email": user.email,
-                    },
-                    "token": {
-                        "refresh": str(refresh),
-                        "access": str(refresh.access_token),
-                    }
-                }, status=status.HTTP_201_CREATED)
-
-            logger.warning("[!] Registration failed with errors: %s", serializer.errors)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+            serializer.is_valid(raise_exception=True)
+        except ValidationError as ve:
+            logger.warning("[!] Registration validation failed: %s", ve.detail)
+            # DRF will automatically return 400 if you let it propagate
+            raise ve
         except Exception as e:
             logger.exception("🔥 Unexpected error during registration: %s", str(e))
             raise APIException("Something went wrong. Please try again later.")
+
+        user = serializer.save()
+        refresh = RefreshToken.for_user(user)
+
+        logger.info("[✓] User registered successfully: %s", user.email)
+
+        return Response({
+            'message': "User registered successfully",
+            'user': UserSerializer(user).data,
+            'token': {
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }
+        }, status=status.HTTP_201_CREATED)
+
+
+class LoginView(generics.GenericAPIView):
+    permission_classes = [permissions.AllowAny]
+    serializer_class = UserLoginSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.validated_data['user']
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user': UserSerializer(user).data
+        }, status=status.HTTP_200_OK)
 
 
 class WebsiteViewSet(viewsets.ModelViewSet):
@@ -387,18 +408,13 @@ class ForgotPasswordView(generics.GenericAPIView):
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            logger.info(
-                f"[✓] Password reset email sent to "
-                f"{serializer.validated_data['email']}")
-            return Response(
-                {
-                    "detail": "Password reset email sent."
-                },
-                status=status.HTTP_200_OK
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+
+        logger.info(
+            f"[✓] Password reset requested for {serializer.validated_data['email']}"
+        )
+        return Response(result, status=status.HTTP_200_OK)
 
 
 class ResetPasswordView(generics.GenericAPIView):
@@ -491,3 +507,225 @@ class DashboardMetricsView(APIView):
 def trigger_error(request):
     # Don’t leave this route active in production long-term
     raise Exception("Test 500 error — monitoring check")
+
+
+class SocialAuthView(APIView):
+    """
+    Handle social authentication with flexible account linking
+    
+    Logic:
+    1. If user exists with this provider_id → Login (existing OAuth user)
+    2. If user exists with this email → Link provider to existing account
+    3. If user doesn't exist → Create new user with OAuth
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        serializer = SocialAuthSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        provider = serializer.validated_data['provider']
+        access_token = serializer.validated_data['access_token']
+        
+        try:
+            # Verify token with OAuth provider
+            if provider == 'google':
+                user_info = verify_google_token(access_token)
+                provider_id_field = 'google_id'
+                provider_id = user_info['google_id']
+            elif provider == 'github':
+                user_info = verify_github_token(access_token)
+                provider_id_field = 'github_id'
+                provider_id = user_info['github_id']
+            else:
+                return Response(
+                    {'error': 'Invalid provider'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Get or create user with flexible linking
+            user, is_new_user = self._get_or_create_user(
+                user_info, 
+                provider_id_field, 
+                provider_id
+            )
+            
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            
+            response_data = {
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'user': UserSerializer(user).data,
+                'is_new_user': is_new_user,
+                'linked_provider': provider,
+                'auth_methods': user.auth_methods  # Show all available login methods
+            }
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except (GoogleAuthError, GitHubAuthError) as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        except Exception as e:
+            return Response(
+                {'error': 'Authentication failed', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def _get_or_create_user(self, user_info, provider_id_field, provider_id):
+        """
+        Get existing user or create new one with flexible account linking
+        
+        Returns:
+            tuple: (user, is_new_user)
+        """
+        email = user_info['email']
+        
+        # ============================================
+        # Step 1: Try to find user by provider ID
+        # ============================================
+        # Example: User previously logged in with Google
+        user = User.objects.filter(**{provider_id_field: provider_id}).first()
+        if user:
+            # Update user info from OAuth provider
+            self._update_user_info(user, user_info)
+            return user, False
+        
+        # ============================================
+        # Step 2: Try to find user by email (LINK ACCOUNTS)
+        # ============================================
+        # Example: User signed up with email/password, now wants to add Google
+        user = User.objects.filter(email=email).first()
+        if user:
+            # Check if this provider is already linked to another account
+            existing_provider_user = User.objects.filter(
+                **{provider_id_field: provider_id}
+            ).first()
+            
+            if existing_provider_user and existing_provider_user.id != user.id:
+                raise Exception(
+                    f"This {provider_id_field.replace('_id', '')} account is already "
+                    f"linked to another user"
+                )
+            
+            # Link this OAuth provider to existing account
+            setattr(user, provider_id_field, provider_id)
+            self._update_user_info(user, user_info)
+            
+            return user, False
+        
+        # ============================================
+        # Step 3: Create new user (first time OAuth login)
+        # ============================================
+        user = self._create_new_user(user_info, provider_id_field, provider_id)
+        return user, True
+    
+    def _update_user_info(self, user, user_info):
+        """Update user information from OAuth provider"""
+        # Only update if new data is available and fields are empty
+        if user_info.get('first_name') and not user.first_name:
+            user.first_name = user_info['first_name']
+        
+        if user_info.get('last_name') and not user.last_name:
+            user.last_name = user_info['last_name']
+        
+        # Always update avatar (user might change it on OAuth provider)
+        if user_info.get('avatar'):
+            user.avatar = user_info['avatar']
+        
+        user.save()
+    
+    def _create_new_user(self, user_info, provider_id_field, provider_id):
+        """Create a new user from OAuth data"""
+        email = user_info['email']
+        
+        # Create user with OAuth provider linked
+        user = User.objects.create(
+            email=email,
+            first_name=user_info.get('first_name', ''),
+            last_name=user_info.get('last_name', ''),
+            avatar=user_info.get('avatar', ''),
+            **{provider_id_field: provider_id}
+        )
+        
+        # User created via OAuth has no password initially
+        user.set_unusable_password()
+        user.save()
+        
+        return user
+
+
+# ============================================
+# Check Authentication Methods
+# ============================================
+
+class UserAuthMethodsView(APIView):
+    """
+    Check what authentication methods are available for a user
+    Useful for showing appropriate login options
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        email = request.data.get('email')
+        
+        if not email:
+            return Response(
+                {'error': 'Email required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            user = User.objects.get(email=email)
+            
+            return Response({
+                'email': email,
+                'auth_methods': user.auth_methods,
+                'has_password': user.has_usable_password(),
+                'has_google': bool(user.google_id),
+                'has_github': bool(user.github_id),
+            })
+        except User.DoesNotExist:
+            return Response({
+                'email': email,
+                'auth_methods': [],
+                'user_exists': False,
+                'message': 'No account found with this email'
+            })
+
+
+# ============================================
+# Set Password (for OAuth users)
+# ============================================
+
+class SetPasswordView(APIView):
+    """
+    Allow OAuth-only users to set a password
+    """
+    def post(self, request):
+        if not request.user.is_authenticated:
+            return Response(
+                {'error': 'Authentication required'}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        password = request.data.get('password')
+        
+        if not password or len(password) < 8:
+            return Response(
+                {'error': 'Password must be at least 8 characters'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user = request.user
+        user.set_password(password)
+        user.save()
+        
+        return Response({
+            'message': 'Password set successfully',
+            'auth_methods': user.auth_methods
+        })

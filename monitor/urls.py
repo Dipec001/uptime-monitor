@@ -15,6 +15,10 @@ router.register(r'heartbeats', views.HeartBeatViewSet, basename='heartbeat')
 urlpatterns = [
     path("trigger-error/", views.trigger_error, name="trigger_error"),
     path('register/', views.RegisterView.as_view(), name='register'),
+    path('login/', views.LoginView.as_view(), name='login'),
+    path('auth/social/', views.SocialAuthView.as_view(), name='social_auth'),
+    path('auth/methods/', views.UserAuthMethodsView.as_view(), name='auth_methods'),
+    path('auth/set-password/', views.SetPasswordView.as_view(), name='set_password'),
     path(
         'notifications/test/',
         views.TestNotificationView.as_view(),

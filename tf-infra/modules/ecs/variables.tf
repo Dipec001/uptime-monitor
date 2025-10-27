@@ -1,5 +1,9 @@
 variable "env" { type = string }
 variable "vpc_id" { type = string }
+variable "domain" {
+  type = string
+}
+variable "alert_email" { type = string}
 variable "ecr_repo_url" { type = string }
 variable "database_url" { type = string }
 variable "redis_url" { type = string }
@@ -31,4 +35,15 @@ variable "certificate_status" {
   description = "Validation status of ACM certificate"
   type        = string
   default     = null
+}
+
+variable "db_identifier" {
+  type        = string
+  description = "RDS DB identifier"
+}
+
+variable "grafana_admin_password" {
+  type        = string
+  description = "Admin password for Grafana"
+  sensitive   = true
 }

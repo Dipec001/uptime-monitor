@@ -18,6 +18,9 @@ resource "aws_efs_mount_target" "observability" {
   security_groups = [aws_security_group.efs_sg.id]
 }
 
+# =====================================
+# EFS security group
+# =====================================
 resource "aws_security_group" "efs_sg" {
   name        = "${var.env}-efs-sg"
   description = "Security group for EFS"
@@ -27,7 +30,7 @@ resource "aws_security_group" "efs_sg" {
     from_port       = 2049
     to_port         = 2049
     protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_sg.id]
+    security_groups = [aws_security_group.observability_sg.id]  # only Prometheus & Grafana
   }
 
   egress {
@@ -43,36 +46,117 @@ resource "aws_security_group" "efs_sg" {
   }
 }
 
+# ==================================
+# Create Access Points
+# ===================================
+resource "aws_efs_access_point" "prometheus" {
+  file_system_id = aws_efs_file_system.observability.id
+
+  root_directory {
+    path = "/prometheus"
+    creation_info {
+      owner_gid   = 65534  # nobody group
+      owner_uid   = 65534  # nobody user
+      permissions = "755"
+    }
+  }
+
+  tags = {
+    Name = "${var.env}-prometheus-ap"
+  }
+}
+
+# Create Access Point for Grafana
+resource "aws_efs_access_point" "grafana" {
+  file_system_id = aws_efs_file_system.observability.id
+
+  root_directory {
+    path = "/grafana"
+    creation_info {
+      owner_gid   = 472    # grafana group
+      owner_uid   = 472    # grafana user
+      permissions = "755"
+    }
+  }
+
+  tags = {
+    Name = "${var.env}-grafana-ap"
+  }
+}
+
+# =====================================================
+# TASK ROLE - For Prometheus (application permissions)
+# =====================================================
+resource "aws_iam_role" "prometheus_task_role" {
+  name = "${var.env}-prometheus-task-role"
+  
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+    }]
+  })
+}
+
+# Allow Prometheus container to download config from S3
+resource "aws_iam_role_policy" "prometheus_s3_access" {
+  name = "${var.env}-prometheus-s3"
+  role = aws_iam_role.prometheus_task_role.id
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "s3:GetObject",
+        "s3:ListBucket"
+      ]
+      Resource = [
+        aws_s3_bucket.observability_configs.arn,
+        "${aws_s3_bucket.observability_configs.arn}/*"
+      ]
+    }]
+  })
+}
+
 # =======================
 # Prometheus Task Definition
 # =======================
 resource "aws_ecs_task_definition" "prometheus" {
   family                   = "${var.env}-prometheus"
   network_mode             = "awsvpc"
-  requires_compatibilities = ["EC2"]
+  requires_compatibilities = ["FARGATE"]
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  # For task permissions:
+  task_role_arn            = aws_iam_role.prometheus_task_role.arn
 
   # Mount EFS for persistent storage
   volume {
     name = "prometheus-data"
     
     efs_volume_configuration {
-      file_system_id = aws_efs_file_system.observability.id
-      root_directory = "/prometheus"
+      file_system_id          = aws_efs_file_system.observability.id
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.prometheus.id
+        iam             = "DISABLED"
+      }
     }
   }
 
   container_definitions = jsonencode([
     {
       name      = "prometheus"
-      image     = "prom/prometheus:latest"
+      # image     = "prom/prometheus:latest"
+      image     = "public.ecr.aws/v9n7w5d9/prometheus:latest"  # My custom image
       essential = true
       
       portMappings = [{
         containerPort = 9090
-        hostPort      = 9090
       }]
       
       mountPoints = [{
@@ -80,15 +164,17 @@ resource "aws_ecs_task_definition" "prometheus" {
         containerPath = "/prometheus"
       }]
       
-      command = [
-        "--config.file=/etc/prometheus/prometheus.yml",
-        "--storage.tsdb.path=/prometheus",
-        "--storage.tsdb.retention.time=30d"
-      ]
-      
       # You'll need to provide config via S3 or build custom image
       environment = [
-        { name = "ENVIRONMENT", value = var.env }
+        { name = "ENVIRONMENT", value = var.env },
+        {
+          name  = "S3_BUCKET"
+          value = aws_s3_bucket.observability_configs.id
+        },
+        {
+          name  = "AWS_REGION"
+          value = var.aws_region
+        }
       ]
       
       logConfiguration = {
@@ -103,23 +189,48 @@ resource "aws_ecs_task_definition" "prometheus" {
   ])
 }
 
+resource "aws_iam_role" "grafana_task_role" {
+  name = "${var.env}-grafana-task-role"
+  
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+    }]
+  })
+}
+
+# -- dynamic grafana url -----
+locals {
+  grafana_root_url = var.env == "prod" ? "https://grafana.${var.domain}" : "http://${aws_lb.this.dns_name}/grafana"
+  grafana_serve_from_subpath = var.env == "prod" ? "false" : "true"
+}
+
 # =======================
 # Grafana Task Definition
 # =======================
 resource "aws_ecs_task_definition" "grafana" {
   family                   = "${var.env}-grafana"
   network_mode             = "awsvpc"
-  requires_compatibilities = ["EC2"]
+  requires_compatibilities = ["FARGATE"]
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  # For task permissions: Add policy to query cloudwatch later
+  task_role_arn            = aws_iam_role.grafana_task_role.arn
 
   volume {
     name = "grafana-data"
     
     efs_volume_configuration {
-      file_system_id = aws_efs_file_system.observability.id
-      root_directory = "/grafana"
+      file_system_id          = aws_efs_file_system.observability.id
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.grafana.id
+        iam             = "DISABLED"
+      }
     }
   }
 
@@ -131,17 +242,17 @@ resource "aws_ecs_task_definition" "grafana" {
       
       portMappings = [{
         containerPort = 3000
-        hostPort      = 3000
       }]
       
       mountPoints = [{
         sourceVolume  = "grafana-data"
         containerPath = "/var/lib/grafana"
       }]
-      
+            
       environment = [
         { name = "GF_SECURITY_ADMIN_PASSWORD", value = var.grafana_admin_password },
-        { name = "GF_SERVER_ROOT_URL", value = "https://grafana.${var.domain}" },
+        { name = "GF_SERVER_ROOT_URL", value = local.grafana_root_url },
+        { name = "GF_SERVER_SERVE_FROM_SUB_PATH", value = local.grafana_serve_from_subpath },
         { name = "GF_INSTALL_PLUGINS", value = "grafana-clock-panel,grafana-simple-json-datasource" }
       ]
       
@@ -158,23 +269,31 @@ resource "aws_ecs_task_definition" "grafana" {
 }
 
 # =======================
-# ECS Services
+# ECS Services (Prom and Grafana)
 # =======================
 resource "aws_ecs_service" "prometheus" {
   name            = "${var.env}-prometheus-service"
   cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.prometheus.arn
   desired_count   = 1
-  launch_type     = "EC2"
+  launch_type     = "FARGATE"
+  platform_version = "LATEST"
 
   network_configuration {
     subnets          = var.private_subnets
     security_groups  = [aws_security_group.observability_sg.id]
+    assign_public_ip = false  # false for private subnets
   }
 
   # Service discovery for internal access
   service_registries {
     registry_arn = aws_service_discovery_service.prometheus.arn
+  }
+
+  force_new_deployment = true
+
+  lifecycle {
+    create_before_destroy = false
   }
 }
 
@@ -183,17 +302,25 @@ resource "aws_ecs_service" "grafana" {
   cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.grafana.arn
   desired_count   = 1
-  launch_type     = "EC2"
+  launch_type     = "FARGATE"
+  platform_version = "LATEST"
 
   network_configuration {
     subnets          = var.private_subnets
     security_groups  = [aws_security_group.observability_sg.id]
+    assign_public_ip = false  # false for private subnets
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.grafana_tg.arn
     container_name   = "grafana"
     container_port   = 3000
+  }
+
+  force_new_deployment = true
+
+  lifecycle {
+    create_before_destroy = false
   }
 }
 
@@ -211,6 +338,13 @@ resource "aws_security_group" "observability_sg" {
     to_port         = 9090
     protocol        = "tcp"
     security_groups = [aws_security_group.ecs_sg.id]
+  }
+
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    self        = true  # Allows Grafana reach Prometheus (also in observability_sg)
   }
 
   # Grafana port (from ALB)
@@ -286,7 +420,8 @@ resource "aws_lb_target_group" "grafana_tg" {
 # ALB Listener Rule for Grafana
 # =======================
 resource "aws_lb_listener_rule" "grafana" {
-  listener_arn = aws_lb_listener.http_listener.arn
+  # Match your existing ALB listener logic
+  listener_arn = var.env == "prod" ? aws_lb_listener.https_listener[0].arn : aws_lb_listener.http_listener.arn
   priority     = 100
 
   action {
@@ -294,9 +429,22 @@ resource "aws_lb_listener_rule" "grafana" {
     target_group_arn = aws_lb_target_group.grafana_tg.arn
   }
 
-  condition {
-    path_pattern {
-      values = ["/grafana*"]
+  # Dynamic condition: subdomain for prod, path for staging
+  dynamic "condition" {
+    for_each = var.env == "prod" ? [1] : []
+    content {
+      host_header {
+        values = ["grafana.${var.domain}"]
+      }
+    }
+  }
+
+  dynamic "condition" {
+    for_each = var.env == "prod" ? [] : [1]
+    content {
+      path_pattern {
+        values = ["/grafana*"]
+      }
     }
   }
 }
@@ -313,3 +461,49 @@ resource "aws_cloudwatch_log_group" "grafana" {
   name              = "/ecs/${var.env}-grafana"
   retention_in_days = 7
 }
+
+# ====================
+# Render prometheus.yml
+# ====================
+data "template_file" "prometheus_config" {
+  template = file("${path.module}/prometheus.yml.tpl")
+  
+  vars = {
+    environment = var.env
+    region      = var.aws_region
+  }
+}
+
+# Create S3 bucket for configs
+resource "aws_s3_bucket" "observability_configs" {
+  bucket = "${var.env}-observability-configs-${data.aws_caller_identity.current.account_id}"
+  
+  tags = {
+    Name = "${var.env}-observability-configs"
+    Env  = var.env
+  }
+}
+
+resource "aws_s3_bucket_versioning" "observability_configs" {
+  bucket = aws_s3_bucket.observability_configs.id
+  
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# Upload rendered config to S3
+resource "aws_s3_object" "prometheus_config" {
+  bucket  = aws_s3_bucket.observability_configs.id
+  key     = "prometheus/prometheus.yml"
+  content = data.template_file.prometheus_config.rendered
+  etag    = md5(data.template_file.prometheus_config.rendered)
+  
+  tags = {
+    Name = "prometheus-config"
+    Env  = var.env
+  }
+}
+
+# Get AWS account ID
+data "aws_caller_identity" "current" {}

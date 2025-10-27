@@ -1,0 +1,55 @@
+graph TB
+    subgraph Internet["🌐 INTERNET"]
+        Users[👥 Users / External APIs]
+    end
+
+    subgraph AWS["☁️ AWS CLOUD"]
+        
+        subgraph PublicSubnet["PUBLIC SUBNET"]
+            ALB[⚖️ Application Load Balancer]
+        end
+        
+        subgraph PrivateSubnet["PRIVATE SUBNET"]
+            WebApp["🌐 Django Web API<br/>ECS on EC2"]
+            Worker["⚙️ Celery Worker<br/>ECS on EC2"]
+            Beat["⏱️ Celery Beat<br/>ECS on EC2"]
+            RDS["🗄️ RDS PostgreSQL<br/>Multi-AZ"]
+            Redis["⚡ ElastiCache Redis<br/>Celery Broker"]
+            Monitoring["📊 Monitoring Stack<br/>(Prometheus + Grafana)<br/>ECS Fargate"]
+        end
+        
+        Services["🔧 AWS Services<br/>SES • CloudWatch • Secrets Manager • ECR"]
+    end
+
+    subgraph CICD["🚀 CI/CD"]
+        GitHub["GitHub Actions<br/>+ Terraform"]
+    end
+
+    subgraph External["🔔 ALERTS"]
+        Alerts["Email • Slack • Webhooks"]
+    end
+
+    Users -->|HTTPS| ALB
+    ALB --> WebApp
+    
+    WebApp --> RDS
+    WebApp --> Redis
+    Worker --> RDS
+    Worker --> Redis
+    Beat --> Redis
+    
+    WebApp -.->|Metrics| Monitoring
+    Worker --> Services
+    
+    GitHub -->|Deploy| WebApp
+    GitHub -->|Deploy| Worker
+    GitHub -->|Provision| RDS
+    
+    Worker --> Alerts
+    
+    style AWS fill:#FF9900,stroke:#232F3E,stroke-width:3px
+    style PublicSubnet fill:#7CB342,stroke:#558B2F,stroke-width:2px
+    style PrivateSubnet fill:#FF6B6B,stroke:#C92A2A,stroke-width:2px
+    style Internet fill:#42A5F5,stroke:#1976D2,stroke-width:2px
+    style CICD fill:#AB47BC,stroke:#8E24AA,stroke-width:2px
+    style External fill:#FFA726,stroke:#F57C00,stroke-width:2px

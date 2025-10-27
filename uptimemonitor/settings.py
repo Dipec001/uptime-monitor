@@ -15,6 +15,7 @@ import os
 from datetime import timedelta
 from dotenv import load_dotenv
 import dj_database_url
+from celery.schedules import crontab
 import botocore.config
 
 load_dotenv()
@@ -90,14 +91,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
-    # Third party
-    # 'allauth',
-    # 'allauth.account',
-    # 'allauth.socialaccount',
-    # 'allauth.socialaccount.providers.google',
-    # 'allauth.socialaccount.providers.github',
-
     'monitor',
     'rest_framework',
     'rest_framework_simplejwt',
@@ -107,61 +100,10 @@ INSTALLED_APPS = [
 
 ]
 
-# # Required for allauth
-# SITE_ID = 1
-
-# # Authentication backends
-# AUTHENTICATION_BACKENDS = [
-#     'django.contrib.auth.backends.ModelBackend',
-#     'allauth.account.auth_backends.AuthenticationBackend',
-# ]
-
-# # Allauth settings
-# ACCOUNT_AUTHENTICATION_METHOD = 'email'  # Use email instead of username
-# ACCOUNT_EMAIL_REQUIRED = True
-# ACCOUNT_USERNAME_REQUIRED = False
-# ACCOUNT_EMAIL_VERIFICATION = 'optional'  # 'mandatory' for stricter verification
-
-# # Social auth specific settings
-# SOCIALACCOUNT_AUTO_SIGNUP = True  # Automatically create account on first login
-# SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'  # Email already verified by provider
-
-# # Query user on signup for additional info (optional)
-# SOCIALACCOUNT_QUERY_EMAIL = True
-
-# # Redirect after social login
-# LOGIN_REDIRECT_URL = '/dashboard/'
-# ACCOUNT_LOGOUT_REDIRECT_URL = '/'
-
-# # Social account providers configuration
-# SOCIALACCOUNT_PROVIDERS = {
-#     'google': {
-#         'SCOPE': [
-#             'profile',
-#             'email',
-#         ],
-#         'AUTH_PARAMS': {
-#             'access_type': 'online',
-#         },
-#         'APP': {
-#             'client_id': os.getenv('GOOGLE_OAUTH_CLIENT_ID'),
-#             'secret': os.getenv('GOOGLE_OAUTH_CLIENT_SECRET'),
-#         }
-#     },
-#     'github': {
-#         'SCOPE': [
-#             'user',
-#             'user:email',
-#         ],
-#         'APP': {
-#             'client_id': os.getenv('GITHUB_OAUTH_CLIENT_ID'),
-#             'secret': os.getenv('GITHUB_OAUTH_CLIENT_SECRET'),
-#         }
-#     }
-# }
-
-# # Optional: Customize what data to fetch from providers
-# SOCIALACCOUNT_ADAPTER = 'monitor.adapters.MySocialAccountAdapter'
+# Social Auth Client IDs (for token verification)
+GOOGLE_OAUTH_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID')
+GITHUB_OAUTH_CLIENT_ID = os.getenv('GITHUB_OAUTH_CLIENT_ID')
+GITHUB_OAUTH_CLIENT_SECRET = os.getenv('GITHUB_OAUTH_CLIENT_SECRET')
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -303,6 +245,9 @@ SWAGGER_SETTINGS = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=7),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': False,
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
 LOGGING = {
@@ -346,41 +291,47 @@ CELERY_TASK_DEFAULT_QUEUE = 'uptimemonitor'
 CELERY_WORKER_SEND_TASK_EVENTS = True
 CELERY_TASK_SEND_SENT_EVENT = True
 
-# Email Config
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-# EMAIL_HOST = os.getenv('EMAIL_HOST', 'email-smtp.us-east-1.amazonaws.com')
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_USE_SSL = False
-# EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
-# EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-# DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
+ENV = os.getenv('ENVIRONMENT', 'dev')
 
-EMAIL_BACKEND = 'django_ses.SESBackend'
-AWS_SES_REGION_NAME = 'us-east-1'
-AWS_SES_REGION_ENDPOINT = 'email.us-east-1.amazonaws.com'
-USE_SES_V2 = True  # Use newer API
+if ENV == "prod":
 
-# Email addresses
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'alerts@alivechecks.com')
-NOREPLY_EMAIL = os.getenv('NOREPLY_EMAIL', 'noreply@alivechecks.com')
-SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', 'support@alivechecks.com')
+    EMAIL_BACKEND = 'django_ses.SESBackend'
+    AWS_SES_REGION_NAME = 'us-east-1'
+    AWS_SES_REGION_ENDPOINT = 'email.us-east-1.amazonaws.com'
+    USE_SES_V2 = True  # Use newer API
 
+    # Email addresses
+    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'alerts@alivechecks.com')
+    NOREPLY_EMAIL = os.getenv('NOREPLY_EMAIL', 'noreply@alivechecks.com')
+    SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', 'support@alivechecks.com')
+    AWS_SES_CONFIGURATION_SET = 'prod-alivechecks'
 
-AWS_SES_CONFIGURATION_SET = 'prod-alivechecks'
-
-# Add retry configuration
-AWS_SES_BOTO3_CONFIG = botocore.config.Config(
-    retries={
-        'max_attempts': 3,
-        'mode': 'adaptive'
-    },
-    connect_timeout=5,
-    read_timeout=5,
-)
+    # Add retry configuration
+    AWS_SES_BOTO3_CONFIG = botocore.config.Config(
+        retries={
+            'max_attempts': 3,
+            'mode': 'adaptive'
+        },
+        connect_timeout=5,
+        read_timeout=5,
+    )
+else:
+    # EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    # EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+    # EMAIL_PORT = 587
+    # EMAIL_USE_TLS = False
+    # EMAIL_USE_SSL = True
+    # EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+    # EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'alerts@alivechecks.com')
+    NOREPLY_EMAIL = os.getenv('NOREPLY_EMAIL', 'noreply@alivechecks.com')
 
 # Redis Config for rate limiting
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+
+# Frontend URL
+FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'http://localhost:3000')
 
 SWAGGER_USE_COMPAT_RENDERERS = False
 
@@ -390,3 +341,43 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Use forwarded host and port from the ALB
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
+
+
+CELERY_BEAT_SCHEDULE = {
+    # Uptime monitoring
+    'check-due-websites-every-minute': {
+        'task': 'monitor.tasks.check_due_websites',
+        'schedule': crontab(),
+    },
+    'cleanup-uptime-logs-daily': {
+        'task': 'monitor.tasks.cleanup_old_logs',
+        'schedule': crontab(hour=2, minute=0),
+        'args': (90,),
+    },
+    'check-heartbeats-every-minute': {
+        'task': 'monitor.tasks.check_due_heartbeats',
+        'schedule': crontab(),
+    },
+
+    # Metrics collection
+    'collect-business-metrics': {
+        'task': 'monitor.tasks.collect_business_metrics',
+        'schedule': crontab(minute='*/2'),
+    },
+    'collect-uptime-percentages': {
+        'task': 'monitor.tasks.collect_uptime_percentages',
+        'schedule': crontab(minute='*/5'),
+    },
+    'collect-heartbeat-metrics': {
+        'task': 'monitor.tasks.collect_heartbeat_metrics',
+        'schedule': crontab(minute='*/1'),
+    },
+    'collect-celery-queue-metrics': {
+        'task': 'monitor.tasks.collect_celery_queue_metrics',
+        'schedule': 30.0,  # every 30 seconds
+    },
+    'collect-database-metrics': {
+        'task': 'monitor.tasks.collect_database_metrics',
+        'schedule': crontab(minute='*/2'),
+    },
+}

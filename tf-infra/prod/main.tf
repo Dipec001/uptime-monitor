@@ -32,8 +32,8 @@ provider "cloudflare" {
 # ACM + Certificate
 # =========================
 module "certificate" {
-  source = "../modules/certificate"
-  env    = "prod"
+  source               = "../modules/certificate"
+  env                  = "prod"
   cloudflare_zone_id   = var.cloudflare_zone_id
   cloudflare_api_token = var.cloudflare_api_token
 }
@@ -64,8 +64,8 @@ module "rds" {
 # Redis (ElastiCache)
 # =========================
 module "redis" {
-  source             = "../modules/redis"
-  env                = "prod"
+  source = "../modules/redis"
+  env    = "prod"
 
   subnet_ids         = module.networking.private_subnet_ids
   security_group_ids = [module.redis.redis_security_group_id]
@@ -81,15 +81,19 @@ module "ecs" {
   source            = "../modules/ecs"
   env               = "prod"
   vpc_id            = module.networking.vpc_id
-  private_subnets    = module.networking.private_subnet_ids
+  private_subnets   = module.networking.private_subnet_ids
   ecr_repo_url      = var.ecr_repo_url
   database_url      = "postgres://${var.db_username}:${urlencode(var.db_password)}@${module.rds.db_endpoint}/${var.db_name}"
   redis_url         = "redis://${module.redis.redis_endpoint}:6379/0"
   ec2_instance_type = "t3.medium"
   public_subnets    = module.networking.public_subnet_ids
+  alert_email       = "dpecchukwu@gmail.com"
+  db_identifier     = module.rds.db_identifier
+  domain            = "alivechecks.com"
+  grafana_admin_password  = var.grafana_admin_password
 
   certificate_arn    = module.certificate.certificate_arn
   certificate_status = module.certificate.certificate_status
 
-  depends_on         = [module.certificate]
+  depends_on = [module.certificate]
 }

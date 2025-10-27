@@ -13,13 +13,13 @@ services:
       timeout: 5s
       retries: 10
     restart: always
-    
+
   redis:
     image: redis:7-alpine
     # ports:
-      # - "6379:6379"
+    # - "6379:6379"
     restart: always
-  
+
   prometheus:
     image: prom/prometheus
     volumes:
@@ -33,7 +33,7 @@ services:
     depends_on:
       - web
       - alertmanager
-  
+
   alertmanager:
     image: prom/alertmanager
     ports:
@@ -57,14 +57,14 @@ services:
   web:
     build:
       context: .
-      filename: Dockerfile.dev
+      dockerfile: Dockerfile.dev
     command: >
       sh -c "python manage.py migrate &&
             python manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
+      - "8000:8000" # host:container
     depends_on:
       db:
         condition: service_healthy
@@ -77,7 +77,7 @@ services:
   celery:
     build:
       context: .
-      filename: Dockerfile.dev
+      dockerfile: Dockerfile.dev
     command: celery -A uptimemonitor worker -l info
     depends_on:
       - db
@@ -91,7 +91,7 @@ services:
   beat:
     build:
       context: .
-      filename: Dockerfile.dev
+      dockerfile: Dockerfile.dev
     command: celery -A uptimemonitor beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     depends_on:
       - db
@@ -101,7 +101,7 @@ services:
     volumes:
       - .:/app
     restart: always
-  
+
   celery-exporter:
     image: danihodovic/celery-exporter
     command:
@@ -112,41 +112,7 @@ services:
     depends_on:
       - redis
     restart: always
-  
-  # =======================
-  # NODE EXPORTER (HOST METRICS)
-  # =======================
-  node-exporter:
-    image: prom/node-exporter:latest
-    restart: always
-    ports:
-      - "9100:9100"
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--path.rootfs=/rootfs'
-      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
 
-  # =======================
-  # cADVISOR (CONTAINER METRICS)
-  # =======================
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    restart: unless-stopped
-    ports:
-      - 8080:8080
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:rw
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-    depends_on:
-      - redis
-    privileged: true
 
 volumes:
   postgres_data:

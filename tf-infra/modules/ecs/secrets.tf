@@ -15,6 +15,6 @@ resource "aws_secretsmanager_secret_version" "app_credentials" {
     SUPPORT_EMAIL      = "support@alivechecks.com"
     
     # Will add Other non-email secrets
-    
+
   })
 }

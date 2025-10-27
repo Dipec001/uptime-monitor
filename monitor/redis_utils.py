@@ -30,11 +30,11 @@ r = get_redis_connection()
 
 
 def allow_ping_sliding(
-        heartbeat_id,
-        user_id=None,
-        interval_seconds=10,
-        max_calls=1
-        ):
+    heartbeat_id,
+    user_id=None,
+    interval_seconds=10,
+    max_calls=1
+):
     """
     Sliding-window rate limiter.
     Returns True if allowed, False if rate-limited.

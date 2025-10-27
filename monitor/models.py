@@ -17,7 +17,13 @@ class CustomUserManager(BaseUserManager):
             raise ValueError("Email is required")
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
-        user.set_password(password)
+
+        # Only set password if provided (OAuth users might not have password)
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()  # For OAuth-only users
+        
         user.save(using=self._db)
         return user
 
@@ -34,13 +40,58 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
+    google_id = models.CharField(
+        max_length=255,
+        blank=True, 
+        null=True, 
+        unique=True,
+        help_text="Google OAuth user ID (sub claim from JWT)"
+    )
+    
+    github_id = models.CharField(
+        max_length=255, 
+        blank=True, 
+        null=True, 
+        unique=True,
+        help_text="GitHub OAuth user ID"
+    )
+    
+    avatar = models.URLField(
+        blank=True, 
+        null=True,
+        help_text="Profile picture URL from OAuth provider"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     objects = CustomUserManager()
 
     USERNAME_FIELD = "email"   # 👈 this is the login field
-    REQUIRED_FIELDS = []       # no username anymore
+    REQUIRED_FIELDS = []
 
     def __str__(self):
         return self.email
+    
+    def get_full_name(self):
+        """Return user's full name"""
+        return f"{self.first_name} {self.last_name}".strip() or self.email
+    
+    def has_usable_password(self):
+        """Check if user has a password set (vs OAuth-only)"""
+        return super().has_usable_password()
+    
+    @property
+    def auth_methods(self):
+        """Return list of authentication methods user has linked"""
+        methods = []
+        if self.has_usable_password():
+            methods.append('email_password')
+        if self.google_id:
+            methods.append('google')
+        if self.github_id:
+            methods.append('github')
+        return methods
 
 
 # For now, we'll use this fixed set of check intervals
@@ -61,11 +112,11 @@ CRON_STATUS_CHOICES = [
 
 # Notification methods
 METHOD_CHOICES = [
-        ("email", "Email"),
-        ("slack", "Slack"),
-        ("webhook", "Webhook"),
-        ("whatsapp", "WhatsApp"),
-    ]
+    ("email", "Email"),
+    ("slack", "Slack"),
+    ("webhook", "Webhook"),
+    ("whatsapp", "WhatsApp"),
+]
 
 
 class Website(models.Model):
@@ -111,12 +162,18 @@ class Website(models.Model):
 
 
 class UptimeCheckResult(models.Model):
+    # STATUS_TYPES = [
+    #     ("success", "Success"),
+    #     ("failed", "Failed"),
+    # ]
+
     website = models.ForeignKey(
         Website,
         on_delete=models.CASCADE,
         related_name='checks'
     )
     status_code = models.IntegerField()
+    # status = models.CharField(max_length=20, choices=STATUS_TYPES, default="success")
     error_message = models.TextField(blank=True)
     ip = models.GenericIPAddressField(null=True, blank=True)
     response_time_ms = models.FloatField()

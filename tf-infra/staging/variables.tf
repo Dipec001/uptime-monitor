@@ -24,6 +24,11 @@ variable "ec2_instance_type" {
   default = "t3.medium"
 }
 
+variable "alert_email" {
+  type    = string
+  default = "dpecchukwu@gmail.com"
+}
+
 variable "use_elasticache" {
   description = "Whether to provision Elasticache or not"
   type        = bool
@@ -34,4 +39,10 @@ variable "env" {
   description = "the environment"
   type        = string
   default     = "staging"
+}
+
+variable "grafana_admin_password" {
+  description = "Grafana Admin password"
+  type        = string
+  sensitive   = true
 }

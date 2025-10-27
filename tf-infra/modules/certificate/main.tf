@@ -46,7 +46,7 @@ resource "cloudflare_record" "alivechecks_acm_validation_root" {
     ""
   )
   type    = tolist(aws_acm_certificate.alivechecks[0].domain_validation_options)[0].resource_record_type
-  value   = trimsuffix(
+  content   = trimsuffix(
     tolist(aws_acm_certificate.alivechecks[0].domain_validation_options)[0].resource_record_value,
     "."
   )
