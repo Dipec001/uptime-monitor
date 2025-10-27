@@ -16,7 +16,7 @@ A **production-grade uptime and heartbeat monitoring platform** built with Djang
 
 ## 🚀 Live Demo
 
-**Coming Soon** - Early demos and beta access launching Q1 2025
+**Coming Soon** - Early demos and beta access launching Q4 2025
 
 ---
 
