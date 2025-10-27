@@ -314,7 +314,7 @@ Every push to `main` or `dev` triggers:
 ### Manual Deployment (Terraform)
 
 ```bash
-cd terraform/
+cd tf-infra/prod/
 
 # Initialize Terraform
 terraform init
