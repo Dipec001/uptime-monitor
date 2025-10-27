@@ -23,7 +23,7 @@ services:
   prometheus:
     image: prom/prometheus
     volumes:
-      - ./prometheus-local.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - ./prometheus-alerts.yml:/etc/prometheus/prometheus-alerts.yml
       - ./alert.rules.yml:/etc/prometheus/alert.rules.yml
       - prometheus-data:/prometheus

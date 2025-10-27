@@ -2,18 +2,21 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+rule_files:
+  - "prometheus-alerts.yml"
+  - "alert.rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
 scrape_configs:
-  - job_name: 'django-uptime-monitor'
-    scrape_interval: 15s
-    dns_sd_configs:
-      - names:
-          - 'django.production.local'  # Use your service discovery name
-        type: 'A'
-        port: 8000
-    relabel_configs:
-      - source_labels: [__meta_dns_name]
-        target_label: instance
-    
-    metrics_path: '/metrics'  # Your Django metrics endpoint
-    
-    static_configs: []
+  - job_name: 'django-web'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ["web:8000"]
+
+  - job_name: "celery"
+    static_configs:
+      - targets: ["celery-exporter:9808"]
