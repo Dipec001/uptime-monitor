@@ -35,6 +35,11 @@ from .oauth_utils import (
     GoogleAuthError,
     GitHubAuthError
 )
+import os
+from dotenv import load_dotenv
+import requests
+
+load_dotenv()
 
 logger = logging.getLogger('monitor')
 
@@ -527,6 +532,7 @@ class SocialAuthView(APIView):
         
         provider = serializer.validated_data['provider']
         access_token = serializer.validated_data['access_token']
+        print("Provider:", provider, "Access Token:", access_token)  # Debugging line
         
         try:
             # Verify token with OAuth provider
@@ -535,7 +541,9 @@ class SocialAuthView(APIView):
                 provider_id_field = 'google_id'
                 provider_id = user_info['google_id']
             elif provider == 'github':
-                user_info = verify_github_token(access_token)
+                # GitHub sends a CODE, need to exchange it first
+                real_access_token = self._exchange_github_code(access_token)
+                user_info = verify_github_token(real_access_token)
                 provider_id_field = 'github_id'
                 provider_id = user_info['github_id']
             else:
@@ -657,6 +665,30 @@ class SocialAuthView(APIView):
         user.save()
         
         return user
+    
+    def _exchange_github_code(self, code):
+        """Exchange GitHub authorization code for access token"""
+        print("Exchanging GitHub code for access token:", code)  # Debugging line
+        token_response = requests.post(
+            'https://github.com/login/oauth/access_token',
+            headers={'Accept': 'application/json'},
+            data={
+                'client_id': os.getenv('GITHUB_OAUTH_CLIENT_ID'),
+                'client_secret': os.getenv('GITHUB_OAUTH_CLIENT_SECRET'),
+                'code': code
+            },
+            timeout=10
+        )
+        
+        token_data = token_response.json()
+        
+        if 'access_token' not in token_data:
+            logger.error("GitHub token exchange failed: %s", token_data)
+            raise GitHubAuthError(
+                token_data.get('error_description', 'Failed to exchange code for token')
+            )
+        
+        return token_data['access_token']
 
 
 # ============================================
