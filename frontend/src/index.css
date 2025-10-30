@@ -17,3 +17,18 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.onboarding-card {
+  min-height: 350px; /* Matches StepFinished card height */
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.onboarding-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.onboarding-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+}

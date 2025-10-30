@@ -4,11 +4,13 @@ import { useNavigate } from "react-router-dom";
 import unionLogo from '@/assets/UnionLogo.svg';
 import plusCircle from "@/assets/PlusCircle.svg";
 import StepIndicator from "@/components/StepIndicator";
-
+import useFadeIn from "@/hooks/useFadeIn";
+import createBulkWebsites from "../../../services/Api";
 
 
 export default function StepSites({ sites, setSites, onNext }) {
   const navigate = useNavigate();
+  const fade = useFadeIn();
 
   const [url, setUrl] = useState("");
 
@@ -18,27 +20,21 @@ export default function StepSites({ sites, setSites, onNext }) {
     setUrl("");
   };
 
-  const saveSites = async () => {
-    // recommended: POST all at once
-    await axios.post("/api/websites/bulk_create/", { websites: sites });
-    onNext();
-  };
-
   return (
-    <div className="flex flex-col items-center text-center py-2">
-      <img src={unionLogo} alt="alive checks logo" className="mb-6 w-14 h-14" />
+    <div className="flex flex-col items-center text-center">
+      <img src={unionLogo} alt="alive checks logo" className="mb-6 w-10 h-10" />
 
       <h2 className="text-xl font-semibold text-gray-800">Welcome to Alive Checks</h2>
       <p className="mt-1 text-sm text-gray-500">
         Let's get started by adding your first website(s) to monitor.
       </p>
 
-      <div className="w-full bg-white rounded-lg shadow-2xl p-4">
+      <div className={`onboarding-card w-full max-w-md bg-white rounded-lg shadow-2xl p-4 mt-4 ${fade}`}>
         {/* Steps Indicator */}
         <StepIndicator currentStep={1} totalSteps={3} />
 
         {/* Content Container */}
-        <div className="mt-6 w-full max-w-md bg-white">
+        <div className="mt-6 bg-white">
             <h3 className="text-sm text-gray-700 font-medium mb-3">
             Which websites do you want to monitor?
             </h3>
@@ -89,7 +85,14 @@ export default function StepSites({ sites, setSites, onNext }) {
         <button
           className="justify-self-end bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-blue-300"
           disabled={sites.length === 0}
-          onClick={saveSites}
+          onClick={async () => {
+            try {
+              await createBulkWebsites(sites);
+              onNext();  // ✅ move to Step 2
+            } catch (error) {
+              console.error(error);
+            }
+          }}
         >
           Next
         </button>

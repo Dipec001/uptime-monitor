@@ -4,11 +4,11 @@ import StepAlerts from "./steps/StepAlerts";
 import StepFinished from "./steps/StepFinished";
 
 export default function Onboarding() {
-  const [currentStep, setCurrentStep] = useState(3);
+  const [currentStep, setCurrentStep] = useState(2);
   const [sites, setSites] = useState([]);
 
   return (
-    <div className="max-w-xl mx-auto py-10">
+    <div className="bg-gray-50 mx-auto py-4">
       {currentStep === 1 && (
         <StepSites
           sites={sites}

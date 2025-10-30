@@ -245,4 +245,14 @@ export const deleteHeartbeat = async (id) => {
   }
 };
 
+export const createBulkWebsites = async (websites) => {
+  try {
+    const response = await API.post("websites/bulk_create/", { websites });
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to create websites in bulk");
+  }
+};
+
 export default API;
+
