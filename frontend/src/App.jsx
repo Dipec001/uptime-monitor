@@ -11,6 +11,7 @@ import PrivateRoute from "./components/PrivateRoute";
 import DashboardLayout from "./components/DashboardLayout";
 import MonitorsPage from "./pages/Monitor";
 import OAuthCallback from "./pages/OAuthCallback";
+import Onboarding from "./pages/onboarding/Onboarding";
 
 function App() {
   return (
@@ -24,11 +25,12 @@ function App() {
           <Route path="/reset-password/:uid/:token" element={<ResetPassword />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/oauth/callback" element={<OAuthCallback />} />
+          <Route path="/onboarding" element={<Onboarding />} />
 
           {/* All dashboard pages share sidebar */}
-          <Route path="/" element={<DashboardLayout />}>
-            <Route path="/dashboard" element={<PrivateRoute><Dashboard /> </PrivateRoute>} />
-            <Route path="/monitors" element={<MonitorsPage />} />
+          <Route element={<DashboardLayout />}>
+            <Route path="dashboard" element={<PrivateRoute><Dashboard /> </PrivateRoute>} />
+            <Route path="monitors" element={<MonitorsPage />} />
           </Route>
         
         </Routes>

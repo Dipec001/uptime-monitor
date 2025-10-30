@@ -1,6 +1,6 @@
 // src/pages/MonitorsPage.jsx
 import React, { useState, useEffect } from "react";
-import { fetchWebsites, createWebsite } from "../services/Api";
+import { fetchWebsites, createWebsite } from "../services/api.js";
 
 const MonitorsPage = () => {
   const [websites, setWebsites] = useState([]);
