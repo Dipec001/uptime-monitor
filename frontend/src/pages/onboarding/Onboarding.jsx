@@ -4,7 +4,7 @@ import StepAlerts from "./steps/StepAlerts";
 import StepFinished from "./steps/StepFinished";
 
 export default function Onboarding() {
-  const [currentStep, setCurrentStep] = useState(2);
+  const [currentStep, setCurrentStep] = useState(1);
   const [sites, setSites] = useState([]);
 
   return (
