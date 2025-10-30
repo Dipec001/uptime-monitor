@@ -1,6 +1,6 @@
 // PrivateRoute.jsx
 import { Navigate } from "react-router-dom";
-import { isLoggedIn } from "../services/Api";
+import { isLoggedIn } from "../services/Api.js";
 
 export default function PrivateRoute({ children }) {
   if (!isLoggedIn()) {

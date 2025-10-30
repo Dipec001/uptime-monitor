@@ -1,6 +1,6 @@
 import React from "react";
 import { Outlet, Link, useNavigate } from "react-router-dom";
-import { logout } from "../services/Api";
+import { logout } from "../services/Api.js";
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
