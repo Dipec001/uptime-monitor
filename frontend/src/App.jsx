@@ -16,7 +16,7 @@ import Onboarding from "./pages/onboarding/Onboarding";
 function App() {
   return (
     <Router>
-      <div style={{ }}>
+      <div style={{ padding: "20px" }}>
         <Routes>
           {/* Public pages */}
           <Route path="/" element={<Home />} />

@@ -5,7 +5,7 @@ import unionLogo from '@/assets/UnionLogo.svg';
 import plusCircle from "@/assets/PlusCircle.svg";
 import StepIndicator from "@/components/StepIndicator";
 import useFadeIn from "@/hooks/useFadeIn";
-import { createBulkWebsites } from "../../../services/Api.js";
+import { createBulkWebsites } from "../../../services/api";
 
 
 export default function StepSites({ sites, setSites, onNext }) {

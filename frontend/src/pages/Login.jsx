@@ -1,6 +1,6 @@
 // src/Login.jsx
 import React, { useState } from "react";
-import { login, socialAuth } from "../services/Api.js";
+import { login, socialAuth } from "../services/api.js";
 import { useNavigate } from "react-router-dom";
 import { loginWithGoogle, loginWithGithub } from '../utils/oauth';
 import googleIcon from '../assets/Google.svg';

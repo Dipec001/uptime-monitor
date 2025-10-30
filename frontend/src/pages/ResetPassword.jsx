@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { resetPasswordConfirm } from "../services/Api.js";
+import { resetPasswordConfirm } from "../services/api.js";
 
 export default function ResetPassword() {
   const { uid, token } = useParams();  // get from URL
