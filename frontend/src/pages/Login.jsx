@@ -9,6 +9,7 @@ import githubIcon from '../assets/GitHub.svg';
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -20,7 +21,7 @@ function Login() {
     setError('');
     
     try {
-      const data = await login(email, password);
+      const data = await login(email, password, rememberMe);
       
       localStorage.setItem("access_token", data.access);
       localStorage.setItem("refresh_token", data.refresh);
@@ -78,7 +79,7 @@ function Login() {
     <div className="h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-lg shadow-none md:shadow-md p-4">
         <h2 className="mb-3 text-center font-bold text-lg text-gray-800">
-          Welcome Back
+          <span className="text-blue-600">Welcome</span> Back!
         </h2>
         
         {error && (
@@ -127,6 +128,31 @@ function Login() {
           </button>
         </form>
 
+        {/* Remember Me + Forgot Password Row */}
+        <div className="flex items-center justify-between mt-3 text-xs text-gray-600">
+          
+          {/* Remember Me */}
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-3 h-3 accent-gray-600 rounded-sm"
+              disabled={loading}
+            />
+            <span>Remember me</span>
+          </label>
+
+          {/* Forgot Password */}
+          <a
+            href="/forgot-password"
+            className="text-blue-600 hover:underline font-medium"
+          >
+            Forgot Password?
+          </a>
+        </div>
+
+
         <div className="mt-3 space-y-2">
           <button 
             onClick={handleGoogleLogin}
@@ -145,12 +171,6 @@ function Login() {
             Sign in with GitHub
           </button>
         </div>
-
-        <p className="text-xs text-center text-gray-600 mt-4">
-          <a href="/forgot-password" className="text-blue-600 hover:underline font-medium">
-            Forgot Password?
-          </a>
-        </p>
 
         <p className="text-xs text-center text-gray-600 mt-6">
           No account yet?{" "}

@@ -2,7 +2,7 @@
 
 export const loginWithGoogle = () => {
   return new Promise((resolve, reject) => {
-    const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     const redirectUri = `${window.location.origin}/oauth/callback`;
     const scope = 'email profile';
     const state = JSON.stringify({ provider: 'google' });
@@ -57,7 +57,7 @@ export const loginWithGoogle = () => {
 
 export const loginWithGithub = () => {
   return new Promise((resolve, reject) => {
-    const clientId = process.env.REACT_APP_GITHUB_CLIENT_ID;
+    const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
     const redirectUri = `${window.location.origin}/oauth/callback`;
     const state = JSON.stringify({ provider: 'github' });
 

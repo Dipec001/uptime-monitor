@@ -36,5 +36,6 @@ urlpatterns = [
         views.DashboardMetricsView.as_view(),
         name="dashboard-metrics"
     ),
+    path('websites/bulk_create/', views.BulkCreateWebsitesView.as_view(), name='bulk-create-sites'),
     path('', include(router.urls)),
 ]

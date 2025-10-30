@@ -2,7 +2,7 @@
 import axios from "axios";
 
 // Get base URL from environment variable
-const BASE_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/";
 
 // Create axios instance
 const API = axios.create({
@@ -63,9 +63,9 @@ API.interceptors.response.use(
 // AUTH APIs
 // ============================================
 
-export const login = async (email, password) => {
+export const login = async (email, password, rememberMe) => {
   try {
-    const response = await API.post("login/", { email, password });
+    const response = await API.post("login/", { email, password, remember_me: rememberMe, });
     return response.data;
   } catch (error) {
     throw new Error(

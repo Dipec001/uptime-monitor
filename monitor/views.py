@@ -38,6 +38,7 @@ from .oauth_utils import (
 import os
 from dotenv import load_dotenv
 import requests
+from datetime import timedelta
 
 load_dotenv()
 
@@ -89,6 +90,14 @@ class LoginView(generics.GenericAPIView):
 
         user = serializer.validated_data['user']
         refresh = RefreshToken.for_user(user)
+
+        # Get remember_me from request
+        remember = request.data.get("remember_me", False)
+
+        if remember:
+            # Extend token lifetimes for "Remember me"
+            refresh.set_exp(lifetime=timedelta(days=30))
+            refresh.access_token.set_exp(lifetime=timedelta(days=7))
 
         return Response({
             'access': str(refresh.access_token),
@@ -761,3 +770,44 @@ class SetPasswordView(APIView):
             'message': 'Password set successfully',
             'auth_methods': user.auth_methods
         })
+
+
+
+class BulkCreateWebsitesView(generics.GenericAPIView):
+    """
+    Bulk create websites for onboarding
+    """
+    serializer_class = WebsiteSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        websites_data = request.data.get("websites")
+
+        if not websites_data or not isinstance(websites_data, list):
+            return Response(
+                {"error": "'websites' must be a non-empty list."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        created = []
+        errors = []
+
+        for index, data in enumerate(websites_data):
+            # Only accept URL from onboarding — name is blank for now
+            serializer = self.get_serializer(data={"url": data.get("url")})
+            if serializer.is_valid():
+                website = serializer.save(
+                    user=request.user,
+                    next_check_at=timezone.now()  # ensures monitoring begins immediately
+                )
+                created.append(self.get_serializer(website).data)
+            else:
+                errors.append({"index": index, "errors": serializer.errors})
+
+        return Response(
+            {
+                "created": created,
+                "errors": errors,
+            },
+            status=status.HTTP_207_MULTI_STATUS if errors else status.HTTP_201_CREATED
+        )

@@ -26,7 +26,7 @@ function Register() {
       localStorage.setItem("access_token", data.access);
       localStorage.setItem("refresh_token", data.refresh);
       
-      navigate("/dashboard");
+      navigate("/onboarding");
     } catch (error) {
       console.error("Registration failed:", error);
       setError(error.message || "Registration failed. Please try again.");
@@ -46,7 +46,7 @@ function Register() {
       localStorage.setItem("access_token", data.access);
       localStorage.setItem("refresh_token", data.refresh);
       
-      navigate("/dashboard");
+      navigate("/onboarding");
     } catch (error) {
       console.error("Google signup failed:", error);
       setError(error.message || "Google signup failed. Please try again.");
@@ -66,7 +66,7 @@ function Register() {
       localStorage.setItem("access_token", data.access);
       localStorage.setItem("refresh_token", data.refresh);
       
-      navigate("/dashboard");
+      navigate("/onboarding");
     } catch (error) {
       console.error("GitHub signup failed:", error);
       setError(error.message || "GitHub signup failed. Please try again.");
