@@ -1,70 +1,67 @@
-# Getting Started with Create React App
+# ⚡ Uptime Monitor Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A fast and modern frontend for the Uptime Monitoring platform — built with **React**, **Vite**, and **TailwindCSS**.  
+Designed for speed, reliability, and a smooth developer experience.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## 🚀 Live Development
 
-### `npm start`
+Install dependencies:
 
-Runs the app in the development mode.
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```bash
+npm install
+```
+Run the Vite dev server:
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+npm run dev
 
-### `npm test`
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+The app will be available at:
 
-### `npm run build`
+http://localhost:3000
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+🏗️ Production Build
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Build optimized production assets:
+```bash
+npm run build
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Preview the production build locally:
+```bash
+npm run previe
+```
 
-### `npm run eject`
+📂 Folder Structure
+```bash
+src/
+ ├─ assets/         → images, svgs, static assets
+ ├─ components/     → shared UI components
+ ├─ pages/          → route-based views
+ ├─ services/       → axios/api helpers
+ ├─ utils/          → helpers & constants
+ ├─ App.jsx         → main app container + routing
+ └─ index.jsx       → entry point
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+🧰 Tech Stack
+Tool	Purpose
+React 19	UI Framework
+Vite 7	Super-fast dev server + bundler
+TailwindCSS	Utility-first styling
+React Router DOM	Client-side navigation
+Axios	HTTP requests
+🔧 Path Aliases
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+You can import from src using @:
+```
+import Dashboard from "@/pages/Dashboard";
+import Logo from "@/assets/logo.svg";
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Configured in vite.config.js.
 
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+📸 Add a Screenshot later
+![Preview Screenshot](./screenshot.png)

@@ -1,23 +1,34 @@
+// src/services/Api.js
 import axios from "axios";
 
-// set your backend base URL
+// Get base URL from environment variable
+const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/";
+
+// Create axios instance
 const API = axios.create({
-  baseURL: "http://127.0.0.1:8000/api/", // remove hardcoded part later
+  baseURL: BASE_URL,
 });
 
+// ============================================
+// INTERCEPTORS
+// ============================================
+
 // Request interceptor: attach access token automatically
-API.interceptors.request.use(config => {
-  const token = localStorage.getItem("access_token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+API.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Response interceptor: refresh token if 401
 API.interceptors.response.use(
-  response => response,
-  async error => {
+  (response) => response,
+  async (error) => {
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -25,7 +36,7 @@ API.interceptors.response.use(
 
       try {
         const refreshToken = localStorage.getItem("refresh_token");
-        const res = await axios.post("http://127.0.0.1:8000/api/token/refresh/", {
+        const res = await axios.post(`${BASE_URL}/token/refresh/`, {
           refresh: refreshToken,
         });
 
@@ -48,66 +59,200 @@ API.interceptors.response.use(
   }
 );
 
-export default API;
+// ============================================
+// AUTH APIs
+// ============================================
 
+export const login = async (email, password, rememberMe) => {
+  try {
+    const response = await API.post("login/", { email, password, remember_me: rememberMe, });
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.error || 
+      error.response?.data?.detail || 
+      "Login failed"
+    );
+  }
+};
 
+export const register = async (fullName, email, password) => {
+  try {
+    const response = await API.post("register/", {
+      full_name: fullName,
+      email,
+      password,
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.error || 
+      error.response?.data?.detail || 
+      "Registration failed"
+    );
+  }
+};
 
-// login function
-export async function login(email, password) {
-  const response = await API.post("login/", { email, password });
-  console.log(response.data)
-  return response.data; // this will have {access, refresh}
-}
+export const socialAuth = async (provider, accessToken) => {
+  try {
+    const response = await API.post("auth/social/", {
+      provider,
+      access_token: accessToken,
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.error || 
+      error.response?.data?.detail || 
+      "Social authentication failed"
+    );
+  }
+};
 
-// register function
-export async function register(email, password) {
-  const response = await API.post("register/", { email, password });
-  return response.data;
-}
+export const requestPasswordReset = async (email) => {
+  try {
+    const response = await API.post("forgot-password/", { email });
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.error || 
+      "Password reset request failed"
+    );
+  }
+};
 
+export const resetPasswordConfirm = async (uid, token, newPassword) => {
+  try {
+    const response = await API.post("reset-password/", {
+      uid,
+      token,
+      new_password: newPassword,
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.error || 
+      "Password reset failed"
+    );
+  }
+};
 
-export async function refreshToken(token) {
-  const response = await API.post("token/refresh/", { token });
-  return response.data;
-}
-
-
-export async function resetPasswordConfirm(uid, token, new_password) {
-  const response = await API.post("reset-password/", {
-    uid,
-    token,
-    new_password,
-  });
-  return response.data;
-}
-
-export async function requestPasswordReset(email) {
-  const response = await API.post("forgot-password/", { email });
-  return response.data;
-}
-
-export function isLoggedIn() {
-    // Check if access token exists in localStorage
-  return !!localStorage.getItem("access_token");
-}
-
-export function logout() {
-    // Remove tokens from localStorage
-    console.log("Logging out...");
+export const logout = () => {
+  console.log("Logging out...");
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
-}
+};
 
-// Website APIs
-export const fetchWebsites = () => API.get("websites/");
-export const createWebsite = (data) => API.post("websites/", data);
-export const fetchWebsite = (id) => API.get(`websites/${id}/`);
-export const updateWebsite = (id, data) => API.put(`websites/${id}/`, data);
-export const deleteWebsite = (id) => API.delete(`websites/${id}/`);
+export const isLoggedIn = () => {
+  return !!localStorage.getItem("access_token");
+};
 
-// Heartbeat APIs
-export const fetchHeartbeats = () => API.get("heartbeats/");
-export const fetchHeartbeat = (id) => API.get(`heartbeats/${id}/`);
-export const createHeartbeat = (id, data) => API.post(`heartbeats/${id}/`, data);
-export const deleteHeartbeat = (id) => API.delete(`heartbeats/${id}/`);
-export const updateHeartbeat = (id, data) => API.put(`heartbeats/${id}/`, data);
+// ============================================
+// WEBSITE APIs
+// ============================================
+
+export const fetchWebsites = async () => {
+  try {
+    const response = await API.get("websites/");
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to fetch websites");
+  }
+};
+
+export const createWebsite = async (data) => {
+  try {
+    const response = await API.post("websites/", data);
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to create website");
+  }
+};
+
+export const fetchWebsite = async (id) => {
+  try {
+    const response = await API.get(`websites/${id}/`);
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to fetch website");
+  }
+};
+
+export const updateWebsite = async (id, data) => {
+  try {
+    const response = await API.put(`websites/${id}/`, data);
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to update website");
+  }
+};
+
+export const deleteWebsite = async (id) => {
+  try {
+    const response = await API.delete(`websites/${id}/`);
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to delete website");
+  }
+};
+
+// ============================================
+// HEARTBEAT APIs
+// ============================================
+
+export const fetchHeartbeats = async () => {
+  try {
+    const response = await API.get("heartbeats/");
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to fetch heartbeats");
+  }
+};
+
+export const fetchHeartbeat = async (id) => {
+  try {
+    const response = await API.get(`heartbeats/${id}/`);
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to fetch heartbeat");
+  }
+};
+
+export const createHeartbeat = async (id, data) => {
+  try {
+    const response = await API.post(`heartbeats/${id}/`, data);
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to create heartbeat");
+  }
+};
+
+export const updateHeartbeat = async (id, data) => {
+  try {
+    const response = await API.put(`heartbeats/${id}/`, data);
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to update heartbeat");
+  }
+};
+
+export const deleteHeartbeat = async (id) => {
+  try {
+    const response = await API.delete(`heartbeats/${id}/`);
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to delete heartbeat");
+  }
+};
+
+export const createBulkWebsites = async (websites) => {
+  try {
+    const response = await API.post("websites/bulk_create/", { websites });
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to create websites in bulk");
+  }
+};
+
+export default API;
+

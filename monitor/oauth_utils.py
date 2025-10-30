@@ -19,25 +19,33 @@ def verify_google_token(token):
     """
     Verify Google OAuth token and return user info
     """
+    print("Fetching user info from Google") # Debugging line
     try:
-        # Verify the token with Google
-        idinfo = id_token.verify_oauth2_token(
-            token, 
-            google_requests.Request(), 
-            settings.GOOGLE_OAUTH_CLIENT_ID
+        response = requests.get(
+            'https://www.googleapis.com/oauth2/v2/userinfo',
+            headers={'Authorization': f'Bearer {token}'}
         )
+        
+        # Check if request was successful
+        if response.status_code != 200:
+            raise GoogleAuthError(f"Failed to fetch user info: {response.text}")
+        
+        user_info = response.json()
+        print("User Info:", user_info)  # Debugging line
         
         # Token is valid, extract user info
         return {
-            'google_id': idinfo['sub'],
-            'email': idinfo['email'],
-            'first_name': idinfo.get('given_name', ''),
-            'last_name': idinfo.get('family_name', ''),
-            'avatar': idinfo.get('picture', ''),
-            'email_verified': idinfo.get('email_verified', False)
+            'google_id': user_info['id'],
+            'email': user_info['email'],
+            'first_name': user_info.get('given_name', ''),
+            'last_name': user_info.get('family_name', ''),
+            'avatar': user_info.get('picture', ''),
+            'email_verified': user_info.get('verified_email', False)
         }
-    except ValueError as e:
-        raise GoogleAuthError(f"Invalid token: {str(e)}")
+    except requests.exceptions.RequestException as e:
+        raise GoogleAuthError(f"Network error: {str(e)}")
+    except (KeyError, ValueError) as e:
+        raise GoogleAuthError(f"Invalid response format: {str(e)}")
 
 
 def verify_github_token(access_token):
@@ -48,7 +56,7 @@ def verify_github_token(access_token):
         # Get user info from GitHub API
         headers = {
             'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json'
+            'Accept': 'application/vnd.github.v3+json'
         }
         
         # Get user profile
@@ -83,15 +91,16 @@ def verify_github_token(access_token):
             raise GitHubAuthError("No verified email found in GitHub account")
         
         # Parse name
-        name = user_data.get('name', '').split(' ', 1) if user_data.get('name') else ['', '']
+        name_parts = user_data.get('name', '').split(' ', 1) if user_data.get('name') else []
         
         return {
             'github_id': str(user_data['id']),
             'email': email,
-            'first_name': name[0] if name else '',
-            'last_name': name[1] if len(name) > 1 else '',
+            'first_name': name_parts[0] if name_parts else '',
+            'last_name': name_parts[1] if len(name_parts) > 1 else '',
             'avatar': user_data.get('avatar_url', ''),
-            'username': user_data.get('login', '')
+            'username': user_data.get('login', ''),
+            'email_verified': True  # GitHub emails from /user/emails are already verified
         }
     except requests.RequestException as e:
         raise GitHubAuthError(f"GitHub API error: {str(e)}")
