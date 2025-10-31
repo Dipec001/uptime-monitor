@@ -76,8 +76,8 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-white p-6">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-white p-6 flex justify-center">
+      <div className="w-full max-w-md shadow-none md:shadow-md md:p-4">
         <h2 className="mb-6 mt-6 text-center font-bold text-2xl text-gray-800">
           <span className="text-blue-600">Welcome</span> back!
         </h2>
@@ -90,7 +90,7 @@ function Login() {
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700">
               Email
             </label>
             <input
@@ -105,7 +105,7 @@ function Login() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700">
               Password
             </label>
             <input

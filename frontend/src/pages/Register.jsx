@@ -1,6 +1,6 @@
 // src/Register.jsx
 import React, { useState } from "react";
-import { register, socialAuth } from "../services/api.js";
+import { register, socialAuth } from "../services/Api";
 import { useNavigate } from "react-router-dom";
 import { loginWithGoogle, loginWithGithub } from '../utils/oauth';
 import googleIcon from "../assets/Google.svg";
@@ -76,9 +76,9 @@ function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-white p-6">
-      <div className="w-full max-w-md">
-        <h2 className="mb-6 mt-6 text-center font-bold text-2xl text-gray-800">
+    <div className="min-h-screen bg-white p-6 flex justify-center">
+      <div className="w-full max-w-md shadow-none md:shadow-md md:p-4">
+        <h2 className="mb-6 text-center font-bold text-2xl text-gray-800">
           <span className="block md:inline">Create Your</span>{" "}
           <span>AliveChecks Account</span>
         </h2>
@@ -91,7 +91,7 @@ function Register() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700">
               Name
             </label>
             <input
@@ -106,7 +106,7 @@ function Register() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700">
               Email
             </label>
             <input
@@ -121,7 +121,7 @@ function Register() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700">
               Password
             </label>
             <input
