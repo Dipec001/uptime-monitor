@@ -1,6 +1,6 @@
 // src/Register.jsx
 import React, { useState } from "react";
-import { register, socialAuth } from "../services/api";
+import { register, socialAuth } from "../services/api.js";
 import { useNavigate } from "react-router-dom";
 import { loginWithGoogle, loginWithGithub } from '../utils/oauth';
 import googleIcon from "../assets/Google.svg";
