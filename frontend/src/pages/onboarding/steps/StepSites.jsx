@@ -20,7 +20,7 @@ export default function StepSites({ sites, setSites, onNext }) {
   };
 
   return (
-    <div className="flex flex-col items-center text-center">
+    <div className="flex flex-col items-center text-center mx-2 md:mx-0">
       <img src={unionLogo} alt="alive checks logo" className="mb-6 w-10 h-10" />
 
       <h2 className="text-xl font-semibold text-gray-800">Welcome to Alive Checks</h2>

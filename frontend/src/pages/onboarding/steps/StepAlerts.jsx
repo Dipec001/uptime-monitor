@@ -29,7 +29,7 @@ export default function StepAlerts({ sites, onBack, onNext }) {
   const [testStatus, setTestStatus] = useState("idle");
 
   return (
-    <div className="flex flex-col items-center text-center py-2">
+    <div className="flex flex-col items-center text-center py-2 mx-2 md:mx-0">
       <img src={unionLogo} alt="alive checks logo" className="mb-6 w-10 h-10" />
 
       <h2 className="text-xl font-semibold text-gray-800">Welcome To Alive Checks</h2>

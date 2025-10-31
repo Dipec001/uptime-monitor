@@ -100,7 +100,7 @@ function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
-              className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
               disabled={loading}
             />
@@ -115,7 +115,7 @@ function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="********"
-              className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
               disabled={loading}
             />
@@ -144,7 +144,7 @@ function Login() {
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 font-medium transition text-sm disabled:bg-blue-400 disabled:cursor-not-allowed"
+            className="w-full bg-blue-600 text-white py-1 px-4 rounded-lg hover:bg-blue-700 font-medium transition text-sm disabled:bg-blue-400 disabled:cursor-not-allowed"
             disabled={loading}
           >
             {loading ? 'Signing in...' : 'Sign In'}
@@ -154,7 +154,7 @@ function Login() {
         <div className="mt-4 space-y-3">
           <button 
             onClick={handleGoogleLogin}
-            className="w-full border border-gray-300 py-3 px-4 rounded-lg hover:bg-gray-50 font-medium transition text-sm flex items-center justify-center gap-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full border border-gray-300 py-1 px-4 rounded-lg hover:bg-gray-50 font-medium transition text-sm flex items-center justify-center gap-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
             disabled={loading}
           >
             <img src={googleIcon} alt="Google" className="w-5 h-5" />
@@ -162,7 +162,7 @@ function Login() {
           </button>
           <button 
             onClick={handleGithubLogin}
-            className="w-full border border-gray-300 py-3 px-4 rounded-lg hover:bg-gray-50 font-medium transition text-sm flex items-center justify-center gap-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full border border-gray-300 py-1 px-4 rounded-lg hover:bg-gray-50 font-medium transition text-sm flex items-center justify-center gap-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
             disabled={loading}
           >
             <img src={githubIcon} alt="GitHub" className="w-5 h-5" />

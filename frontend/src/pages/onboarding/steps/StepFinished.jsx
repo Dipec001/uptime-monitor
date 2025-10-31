@@ -10,7 +10,7 @@ export default function StepFinished() {
   const fade = useFadeIn();
 
   return (
-    <div className="flex flex-col items-center text-center py-2">
+    <div className="flex flex-col items-center text-center py-2 mx-2 md:mx-0">
       {/* Logo & Header spacing stays consistent */}
       <img src={unionLogo} alt="alive checks logo" className="mb-6 w-10 h-10" />
       
