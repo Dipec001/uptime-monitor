@@ -1,6 +1,6 @@
 // src/Login.jsx
 import React, { useState } from "react";
-import { login, socialAuth } from "../services/api.js";
+import { login, socialAuth } from "../services/Api";
 import { useNavigate } from "react-router-dom";
 import { loginWithGoogle, loginWithGithub } from '../utils/oauth';
 import googleIcon from '../assets/Google.svg';
@@ -76,10 +76,10 @@ function Login() {
   };
 
   return (
-    <div className="h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-none md:shadow-md p-4">
-        <h2 className="mb-3 text-center font-bold text-lg text-gray-800">
-          <span className="text-blue-600">Welcome</span> Back!
+    <div className="min-h-screen bg-white p-6">
+      <div className="w-full max-w-md">
+        <h2 className="mb-6 mt-6 text-center font-bold text-2xl text-gray-800">
+          <span className="text-blue-600">Welcome</span> back!
         </h2>
         
         {error && (
@@ -88,9 +88,9 @@ function Login() {
           </div>
         )}
         
-        <form onSubmit={handleSubmit} className="space-y-2">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Email
             </label>
             <input
@@ -98,14 +98,14 @@ function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
-              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
               disabled={loading}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Password
             </label>
             <input
@@ -113,66 +113,62 @@ function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="********"
-              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
               disabled={loading}
             />
           </div>
 
+          {/* Remember Me + Forgot Password Row */}
+          <div className="flex items-center justify-between text-xs text-gray-600">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 accent-gray-600 rounded-sm"
+                disabled={loading}
+              />
+              <span>Remember me</span>
+            </label>
+
+            
+            <a  href="/forgot-password"
+              className="text-blue-600 hover:underline font-medium"
+            >
+              Forgot Password?
+            </a>
+          </div>
+
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-1.5 px-4 rounded-lg hover:bg-blue-700 font-medium transition text-sm mt-3 disabled:bg-blue-400 disabled:cursor-not-allowed"
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 font-medium transition text-sm disabled:bg-blue-400 disabled:cursor-not-allowed"
             disabled={loading}
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
-        {/* Remember Me + Forgot Password Row */}
-        <div className="flex items-center justify-between mt-3 text-xs text-gray-600">
-          
-          {/* Remember Me */}
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              className="w-3 h-3 accent-gray-600 rounded-sm"
-              disabled={loading}
-            />
-            <span>Remember me</span>
-          </label>
-
-          {/* Forgot Password */}
-          <a
-            href="/forgot-password"
-            className="text-blue-600 hover:underline font-medium"
-          >
-            Forgot Password?
-          </a>
-        </div>
-
-
-        <div className="mt-3 space-y-2">
+        <div className="mt-4 space-y-3">
           <button 
             onClick={handleGoogleLogin}
-            className="w-full border border-gray-300 py-1.5 px-4 rounded-lg hover:bg-gray-50 font-medium transition text-sm flex items-center justify-center gap-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full border border-gray-300 py-3 px-4 rounded-lg hover:bg-gray-50 font-medium transition text-sm flex items-center justify-center gap-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
             disabled={loading}
           >
-            <img src={googleIcon} alt="Google" className="w-4 h-4" />
+            <img src={googleIcon} alt="Google" className="w-5 h-5" />
             Sign in with Google
           </button>
           <button 
             onClick={handleGithubLogin}
-            className="w-full border border-gray-300 py-1.5 px-4 rounded-lg hover:bg-gray-50 font-medium transition text-sm flex items-center justify-center gap-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full border border-gray-300 py-3 px-4 rounded-lg hover:bg-gray-50 font-medium transition text-sm flex items-center justify-center gap-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
             disabled={loading}
           >
-            <img src={githubIcon} alt="GitHub" className="w-4 h-4" />
+            <img src={githubIcon} alt="GitHub" className="w-5 h-5" />
             Sign in with GitHub
           </button>
         </div>
 
-        <p className="text-xs text-center text-gray-600 mt-6">
+        <p className="text-sm text-center text-gray-600 mt-8">
           No account yet?{" "}
           <a href="/register" className="text-blue-600 hover:underline font-medium">
             Register
