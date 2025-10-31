@@ -10,7 +10,7 @@ export default function ForgotPassword() {
     e.preventDefault();
     // Here you would typically call an API to send the reset email
     await requestPasswordReset(email);
-    alert(`Password reset link sent to ${email} (not really, this is a demo).`);
+    alert(`Password reset link sent to ${email} (not really haha, this is a demo).`);
     navigate("/login"); // redirect to login
   };
 
