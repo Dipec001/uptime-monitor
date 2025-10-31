@@ -255,4 +255,3 @@ export const createBulkWebsites = async (websites) => {
 };
 
 export default API;
-
