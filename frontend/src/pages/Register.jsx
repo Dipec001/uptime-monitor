@@ -22,9 +22,10 @@ function Register() {
     
     try {
       const data = await register(fullName, email, password);
+      console.log(data)
       
-      localStorage.setItem("access_token", data.access);
-      localStorage.setItem("refresh_token", data.refresh);
+      localStorage.setItem("access_token", data.token.access);
+      localStorage.setItem("refresh_token", data.token.refresh);
       
       navigate("/onboarding");
     } catch (error) {
@@ -46,7 +47,14 @@ function Register() {
       localStorage.setItem("access_token", data.access);
       localStorage.setItem("refresh_token", data.refresh);
       
-      navigate("/onboarding");
+      // NEW: redirect based on is_new_user
+      if (data.is_new_user) {
+        navigate("/onboarding");
+      } else {
+        localStorage.setItem("onboarding_complete", "true"); // ensure consistent state
+        navigate("/dashboard");
+      }
+      
     } catch (error) {
       console.error("Google signup failed:", error);
       setError(error.message || "Google signup failed. Please try again.");
@@ -65,8 +73,16 @@ function Register() {
       
       localStorage.setItem("access_token", data.access);
       localStorage.setItem("refresh_token", data.refresh);
+
       
-      navigate("/onboarding");
+      // NEW: redirect based on is_new_user
+      if (data.is_new_user) {
+        navigate("/onboarding");
+      } else {
+        localStorage.setItem("onboarding_complete", "true"); // ensure consistent state
+        navigate("/dashboard");
+      }
+    
     } catch (error) {
       console.error("GitHub signup failed:", error);
       setError(error.message || "GitHub signup failed. Please try again.");
@@ -89,7 +105,7 @@ function Register() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-2">
           <div>
             <label className="block text-sm font-medium text-gray-700">
               Name
@@ -144,7 +160,7 @@ function Register() {
           </button>
         </form>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-2">
           <button 
             onClick={handleGoogleSignup}
             className="w-full border border-gray-300 py-3 px-4 rounded-lg hover:bg-gray-50 font-medium transition text-sm flex items-center justify-center gap-2 disabled:bg-gray-100 disabled:cursor-not-allowed"

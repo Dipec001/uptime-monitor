@@ -37,7 +37,12 @@ export default function StepFinished() {
 
       {/* Final Button */}
       <button
-        onClick={() => navigate("/dashboard")}
+        onClick={() => {
+          localStorage.setItem("onboarding_complete", "true");
+          localStorage.removeItem("onboarding_sites");
+          localStorage.removeItem("onboarding_step");
+          navigate("/dashboard")
+        }}
         className="mt-6 w-full max-w-md bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
       >
         Go to Dashboard

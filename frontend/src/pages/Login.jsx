@@ -42,6 +42,8 @@ function Login() {
     try {
       const { accessToken, provider } = await loginWithGoogle();
       const data = await socialAuth(provider, accessToken);
+
+      console.log(data)
       
       localStorage.setItem("access_token", data.access);
       localStorage.setItem("refresh_token", data.refresh);

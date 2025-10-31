@@ -24,6 +24,7 @@ urlpatterns = [
         views.TestNotificationView.as_view(),
         name='test-notification'
     ),
+    path('notifications/test_email/', views.TestEmailNotificationView.as_view(), name='test-email-notification'),
     path('ping/<uuid:key>/', views.ping_heartbeat, name='ping_heartbeat'),
     path(
         "forgot-password/",
@@ -37,5 +38,6 @@ urlpatterns = [
         name="dashboard-metrics"
     ),
     path('websites/bulk_create/', views.BulkCreateWebsitesView.as_view(), name='bulk-create-sites'),
+    path('alerts/bulk_create/', views.BulkCreateAlertsView.as_view(), name='bulk-create-alerts'),
     path('', include(router.urls)),
 ]

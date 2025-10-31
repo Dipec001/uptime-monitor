@@ -35,10 +35,13 @@ from .oauth_utils import (
     GoogleAuthError,
     GitHubAuthError
 )
+from django.core.mail import send_mail
+from django.conf import settings
 import os
 from dotenv import load_dotenv
 import requests
 from datetime import timedelta
+from django.utils.timezone import now
 
 load_dotenv()
 
@@ -73,6 +76,7 @@ class RegisterView(generics.GenericAPIView):
         return Response({
             'message': "User registered successfully",
             'user': UserSerializer(user).data,
+            'is_new_user': True,
             'token': {
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
@@ -798,7 +802,7 @@ class BulkCreateWebsitesView(generics.GenericAPIView):
             if serializer.is_valid():
                 website = serializer.save(
                     user=request.user,
-                    next_check_at=timezone.now()  # ensures monitoring begins immediately
+                    next_check_at=now()  # ensures monitoring begins immediately
                 )
                 created.append(self.get_serializer(website).data)
             else:
@@ -811,3 +815,55 @@ class BulkCreateWebsitesView(generics.GenericAPIView):
             },
             status=status.HTTP_207_MULTI_STATUS if errors else status.HTTP_201_CREATED
         )
+
+
+class BulkCreateAlertsView(generics.GenericAPIView):
+    serializer_class = NotificationPreferenceSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        object_ids = request.data.get("object_ids", [])
+        model = request.data.get("model")
+        method = request.data.get("method")
+        target = request.data.get("target")
+
+        if not object_ids or not isinstance(object_ids, list):
+            return Response({"error": "'object_ids' must be a non-empty list."}, status=400)
+
+        created, errors = [], []
+
+        for index, object_id in enumerate(object_ids):
+            serializer = self.get_serializer(
+                data={
+                    "model": model,
+                    "object_id": object_id,
+                    "method": method,
+                    "target": target,
+                }
+            )
+            if serializer.is_valid():
+                pref = serializer.save(user=request.user)
+                created.append(self.get_serializer(pref).data)
+            else:
+                errors.append({"index": index, "errors": serializer.errors})
+
+        status_code = status.HTTP_207_MULTI_STATUS if errors else status.HTTP_201_CREATED
+        return Response({"created": created, "errors": errors}, status=status_code)
+
+
+class TestEmailNotificationView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        email = request.data.get("email")
+        if not email:
+            return Response({"error": "Email is required"}, status=400)
+
+        send_mail(
+            subject="AliveChecks Test Notification",
+            message="This is a test email from AliveChecks.",
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False
+        )
+        return Response({"message": "Test email sent!"}, status=200)

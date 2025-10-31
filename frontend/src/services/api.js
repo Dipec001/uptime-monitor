@@ -254,4 +254,29 @@ export const createBulkWebsites = async (websites) => {
   }
 };
 
+
+/**
+ * Bulk create notification preferences for multiple websites on onboarding
+ */
+export const createBulkPreferences = async (model, objectIds, method, target) => {
+  try {
+    const response = await API.post("alerts/bulk_create/", {
+      model,
+      object_ids: objectIds,
+      method,
+      target,
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to create notification preferences in bulk");
+  }
+};
+
+
+export const testEmailOnly = async (email) => {
+  return await API.post("notifications/test_email/", { email });
+};
+
+
+
 export default API;

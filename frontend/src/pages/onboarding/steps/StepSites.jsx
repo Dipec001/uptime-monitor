@@ -1,5 +1,4 @@
 import { useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import unionLogo from '@/assets/UnionLogo.svg';
 import plusCircle from "@/assets/PlusCircle.svg";
@@ -57,17 +56,28 @@ export default function StepSites({ sites, setSites, onNext }) {
                 onClick={addSite}
             >
                 <img src={plusCircle} alt="Plus Circle" className="w-3 h-3 group-hover:invert" />
-                Add More
+                Add
             </button>
             </div>
 
             <ul className="mt-4 space-y-1 text-left">
-            {sites.map((s, i) => (
-                <li key={i} className="text-sm text-gray-700 bg-gray-50 p-2 rounded border">
-                {s.url}
+              {sites.map((s, i) => (
+                <li 
+                  key={i} 
+                  className="text-sm text-gray-700 bg-gray-50 p-2 rounded border flex justify-between items-center"
+                >
+                  <span>{s.url}</span>
+
+                  <button
+                    className="text-red-500 text-xs hover:text-red-700"
+                    onClick={() => setSites(sites.filter((_, index) => index !== i))}
+                  >
+                    ✕
+                  </button>
                 </li>
-            ))}
+              ))}
             </ul>
+
         </div>
       </div>
 
