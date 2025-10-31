@@ -1,6 +1,6 @@
 // src/Register.jsx
 import React, { useState } from "react";
-import { register, socialAuth } from "../services/api.js";
+import { register, socialAuth } from "../services/Api";
 import { useNavigate } from "react-router-dom";
 import { loginWithGoogle, loginWithGithub } from '../utils/oauth';
 import googleIcon from "../assets/Google.svg";
@@ -76,9 +76,9 @@ function Register() {
   };
 
   return (
-    <div className="h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-none md:shadow-md p-4">
-        <h2 className="mb-3 text-center font-bold text-lg">
+    <div className="min-h-screen bg-white p-6">
+      <div className="w-full max-w-md">
+        <h2 className="mb-6 mt-6 text-center font-bold text-2xl text-gray-800">
           <span className="block md:inline">Create Your</span>{" "}
           <span>AliveChecks Account</span>
         </h2>
@@ -89,9 +89,9 @@ function Register() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-2">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Name
             </label>
             <input
@@ -99,14 +99,14 @@ function Register() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Enter your name"
-              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
               disabled={loading}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Email
             </label>
             <input
@@ -114,14 +114,14 @@ function Register() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
-              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
               disabled={loading}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Password
             </label>
             <input
@@ -129,7 +129,7 @@ function Register() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Create a password"
-              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
               disabled={loading}
             />
@@ -137,35 +137,34 @@ function Register() {
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-1.5 px-4 rounded-lg hover:bg-blue-700 font-medium transition text-sm mt-3 disabled:bg-blue-400 disabled:cursor-not-allowed"
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 font-medium transition text-sm disabled:bg-blue-400 disabled:cursor-not-allowed"
             disabled={loading}
           >
             {loading ? 'Creating account...' : 'Register'}
           </button>
         </form>
 
-        <div className="mt-3 space-y-2">
+        <div className="mt-4 space-y-3">
           <button 
             onClick={handleGoogleSignup}
-            className="w-full border border-gray-300 py-1.5 px-4 rounded-lg hover:bg-gray-50 font-medium transition text-sm flex items-center justify-center gap-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full border border-gray-300 py-3 px-4 rounded-lg hover:bg-gray-50 font-medium transition text-sm flex items-center justify-center gap-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
             disabled={loading}
           >
-            <img src={googleIcon} alt="Google" className="w-4 h-4" />
+            <img src={googleIcon} alt="Google" className="w-5 h-5" />
             Sign up with Google
           </button>
           <button 
             onClick={handleGithubSignup}
-            className="w-full border border-gray-300 py-1.5 px-4 rounded-lg hover:bg-gray-50 font-medium transition text-sm flex items-center justify-center gap-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full border border-gray-300 py-3 px-4 rounded-lg hover:bg-gray-50 font-medium transition text-sm flex items-center justify-center gap-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
             disabled={loading}
           >
-            <img src={githubIcon} alt="GitHub" className="w-4 h-4" />
+            <img src={githubIcon} alt="GitHub" className="w-5 h-5" />
             Sign up with GitHub
           </button>
         </div>
 
-        <p className="mt-6 text-center text-xs text-gray-600">
+        <p className="mt-8 text-center text-sm text-gray-600">
           Already have an account?{" "}
-          
           <a href="/login"
             className="text-blue-600 hover:underline font-medium">
             Login
