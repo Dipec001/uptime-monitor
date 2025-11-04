@@ -4,10 +4,9 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        aliveBlue: '#030D45',
+        aliveBlue: "#0F172A",
       },
     },
   },
   plugins: [],
-}
-
+};
