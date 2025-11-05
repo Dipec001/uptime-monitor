@@ -5,6 +5,7 @@ import website from "../assets/Website.svg";
 import tracking from "../assets/Tracking.svg";
 import ping from "../assets/Ping.svg";
 import frame from "../assets/Frame.svg";
+import hero from "../assets/Hero.jpg";
 import React, { useState, useEffect } from "react";
 
 function Home() {
@@ -170,6 +171,74 @@ function Home() {
           </a>
         </div>
       </div>
+      <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-10 my-20 px-4 sm:px-20">
+        <div className="flex-1 text-center md:text-left">
+          <h4 className="text-2xl font-bold mb-3">Receive alerts straight to your favourite tools</h4>
+          <p className="text-gray-600 text-lg">Downtimes happen even to the best of us. But it is important to know this before customers are affected</p>
+        </div>
+        <div className="flex-1 flex justify-center md:justify-end">
+          <img src="{hero}" alt="alerting logos" className="max-w-xs md:max-w-sm" />
+        </div>
+      </div>
+      
+
+
+
+
+      <div className="py-20 px-4 sm:px-20 bg-white">
+        <h2 className="text-center text-3xl font-extrabold text-[#030D45] mb-3">
+          Trusted by developers worldwide
+        </h2>
+        <p className="text-center text-gray-600 mb-10">
+          Over 500+ developers trust Alive Checks to stay ahead of downtime.
+        </p>
+
+        {/* Carousel Wrapper */}
+        <div className="overflow-hidden relative">
+          <div className="flex animate-scroll gap-8 px-1 flex-nowrap">
+
+            {/* First Set */}
+            {[
+              { text: `"Alive Checks saved my business! I was alerted before customers noticed any downtime."`, name: "Sarah L., E-commerce Entrepreneur" },
+              { text: `"As a developer, I need reliability. Alive Checks gives me peace of mind every day."`, name: "Mark D., Freelance Developer" },
+              { text: `"The alerts helped me fix issues before users were affected. 10/10 service!"`, name: "Emily R., SaaS Founder" },
+              { text: `"Super simple to set up, and notifications are always accurate."`, name: "James K., Tech Blogger" },
+              { text: `"This tool is a game-changer for uptime monitoring. Highly recommended."`, name: "Linda S., Startup CTO" },
+              { text: `"Zero downtime since using Alive Checks. Best decision we made."`, name: "Robert M., IT Manager" }
+            ].map((t, index) => (
+              <div
+                key={`first-${index}`}
+                className="bg-white flex-shrink-0 w-[320px] p-6 border border-gray-200 rounded-xl shadow-lg"
+              >
+                <p className="text-yellow-500 mb-2">⭐⭐⭐⭐⭐</p>
+                <p className="text-gray-700 leading-relaxed mb-3">{t.text}</p>
+                <p className="text-sm font-semibold text-[#030D45]">{t.name}</p>
+              </div>
+            ))}
+
+            {/* Second Set (Duplicate) */}
+            {[
+              { text: `"Alive Checks saved my business! I was alerted before customers noticed any downtime."`, name: "Sarah L., E-commerce Entrepreneur" },
+              { text: `"As a developer, I need reliability. Alive Checks gives me peace of mind every day."`, name: "Mark D., Freelance Developer" },
+              { text: `"The alerts helped me fix issues before users were affected. 10/10 service!"`, name: "Emily R., SaaS Founder" },
+              { text: `"Super simple to set up, and notifications are always accurate."`, name: "James K., Tech Blogger" },
+              { text: `"This tool is a game-changer for uptime monitoring. Highly recommended."`, name: "Linda S., Startup CTO" },
+              { text: `"Zero downtime since using Alive Checks. Best decision we made."`, name: "Robert M., IT Manager" }
+            ].map((t, index) => (
+              <div
+                key={`second-${index}`}
+                className="bg-white flex-shrink-0 w-[320px] p-6 border border-gray-200 rounded-xl shadow-lg"
+              >
+                <p className="text-yellow-500 mb-2">⭐⭐⭐⭐⭐</p>
+                <p className="text-gray-700 leading-relaxed mb-3">{t.text}</p>
+                <p className="text-sm font-semibold text-[#030D45]">{t.name}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+
 
       {/* Footer */}
       <footer className="bg-gray-200 text-center py-4 text-sm text-gray-600">
