@@ -110,6 +110,14 @@ class RegisterSerializer(serializers.ModelSerializer):
                 "Try logging in or use 'Forgot Password'."
             )
         return value
+    
+    def validate_password(self, value):
+        """Simple password validation - just minimum length"""
+        if len(value) < 8:
+            raise serializers.ValidationError(
+                "Password must be at least 8 characters long."
+            )
+        return value
 
     def create(self, validated_data):
         """Create new user with email/password"""
