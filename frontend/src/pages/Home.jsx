@@ -7,6 +7,7 @@ import ping from "../assets/Ping.svg";
 import frame from "../assets/Frame.svg";
 import noti from "../assets/Notifications.png";
 import React, { useState, useEffect } from "react";
+import { Link } from 'react-router-dom';
 
 function Home() {
   const [scrolled, setScrolled] = useState(false);
@@ -558,9 +559,9 @@ function Home() {
               © {new Date().getFullYear()} Alive Checks. Keeping the internet online.
             </p>
             <div className="flex gap-6 text-gray-400 text-sm">
-              <a href="#" className="hover:text-white transition">Privacy</a>
-              <a href="#" className="hover:text-white transition">Terms</a>
-              <a href="#" className="hover:text-white transition">Contact</a>
+              <Link to="#" className="hover:text-white transition">Privacy</Link>
+              <Link to="#" className="hover:text-white transition">Terms</Link>
+              <Link to="/contact" className="hover:text-white transition">Contact</Link>
             </div>
           </div>
         </div>

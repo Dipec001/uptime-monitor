@@ -14,6 +14,8 @@ import OAuthCallback from "./pages/OAuthCallback";
 import Onboarding from "./pages/onboarding/Onboarding";
 import SettingsPage from "./pages/Settings";
 import AlertsPage from "./pages/Alerts";
+import Contact from './pages/Contact';
+
 
 function App() {
   return (
@@ -28,6 +30,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/oauth/callback" element={<OAuthCallback />} />
           <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/contact" element={<Contact />} />
 
           {/* All dashboard pages share sidebar */}
           <Route element={<DashboardLayout />}>
