@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
+import { getUserProfile } from "../services/api.js";
 
 export default function SettingsPage() {
+
   const [formData, setFormData] = useState({
-    email: "steve@example.com",
-    timezone: "GMT+01:00 (Europe/Berlin)",
+    email: "",
+    timezone: "",
   });
   
   const [buttonPosition, setButtonPosition] = useState({ x: 0, y: 0 });
@@ -22,6 +24,33 @@ export default function SettingsPage() {
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Fetch user profile and detect timezone
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userData = await getUserProfile();
+        
+        // Auto-detect user's timezone
+        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const offset = new Date().getTimezoneOffset();
+        const hours = Math.abs(Math.floor(offset / 60));
+        const sign = offset <= 0 ? '+' : '-';
+        const gmtString = `GMT${sign}${String(hours).padStart(2, '0')}:00 (${userTimezone})`;
+        
+        setFormData({
+          email: userData.email,
+          timezone: gmtString,
+        });
+      } catch (err) {
+        console.error("Failed to fetch user data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchUserData();
   }, []);
 
   const handleInputChange = (e) => {

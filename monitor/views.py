@@ -12,7 +12,8 @@ from monitor.serializers import (
     ResetPasswordSerializer,
     SocialAuthSerializer,
     UserSerializer,
-    UserLoginSerializer
+    UserLoginSerializer,
+    UserProfileSerializer
 )
 from .models import Website, NotificationPreference, HeartBeat, UptimeCheckResult
 from .tasks import process_ping
@@ -124,6 +125,18 @@ class LoginView(generics.GenericAPIView):
             'refresh': str(refresh),
             'user': UserSerializer(user).data
         }, status=status.HTTP_200_OK)
+
+
+class UserProfileView(generics.RetrieveAPIView):
+    """
+    GET /api/user/profile/
+    Retrieve current user's profile
+    """
+    serializer_class = UserProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_object(self):
+        return self.request.user
 
 
 class WebsiteViewSet(viewsets.ModelViewSet):
@@ -478,23 +491,39 @@ class DashboardMetricsView(APIView):
         user = request.user
 
         # Stats
-        total_websites = Website.objects.filter(user=user).count()
-        active_websites = Website.objects.filter(user=user, is_active=True).count()
-        total_heartbeats = HeartBeat.objects.filter(user=user).count()
-        active_heartbeats = HeartBeat.objects.filter(user=user, status="up").count()
-
-        # Subquery: get latest check per website
+        total_websites = Website.objects.filter(user=user, is_active=True).count()
+        
+        # ✅ Count websites that are actually UP (not down)
+        # A website is "up" if its last check had a successful status code
         latest_check = UptimeCheckResult.objects.filter(
             website=OuterRef("pk")
         ).order_by("-checked_at")
 
+        websites_with_status = (
+            Website.objects.filter(user=user, is_active=True)
+            .annotate(
+                last_status_code=Subquery(latest_check.values("status_code")[:1]),
+            )
+        )
+
+        # Count how many have successful status codes (200-299)
+        active_websites = sum(
+            1 for site in websites_with_status 
+            if site.last_status_code and 200 <= site.last_status_code < 300
+        )
+
+        total_heartbeats = HeartBeat.objects.filter(user=user).count()
+        active_heartbeats = HeartBeat.objects.filter(user=user, status="up").count()
+
+        # Recent monitors with response time
         websites = (
             Website.objects.filter(user=user)
             .annotate(
                 last_status_code=Subquery(latest_check.values("status_code")[:1]),
                 last_checked_at=Subquery(latest_check.values("checked_at")[:1]),
+                last_response_time=Subquery(latest_check.values("response_time_ms")[:1]),
             )
-            .order_by("-created_at")[:5]  # last 5 websites
+            .order_by("-created_at")[:5]
         )
 
         recent_monitors = []
@@ -507,7 +536,8 @@ class DashboardMetricsView(APIView):
                 "website_name": site.name or site.url,
                 "status": status,
                 "last_check": site.last_checked_at,
-                "uptime": None,  # placeholder for later % uptime calc
+                "response_time": site.last_response_time,
+                "uptime": None,
             })
 
         # Recent heartbeats
@@ -524,15 +554,55 @@ class DashboardMetricsView(APIView):
                 "uptime": 100 if hb.status == "up" else 0
             })
 
+        # Response Time Chart Data (Last 24 Hours)
+        twenty_four_hours_ago = now() - timedelta(hours=24)
+        
+        response_time_checks = (
+            UptimeCheckResult.objects.filter(
+                website__user=user,
+                checked_at__gte=twenty_four_hours_ago
+            )
+            .values('checked_at', 'response_time_ms')
+            .order_by('checked_at')
+        )
+
+        response_time_chart = []
+        for check in response_time_checks:
+            response_time_chart.append({
+                "time": check['checked_at'].isoformat(),  # Send full datetime
+                "response_time": round(check['response_time_ms'], 2)
+            })
+
+        # Recent Incidents
+        recent_incidents = []
+        failed_checks = (
+            UptimeCheckResult.objects.filter(
+                website__user=user,
+                status_code__gte=400
+            )
+            .select_related('website')
+            .order_by('-checked_at')[:10]
+        )
+
+        for check in failed_checks:
+            recent_incidents.append({
+                "name": check.website.name or check.website.url,
+                "type": "website",
+                "timestamp": check.checked_at,
+                "reason": check.error_message or f"HTTP {check.status_code}",
+            })
+
         data = {
             "stats": {
                 "total_websites": total_websites,
-                "active_websites": active_websites,
+                "active_websites": active_websites,  # ✅ Now accurate
                 "total_heartbeats": total_heartbeats,
                 "active_heartbeats": active_heartbeats
             },
             "recent_monitors": recent_monitors,
             "recent_heartbeats": recent_heartbeats_list,
+            "response_time_chart": response_time_chart,
+            "recent_incidents": recent_incidents,
         }
 
         return Response(data)

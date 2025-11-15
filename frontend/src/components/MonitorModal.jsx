@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import { 
+  getUserProfile, 
+  createWebsite, 
+  createHeartbeat,
+  testNotification 
+} from "../services/api";
 
 export default function AddMonitorModal({ onClose, onSuccess }) {
   const [step, setStep] = useState("select"); // "select", "website", "heartbeat"
   const [websiteData, setWebsiteData] = useState({
     name: "",
     url: "",
-    check_interval: 300,
+    check_interval: 5,
     timeout: 10,
     notifications: {
       email: { enabled: false, address: "" },
@@ -32,25 +37,22 @@ export default function AddMonitorModal({ onClose, onSuccess }) {
   useEffect(() => {
     const fetchUserEmail = async () => {
       try {
-        const token = localStorage.getItem("access_token");
-        const response = await axios.get("http://127.0.0.1:8000/api/user/profile/", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUserEmail(response.data.email);
+        const userData = await getUserProfile();
+        setUserEmail(userData.email);
         
         // Auto-populate email in both forms
         setWebsiteData(prev => ({
           ...prev,
           notifications: {
             ...prev.notifications,
-            email: { ...prev.notifications.email, address: response.data.email },
+            email: { ...prev.notifications.email, address: userData.email },
           },
         }));
         setHeartbeatData(prev => ({
           ...prev,
           notifications: {
             ...prev.notifications,
-            email: { ...prev.notifications.email, address: response.data.email },
+            email: { ...prev.notifications.email, address: userData.email },
           },
         }));
       } catch (err) {
@@ -66,15 +68,10 @@ export default function AddMonitorModal({ onClose, onSuccess }) {
     setError("");
 
     try {
-      const token = localStorage.getItem("access_token");
-      await axios.post(
-        "http://127.0.0.1:8000/api/websites/",
-        websiteData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await createWebsite(websiteData);
       onSuccess();
     } catch (err) {
-      setError(err.response?.data?.detail || "Failed to create website monitor");
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -86,15 +83,10 @@ export default function AddMonitorModal({ onClose, onSuccess }) {
     setError("");
 
     try {
-      const token = localStorage.getItem("access_token");
-      await axios.post(
-        "http://127.0.0.1:8000/api/heartbeats/",
-        heartbeatData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await createHeartbeat(heartbeatData);
       onSuccess();
     } catch (err) {
-      setError(err.response?.data?.detail || "Failed to create heartbeat");
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -210,28 +202,19 @@ function NotificationChannels({ notifications, setNotifications }) {
     setTestingChannel(channel);
     
     try {
-      const token = localStorage.getItem("access_token");
-      const channelData = 
+        const channelData = 
         channel === "email" ? notifications.email.address :
         channel === "slack" ? notifications.slack.webhook :
         notifications.whatsapp.number;
-      
-      await axios.post(
-        "http://127.0.0.1:8000/api/test-notification/",
-        {
-          channel,
-          value: channelData,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      alert(`Test ${channel} notification sent successfully!`);
+        
+        await testNotification(channel, channelData);
+        alert(`Test ${channel} notification sent successfully!`);
     } catch (err) {
-      alert(`Failed to send test notification: ${err.response?.data?.detail || err.message}`);
+        alert(`Failed to send test notification: ${err.message}`);
     } finally {
-      setTestingChannel(null);
+        setTestingChannel(null);
     }
-  };
+    };
 
   const handleChannelChange = (channel) => {
     setActiveChannel(channel);
@@ -366,14 +349,12 @@ function NotificationChannels({ notifications, setNotifications }) {
 function WebsiteMonitorForm({ data, setData, onSubmit, onBack, loading }) {
   const intervalOptions = [
     // { value: 30, label: "30s" },
-    { value: 60, label: "1m" },
-    { value: 300, label: "5m" },
-    { value: 600, label: "10m" },
-    { value: 1800, label: "30m" },
-    { value: 3600, label: "1h" },
-    { value: 7200, label: "2h" },
-    { value: 21600, label: "6h" },
-    { value: 86400, label: "24h" },
+    { value: 1, label: "1m" },
+    { value: 5, label: "5m" },
+    { value: 10, label: "10m" },
+    { value: 15, label: "15m" },
+    { value: 30, label: "30m" },
+    { value: 60, label: "1h" },
   ];
 
   return (

@@ -26,16 +26,12 @@ class UserSerializer(serializers.ModelSerializer):
     """
     auth_methods = serializers.SerializerMethodField()
     has_password = serializers.SerializerMethodField()
-    full_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id',
             'email',
-            'first_name',
-            'last_name',
-            'full_name',
             'is_active',
             'auth_methods',      # NEW: Shows ["google", "email_password"]
             'has_password',      # NEW: True/False
@@ -52,9 +48,15 @@ class UserSerializer(serializers.ModelSerializer):
         """Check if user has a usable password"""
         return obj.has_usable_password()
 
-    def get_full_name(self, obj):
-        """Return user's full name or email"""
-        return obj.get_full_name()
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    """
+    Serializer for retrieving and updating user profile
+    """
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'created_at']
+        read_only_fields = ['id', 'created_at']
 
 
 class SocialAuthSerializer(serializers.Serializer):
