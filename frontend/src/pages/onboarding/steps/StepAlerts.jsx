@@ -10,6 +10,7 @@ export default function StepAlerts({ sites, onBack, onNext }) {
   const [testing, setTesting] = useState(false);
   const [testStatus, setTestStatus] = useState("idle");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleTestEmail = async () => {
     if (!email.trim()) return;
@@ -27,6 +28,62 @@ export default function StepAlerts({ sites, onBack, onNext }) {
     }
   };
 
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      // Validate email before submitting
+      if (!email.trim() || !email.includes("@")) {
+        setError("Please enter a valid email address");
+        setLoading(false);
+        return;
+      }
+
+      // Check if we have sites with IDs
+      if (!sites || sites.length === 0) {
+        setError("No websites found. Please go back and add websites first.");
+        setLoading(false);
+        return;
+      }
+
+      // Make sure all sites have IDs (they should after step 1)
+      const siteIds = sites.map(site => site.id).filter(id => id);
+      if (siteIds.length === 0) {
+        setError("Website IDs are missing. Please go back and try adding websites again.");
+        setLoading(false);
+        return;
+      }
+
+      const response = await createBulkPreferences(
+        "website",
+        siteIds,
+        "email",
+        email
+      );
+
+      // Check if there were any errors
+      if (response.errors && response.errors.length > 0) {
+        const firstError = response.errors[0];
+        const errorMessage = firstError.errors?.target?.[0] || 
+                           firstError.errors?.method?.[0] ||
+                           firstError.errors?.object_id?.[0] ||
+                           firstError.errors?.non_field_errors?.[0] ||
+                           "Some notification preferences failed to save";
+        setError(errorMessage);
+        return;
+      }
+
+      // Success!
+      onNext();
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Failed to save notification preferences. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center text-center max-w-2xl mx-auto">
       <img src={unionLogo} alt="alive checks logo" className="mb-6 w-12 h-12" />
@@ -39,6 +96,13 @@ export default function StepAlerts({ sites, onBack, onNext }) {
       <div className="w-full bg-gray-800/50 backdrop-blur border border-gray-700 rounded-2xl p-6 sm:p-8 mt-6 shadow-2xl">
         {/* Steps Indicator */}
         <StepIndicator currentStep={2} totalSteps={3} />
+
+        {/* Error Display */}
+        {error && (
+          <div className="mt-6 p-3 bg-red-500/10 border border-red-500/50 text-red-400 text-sm rounded-lg">
+            {error}
+          </div>
+        )}
 
         {/* Content */}
         <div className="mt-8">
@@ -59,6 +123,7 @@ export default function StepAlerts({ sites, onBack, onNext }) {
                 onChange={(e) => {
                   setEmail(e.target.value);
                   setTestStatus("idle");
+                  setError(""); // Clear error when typing
                 }}
               />
 
@@ -145,22 +210,7 @@ export default function StepAlerts({ sites, onBack, onNext }) {
         <button
           className="justify-self-end bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-700 disabled:cursor-not-allowed font-medium shadow-lg shadow-blue-600/30"
           disabled={!email.trim() || loading}
-          onClick={async () => {
-            try {
-              setLoading(true);
-              await createBulkPreferences(
-                "website",
-                sites.map(site => site.id),
-                "email",
-                email
-              );
-              onNext();
-            } catch (error) {
-              console.error(error);
-            } finally {
-              setLoading(false);
-            }
-          }}
+          onClick={handleSubmit}
         >
           {loading ? 'Saving...' : 'Next'}
         </button>

@@ -9,17 +9,85 @@ export default function StepSites({ sites, setSites, onNext }) {
   const navigate = useNavigate();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [apiError, setApiError] = useState("");
+
+  const validateUrl = (urlString) => {
+    // Check if it starts with http:// or https://
+    if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+      return "URL must start with http:// or https://";
+    }
+
+    // Basic URL validation
+    try {
+      new URL(urlString);
+      return null; // Valid
+    } catch (e) {
+      return "Please enter a valid URL";
+    }
+  };
 
   const addSite = () => {
-    if (!url.trim()) return;
-    setSites([...sites, { url }]);
+    const trimmedUrl = url.trim();
+    
+    if (!trimmedUrl) {
+      setError("Please enter a URL");
+      return;
+    }
+
+    // Validate URL
+    const validationError = validateUrl(trimmedUrl);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    // Check for duplicates in the list
+    if (sites.some(site => site.url.toLowerCase() === trimmedUrl.toLowerCase())) {
+      setError("This URL is already in your list");
+      return;
+    }
+
+    setSites([...sites, { url: trimmedUrl }]);
     setUrl("");
+    setError("");
   };
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       addSite();
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      setApiError("");
+      const response = await createBulkWebsites(sites);
+      
+      // Check if there were any errors
+      if (response.errors && response.errors.length > 0) {
+        const firstError = response.errors[0];
+        const errorMessage = firstError.errors?.url?.[0] || 
+                          firstError.errors?.non_field_errors?.[0] ||
+                          "Some websites failed to save";
+        setApiError(errorMessage);
+        setLoading(false);
+        return;
+      }
+      
+      // Store the websites with IDs that came back from the server!
+      if (response.created && response.created.length > 0) {
+        setSites(response.created); // This now has the IDs!
+      }
+      
+      onNext(); // Success - move to next step
+    } catch (error) {
+      console.error(error);
+      setApiError(error.message || "Failed to save websites. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -32,9 +100,16 @@ export default function StepSites({ sites, setSites, onNext }) {
         Let's get started by adding your first website(s) to monitor.
       </p>
 
-      <div className={`w-full bg-gray-800/50 backdrop-blur border border-gray-700 rounded-2xl p-6 sm:p-8 mt-6 shadow-2xl`}>
+      <div className="w-full bg-gray-800/50 backdrop-blur border border-gray-700 rounded-2xl p-6 sm:p-8 mt-6 shadow-2xl">
         {/* Steps Indicator */}
         <StepIndicator currentStep={1} totalSteps={3} />
+
+        {/* API Error Display */}
+        {apiError && (
+          <div className="mt-6 p-3 bg-red-500/10 border border-red-500/50 text-red-400 text-sm rounded-lg">
+            {apiError}
+          </div>
+        )}
 
         {/* Content Container */}
         <div className="mt-8">
@@ -48,16 +123,26 @@ export default function StepSites({ sites, setSites, onNext }) {
                 Website URL
               </label>
               <div className="flex gap-2">
-                <input
-                  type="url"
-                  placeholder="https://example.com"
-                  className="flex-1 bg-gray-700 text-white border border-gray-600 px-4 py-3 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                />
+                <div className="flex-1">
+                  <input
+                    type="url"
+                    placeholder="https://example.com"
+                    className={`w-full bg-gray-700 text-white border ${
+                      error ? 'border-red-500' : 'border-gray-600'
+                    } px-4 py-3 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500`}
+                    value={url}
+                    onChange={(e) => {
+                      setUrl(e.target.value);
+                      setError(""); // Clear error when typing
+                    }}
+                    onKeyPress={handleKeyPress}
+                  />
+                  {error && (
+                    <p className="text-red-400 text-xs mt-1 text-left">{error}</p>
+                  )}
+                </div>
                 <button
-                  className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 font-medium"
+                  className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 font-medium disabled:bg-gray-600 disabled:cursor-not-allowed"
                   onClick={addSite}
                   disabled={!url.trim()}
                 >
@@ -117,17 +202,7 @@ export default function StepSites({ sites, setSites, onNext }) {
         <button
           className="justify-self-end bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-700 disabled:cursor-not-allowed font-medium shadow-lg shadow-blue-600/30"
           disabled={sites.length === 0 || loading}
-          onClick={async () => {
-            try {
-              setLoading(true);
-              await createBulkWebsites(sites);
-              onNext();
-            } catch (error) {
-              console.error(error);
-            } finally {
-              setLoading(false);
-            }
-          }}
+          onClick={handleSubmit}
         >
           {loading ? 'Saving...' : 'Next'}
         </button>
