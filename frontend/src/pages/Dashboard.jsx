@@ -45,7 +45,10 @@ function Dashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-900">
-        <p className="text-white text-lg">Loading dashboard...</p>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-white text-lg">Loading dashboard...</p>
+        </div>
       </div>
     );
   }
@@ -59,13 +62,13 @@ function Dashboard() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="text-gray-400">Welcome back! Here's your monitoring overview</p>
+        <p className="text-gray-400">Welcome! Here's your monitoring overview</p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         {/* Total Monitors */}
-        <div className="bg-gray-800 border border-gray-700 rounded-lg shadow p-6">
+        <div className="bg-gray-800 border border-gray-700 rounded-lg shadow p-6 hover:border-blue-500/50 hover:shadow-blue-500/20 hover:shadow-xl transition-all duration-300 hover:scale-105">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">Total Monitors</p>
@@ -73,7 +76,7 @@ function Dashboard() {
                 {stats.total_websites}
               </p>
             </div>
-            <div className="bg-blue-500/20 p-3 rounded-full">
+            <div className="bg-blue-500/20 p-3 rounded-full animate-pulse-slow">
               <svg className="w-6 h-6 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z" />
               </svg>
@@ -81,28 +84,31 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Uptime Percentage */}
-        <div className="bg-gray-800 border border-gray-700 rounded-lg shadow p-6">
+        {/* Uptime Percentage - DRAMATIC PULSE */}
+        <div className="bg-gray-800 border border-gray-700 rounded-lg shadow p-6 hover:border-green-500/50 hover:shadow-green-500/20 hover:shadow-xl transition-all duration-300 hover:scale-105">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">Overall Uptime</p>
-              <p className="text-3xl font-bold text-green-400 mt-1">
+              <p className="text-3xl font-bold text-green-400 mt-1 animate-pulse">
                 {uptime}%
               </p>
               <p className="text-xs text-gray-500 mt-1">
                 {stats.active_websites} of {stats.total_websites} up
               </p>
             </div>
-            <div className="bg-green-500/20 p-3 rounded-full">
-              <svg className="w-6 h-6 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
+            <div className="relative">
+              <div className="absolute inset-0 bg-green-500/30 rounded-full blur-xl animate-pulse"></div>
+              <div className="relative bg-green-500/20 p-3 rounded-full animate-bounce-subtle">
+                <svg className="w-6 h-6 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Total Heartbeats */}
-        <div className="bg-gray-800 border border-gray-700 rounded-lg shadow p-6">
+        <div className="bg-gray-800 border border-gray-700 rounded-lg shadow p-6 hover:border-purple-500/50 hover:shadow-purple-500/20 hover:shadow-xl transition-all duration-300 hover:scale-105">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">Total Heartbeats</p>
@@ -110,7 +116,7 @@ function Dashboard() {
                 {stats.total_heartbeats}
               </p>
             </div>
-            <div className="bg-purple-500/20 p-3 rounded-full">
+            <div className="bg-purple-500/20 p-3 rounded-full animate-pulse-slow">
               <svg className="w-6 h-6 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
               </svg>
@@ -118,8 +124,8 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Active Heartbeats */}
-        <div className="bg-gray-800 border border-gray-700 rounded-lg shadow p-6">
+        {/* Active Heartbeats - DRAMATIC HEARTBEAT */}
+        <div className="bg-gray-800 border border-gray-700 rounded-lg shadow p-6 hover:border-green-500/50 hover:shadow-green-500/20 hover:shadow-xl transition-all duration-300 hover:scale-105">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">Active Heartbeats</p>
@@ -130,17 +136,20 @@ function Dashboard() {
                 {stats.active_heartbeats} of {stats.total_heartbeats} healthy
               </p>
             </div>
-            <div className="bg-green-500/20 p-3 rounded-full">
-              <svg className="w-6 h-6 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-              </svg>
+            <div className="relative">
+              <div className="absolute inset-0 bg-green-500/30 rounded-full blur-xl animate-heartbeat-glow"></div>
+              <div className="relative bg-green-500/20 p-3 rounded-full">
+                <svg className="w-6 h-6 text-green-400 animate-heartbeat-dramatic" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                </svg>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Response Time Chart */}
-      <div className="bg-gray-800 border border-gray-700 rounded-lg shadow p-6 mb-6">
+      <div className="bg-gray-800 border border-gray-700 rounded-lg shadow p-6 mb-6 hover:border-blue-500/30 transition-all">
         <h2 className="text-lg font-semibold text-white mb-4">
           Response Time (Last 24 Hours)
         </h2>
@@ -170,17 +179,17 @@ function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Incidents */}
-        <div className="bg-gray-800 border border-gray-700 rounded-lg shadow overflow-hidden">
+        <div className="bg-gray-800 border border-gray-700 rounded-lg shadow overflow-hidden hover:border-red-500/30 transition-all">
           <div className="px-6 py-4 border-b border-gray-700">
             <h2 className="text-lg font-semibold text-white">Recent Incidents</h2>
           </div>
           <div className="divide-y divide-gray-700 max-h-80 overflow-y-auto">
             {recentIncidents.length > 0 ? (
               recentIncidents.map((incident, idx) => (
-                <div key={idx} className="px-6 py-4 hover:bg-gray-700/50">
+                <div key={idx} className="px-6 py-4 hover:bg-gray-700/50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                      <span className="w-2 h-2 bg-red-500 rounded-full animate-ping-slow"></span>
                       <div>
                         <p className="font-medium text-white">{incident.name}</p>
                         <p className="text-sm text-gray-400">
@@ -204,19 +213,19 @@ function Dashboard() {
         </div>
 
         {/* Monitor Status */}
-        <div className="bg-gray-800 border border-gray-700 rounded-lg shadow overflow-hidden">
+        <div className="bg-gray-800 border border-gray-700 rounded-lg shadow overflow-hidden hover:border-green-500/30 transition-all">
           <div className="px-6 py-4 border-b border-gray-700">
             <h2 className="text-lg font-semibold text-white">Website Monitors</h2>
           </div>
           <div className="divide-y divide-gray-700 max-h-80 overflow-y-auto">
             {recentMonitors.length > 0 ? (
               recentMonitors.map((monitor, idx) => (
-                <div key={idx} className="px-6 py-4 hover:bg-gray-700/50">
+                <div key={idx} className="px-6 py-4 hover:bg-gray-700/50 transition-colors">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
                       <span
                         className={`w-2 h-2 rounded-full ${
-                          monitor.status === "up" ? "bg-green-500" : "bg-red-500"
+                          monitor.status === "up" ? "bg-green-500 animate-pulse" : "bg-red-500 animate-ping-slow"
                         }`}
                       ></span>
                       <p className="font-medium text-white">{monitor.website_name}</p>

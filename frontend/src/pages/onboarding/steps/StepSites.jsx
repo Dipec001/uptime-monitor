@@ -3,15 +3,12 @@ import { useNavigate } from "react-router-dom";
 import unionLogo from '@/assets/UnionLogo.svg';
 import plusCircle from "@/assets/PlusCircle.svg";
 import StepIndicator from "@/components/StepIndicator";
-import useFadeIn from "@/hooks/useFadeIn";
 import { createBulkWebsites } from "../../../services/api";
-
 
 export default function StepSites({ sites, setSites, onNext }) {
   const navigate = useNavigate();
-  const fade = useFadeIn();
-
   const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const addSite = () => {
     if (!url.trim()) return;
@@ -19,92 +16,120 @@ export default function StepSites({ sites, setSites, onNext }) {
     setUrl("");
   };
 
-  return (
-    <div className="flex flex-col items-center text-center mx-2 md:mx-0">
-      <img src={unionLogo} alt="alive checks logo" className="mb-6 w-10 h-10" />
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addSite();
+    }
+  };
 
-      <h2 className="text-xl font-semibold text-gray-800">Welcome to Alive Checks</h2>
-      <p className="mt-1 text-sm text-gray-500">
+  return (
+    <div className="flex flex-col items-center text-center max-w-2xl mx-auto">
+      <img src={unionLogo} alt="alive checks logo" className="mb-6 w-12 h-12" />
+
+      <h2 className="text-2xl sm:text-3xl font-bold text-white">Welcome to Alive Checks</h2>
+      <p className="mt-2 text-sm sm:text-base text-gray-400">
         Let's get started by adding your first website(s) to monitor.
       </p>
 
-      <div className={`onboarding-card w-full max-w-md bg-white rounded-lg shadow-2xl p-4 mt-4 ${fade}`}>
+      <div className={`w-full bg-gray-800/50 backdrop-blur border border-gray-700 rounded-2xl p-6 sm:p-8 mt-6 shadow-2xl`}>
         {/* Steps Indicator */}
         <StepIndicator currentStep={1} totalSteps={3} />
 
         {/* Content Container */}
-        <div className="mt-6 bg-white">
-            <h3 className="text-sm text-gray-700 font-medium mb-3">
+        <div className="mt-8">
+          <h3 className="text-base sm:text-lg text-white font-semibold mb-4 text-left">
             Which websites do you want to monitor?
-            </h3>
+          </h3>
 
-            <div className="flex flex-col items-start space-y-3">
-            <label className="block text-xs font-medium text-gray-700 mb-1 text-left">
-              WEBSITE URL
-            </label>
-            <input
-                type="text"
-                placeholder="https://"
-                className=" w-full border border-gray-300 p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-            />
-
-            <button
-                className="px-3 py-2 text-sm border border-blue-600 text-blue-600 rounded-xl 
-             hover:bg-blue-600 hover:text-white transition flex justify-center items-center gap-1"
-                onClick={addSite}
-            >
-                <img src={plusCircle} alt="Plus Circle" className="w-3 h-3 group-hover:invert" />
-                Add
-            </button>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-400 mb-2 text-left uppercase tracking-wide">
+                Website URL
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  placeholder="https://example.com"
+                  className="flex-1 bg-gray-700 text-white border border-gray-600 px-4 py-3 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                />
+                <button
+                  className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 font-medium"
+                  onClick={addSite}
+                  disabled={!url.trim()}
+                >
+                  <img src={plusCircle} alt="Add" className="w-4 h-4 invert" />
+                  <span className="hidden sm:inline">Add</span>
+                </button>
+              </div>
             </div>
 
-            <ul className="mt-4 space-y-1 text-left">
-              {sites.map((s, i) => (
-                <li 
-                  key={i} 
-                  className="text-sm text-gray-700 bg-gray-50 p-2 rounded border flex justify-between items-center"
-                >
-                  <span>{s.url}</span>
+            {/* Sites List */}
+            {sites.length > 0 && (
+              <div className="mt-6">
+                <p className="text-xs text-gray-400 mb-3 text-left">
+                  {sites.length} website{sites.length !== 1 ? 's' : ''} added
+                </p>
+                <ul className="space-y-2">
+                  {sites.map((s, i) => (
+                    <li 
+                      key={i} 
+                      className="bg-gray-700/50 border border-gray-600 p-3 rounded-lg flex justify-between items-center hover:border-gray-500 transition group"
+                    >
+                      <span className="text-sm text-gray-200 truncate flex-1">{s.url}</span>
+                      <button
+                        className="ml-3 text-red-400 hover:text-red-300 text-lg transition opacity-0 group-hover:opacity-100"
+                        onClick={() => setSites(sites.filter((_, index) => index !== i))}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-                  <button
-                    className="text-red-500 text-xs hover:text-red-700"
-                    onClick={() => setSites(sites.filter((_, index) => index !== i))}
-                  >
-                    ✕
-                  </button>
-                </li>
-              ))}
-            </ul>
-
+            {sites.length === 0 && (
+              <div className="mt-6 p-8 border-2 border-dashed border-gray-700 rounded-lg">
+                <p className="text-gray-500 text-sm">
+                  No websites added yet. Add at least one to continue.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Bottom Navigation */}
-      <div className="w-full max-w-md grid grid-cols-3 items-center mt-6">
-        <div></div> {/* Left placeholder */}
+      <div className="w-full grid grid-cols-3 items-center mt-8 gap-4">
+        <div></div>
 
         <button
-          className="justify-self-center text-xs text-gray-500 underline hover:text-gray-700"
+          className="justify-self-center text-sm text-gray-400 hover:text-gray-300 transition"
           onClick={() => navigate("/dashboard")}
         >
-          Skip Onboarding
+          Skip for now
         </button>
 
         <button
-          className="justify-self-end bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-blue-300"
-          disabled={sites.length === 0}
+          className="justify-self-end bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-700 disabled:cursor-not-allowed font-medium shadow-lg shadow-blue-600/30"
+          disabled={sites.length === 0 || loading}
           onClick={async () => {
             try {
+              setLoading(true);
               await createBulkWebsites(sites);
-              onNext();  // ✅ move to Step 2
+              onNext();
             } catch (error) {
               console.error(error);
+            } finally {
+              setLoading(false);
             }
           }}
         >
-          Next
+          {loading ? 'Saving...' : 'Next'}
         </button>
       </div>
     </div>
