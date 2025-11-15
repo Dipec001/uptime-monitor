@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from django.contrib.auth.password_validation import validate_password
 from .models import (
     Website,
     CHECK_INTERVAL_CHOICES,
@@ -110,10 +109,6 @@ class RegisterSerializer(serializers.ModelSerializer):
                 "An account with this email already exists. "
                 "Try logging in or use 'Forgot Password'."
             )
-        return value
-
-    def validate_password(self, value):
-        validate_password(value)
         return value
 
     def create(self, validated_data):
