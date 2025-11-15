@@ -65,31 +65,81 @@ API.interceptors.response.use(
 
 export const login = async (email, password, rememberMe) => {
   try {
-    const response = await API.post("login/", { email, password, remember_me: rememberMe, });
+    const response = await API.post("login/", { 
+      email, 
+      password, 
+      remember_me: rememberMe 
+    });
     return response.data;
   } catch (error) {
-    throw new Error(
-      error.response?.data?.error || 
-      error.response?.data?.detail || 
-      "Login failed"
-    );
+    // Handle different error response formats
+    const errorData = error.response?.data;
+    
+    if (errorData) {
+      // Check for non_field_errors (common in login)
+      if (errorData.non_field_errors) {
+        const message = Array.isArray(errorData.non_field_errors) 
+          ? errorData.non_field_errors[0] 
+          : errorData.non_field_errors;
+        throw new Error(message);
+      }
+      
+      // Check for field-specific errors
+      if (errorData.email) {
+        throw new Error(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
+      }
+      if (errorData.password) {
+        throw new Error(Array.isArray(errorData.password) ? errorData.password[0] : errorData.password);
+      }
+      
+      // Check for general error messages
+      if (errorData.error) {
+        throw new Error(errorData.error);
+      }
+      if (errorData.detail) {
+        throw new Error(errorData.detail);
+      }
+    }
+    
+    // Fallback to generic message
+    throw new Error("Login failed. Please try again.");
   }
 };
 
-export const register = async (fullName, email, password) => {
+export const register = async (email, password) => {
   try {
     const response = await API.post("register/", {
-      full_name: fullName,
       email,
       password,
     });
     return response.data;
   } catch (error) {
-    throw new Error(
-      error.response?.data?.error || 
-      error.response?.data?.detail || 
-      "Registration failed"
-    );
+    // Handle different error response formats
+    const errorData = error.response?.data;
+    
+    if (errorData) {
+      // Check for field-specific errors (like email, password)
+      if (errorData.email) {
+        throw new Error(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
+      }
+      if (errorData.password) {
+        throw new Error(Array.isArray(errorData.password) ? errorData.password[0] : errorData.password);
+      }
+      // Check for general error messages
+      if (errorData.error) {
+        throw new Error(errorData.error);
+      }
+      if (errorData.detail) {
+        throw new Error(errorData.detail);
+      }
+      // If there's a non_field_errors array
+      if (errorData.non_field_errors) {
+        throw new Error(Array.isArray(errorData.non_field_errors) ? errorData.non_field_errors[0] : errorData.non_field_errors);
+      }
+    }
+    
+    // Fallback to generic message
+    throw new Error("Registration failed. Please try again.");
   }
 };
 
@@ -151,6 +201,19 @@ export const isLoggedIn = () => {
 // WEBSITE APIs
 // ============================================
 
+// ============================================
+// MONITORS APIs
+// ============================================
+
+export const getWebsites = async () => {
+  try {
+    const response = await API.get("websites/");
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.detail || "Failed to fetch websites");
+  }
+};
+
 export const fetchWebsites = async () => {
   try {
     const response = await API.get("websites/");
@@ -192,13 +255,22 @@ export const deleteWebsite = async (id) => {
     const response = await API.delete(`websites/${id}/`);
     return response.data;
   } catch (error) {
-    throw new Error("Failed to delete website");
+    throw new Error(error.response?.data?.detail || "Failed to delete website");
   }
 };
 
 // ============================================
 // HEARTBEAT APIs
 // ============================================
+
+export const getHeartbeats = async () => {
+  try {
+    const response = await API.get("heartbeats/");
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.detail || "Failed to fetch heartbeats");
+  }
+};
 
 export const fetchHeartbeats = async () => {
   try {
@@ -241,7 +313,7 @@ export const deleteHeartbeat = async (id) => {
     const response = await API.delete(`heartbeats/${id}/`);
     return response.data;
   } catch (error) {
-    throw new Error("Failed to delete heartbeat");
+    throw new Error(error.response?.data?.detail || "Failed to delete heartbeat");
   }
 };
 
@@ -250,8 +322,87 @@ export const createBulkWebsites = async (websites) => {
     const response = await API.post("websites/bulk_create/", { websites });
     return response.data;
   } catch (error) {
-    throw new Error("Failed to create websites in bulk");
+    const errorData = error.response?.data;
+    
+    if (errorData) {
+      // Handle general error
+      if (errorData.error) {
+        throw new Error(errorData.error);
+      }
+      
+      // Handle bulk errors - show first error
+      if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+        const firstError = errorData.errors[0];
+        if (firstError.errors?.url) {
+          throw new Error(Array.isArray(firstError.errors.url) 
+            ? firstError.errors.url[0] 
+            : firstError.errors.url);
+        }
+      }
+    }
+    
+    throw new Error("Failed to save websites. Please try again.");
   }
 };
+
+
+/**
+ * Bulk create notification preferences for multiple websites on onboarding
+ */
+/**
+ * Bulk create notification preferences for multiple websites on onboarding
+ */
+export const createBulkPreferences = async (model, objectIds, method, target) => {
+  try {
+    const response = await API.post("alerts/bulk_create/", {
+      model,
+      object_ids: objectIds,
+      method,
+      target,
+    });
+    return response.data;
+  } catch (error) {
+    const errorData = error.response?.data;
+    
+    if (errorData) {
+      // Handle general error
+      if (errorData.error) {
+        throw new Error(errorData.error);
+      }
+      
+      // Handle bulk errors - show first error
+      if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+        const firstError = errorData.errors[0];
+        if (firstError.errors) {
+          // Get the first field error
+          const errorFields = Object.keys(firstError.errors);
+          if (errorFields.length > 0) {
+            const firstField = errorFields[0];
+            const message = Array.isArray(firstError.errors[firstField])
+              ? firstError.errors[firstField][0]
+              : firstError.errors[firstField];
+            throw new Error(message);
+          }
+        }
+      }
+    }
+    
+    throw new Error("Failed to save notification preferences. Please try again.");
+  }
+};
+
+export const testEmailOnly = async (email) => {
+  try {
+    return await API.post("notifications/test_email/", { email });
+  } catch (error) {
+    const errorData = error.response?.data;
+    if (errorData?.error) {
+      throw new Error(errorData.error);
+    }
+    throw new Error("Failed to send test email. Please try again.");
+  }
+};
+
+
 
 export default API;

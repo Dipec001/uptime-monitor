@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from django.contrib.auth.password_validation import validate_password
 from .models import (
     Website,
     CHECK_INTERVAL_CHOICES,
@@ -111,9 +110,13 @@ class RegisterSerializer(serializers.ModelSerializer):
                 "Try logging in or use 'Forgot Password'."
             )
         return value
-
+    
     def validate_password(self, value):
-        validate_password(value)
+        """Simple password validation - just minimum length"""
+        if len(value) < 8:
+            raise serializers.ValidationError(
+                "Password must be at least 8 characters long."
+            )
         return value
 
     def create(self, validated_data):

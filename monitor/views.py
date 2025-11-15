@@ -35,10 +35,14 @@ from .oauth_utils import (
     GoogleAuthError,
     GitHubAuthError
 )
+from django.core.mail import send_mail
+from django.conf import settings
 import os
 from dotenv import load_dotenv
 import requests
 from datetime import timedelta
+from django.utils.timezone import now
+from django.core.validators import validate_email
 
 load_dotenv()
 
@@ -60,6 +64,14 @@ class RegisterView(generics.GenericAPIView):
         except ValidationError as ve:
             logger.warning("[!] Registration validation failed: %s", ve.detail)
             # DRF will automatically return 400 if you let it propagate
+            # Clean up the ugly Django error messages
+            if 'email' in ve.detail:
+                error_msg = ve.detail['email'][0]
+                if 'already exists' in str(error_msg).lower():
+                    return Response({
+                        'email': ['This email is already registered. Try logging in instead!']
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            
             raise ve
         except Exception as e:
             logger.exception("🔥 Unexpected error during registration: %s", str(e))
@@ -73,6 +85,7 @@ class RegisterView(generics.GenericAPIView):
         return Response({
             'message': "User registered successfully",
             'user': UserSerializer(user).data,
+            'is_new_user': True,
             'token': {
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
@@ -85,8 +98,14 @@ class LoginView(generics.GenericAPIView):
     serializer_class = UserLoginSerializer
 
     def post(self, request, *args, **kwargs):
+        logger.info(f"Login attempt for email: {request.data.get('email')}")
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+
+        try:
+            serializer.is_valid(raise_exception=True)
+        except Exception as e:
+            logger.warning(f"Login failed for email: {request.data.get('email')} - {str(e)}")
+            raise
 
         user = serializer.validated_data['user']
         refresh = RefreshToken.for_user(user)
@@ -98,6 +117,7 @@ class LoginView(generics.GenericAPIView):
             # Extend token lifetimes for "Remember me"
             refresh.set_exp(lifetime=timedelta(days=30))
             refresh.access_token.set_exp(lifetime=timedelta(days=7))
+            logger.info(f"'Remember me' enabled for user: {user.email}")
 
         return Response({
             'access': str(refresh.access_token),
@@ -772,7 +792,6 @@ class SetPasswordView(APIView):
         })
 
 
-
 class BulkCreateWebsitesView(generics.GenericAPIView):
     """
     Bulk create websites for onboarding
@@ -798,7 +817,7 @@ class BulkCreateWebsitesView(generics.GenericAPIView):
             if serializer.is_valid():
                 website = serializer.save(
                     user=request.user,
-                    next_check_at=timezone.now()  # ensures monitoring begins immediately
+                    next_check_at=now()  # ensures monitoring begins immediately
                 )
                 created.append(self.get_serializer(website).data)
             else:
@@ -811,3 +830,67 @@ class BulkCreateWebsitesView(generics.GenericAPIView):
             },
             status=status.HTTP_207_MULTI_STATUS if errors else status.HTTP_201_CREATED
         )
+
+
+class BulkCreateAlertsView(generics.GenericAPIView):
+    serializer_class = NotificationPreferenceSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        object_ids = request.data.get("object_ids", [])
+        model = request.data.get("model")
+        method = request.data.get("method")
+        target = request.data.get("target")
+
+        if not object_ids or not isinstance(object_ids, list):
+            return Response({"error": "'object_ids' must be a non-empty list."}, status=400)
+
+        created, errors = [], []
+
+        for index, object_id in enumerate(object_ids):
+            serializer = self.get_serializer(
+                data={
+                    "model": model,
+                    "object_id": object_id,
+                    "method": method,
+                    "target": target,
+                }
+            )
+            if serializer.is_valid():
+                pref = serializer.save(user=request.user)
+                created.append(self.get_serializer(pref).data)
+            else:
+                errors.append({"index": index, "errors": serializer.errors})
+
+        status_code = status.HTTP_207_MULTI_STATUS if errors else status.HTTP_201_CREATED
+        return Response({"created": created, "errors": errors}, status=status_code)
+
+
+class TestEmailNotificationView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        email = request.data.get("email")
+        if not email:
+            return Response({"error": "Email is required"}, status=400)
+
+        # Optional: Validate email format
+        try:
+            validate_email(email)
+        except ValidationError:
+            return Response({"error": "Invalid email format"}, status=400)
+
+        try:
+            send_mail(
+                subject="AliveChecks Test Notification",
+                message="This is a test email from AliveChecks.",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False
+            )
+            return Response({"message": "Test email sent successfully!"}, status=200)
+        except Exception as e:
+            logger.error(f"Failed to send test email: {str(e)}")
+            return Response({
+                "error": "Failed to send test email. Please try again."
+            }, status=500)

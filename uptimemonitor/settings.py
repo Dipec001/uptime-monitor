@@ -50,9 +50,9 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 # Alternative: If you want to allow all subdomains
-# CORS_ALLOWED_ORIGIN_REGEXES = [
-#     r"^https://.*\.alivechecks\.com$",
-# ]
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.alivechecks\.com$",
+]
 
 # Allow credentials (cookies, authorization headers)
 CORS_ALLOW_CREDENTIALS = True

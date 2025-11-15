@@ -1,10 +1,4 @@
-# ============================================
-# Token Verification
-# ============================================
 import requests
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
-from django.conf import settings
 
 
 class GoogleAuthError(Exception):
@@ -19,7 +13,7 @@ def verify_google_token(token):
     """
     Verify Google OAuth token and return user info
     """
-    print("Fetching user info from Google") # Debugging line
+    
     try:
         response = requests.get(
             'https://www.googleapis.com/oauth2/v2/userinfo',
