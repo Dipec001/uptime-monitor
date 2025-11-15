@@ -126,7 +126,7 @@ export default function DashboardLayout() {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-64 p-6 pb-20 md:pb-6">
+      <main className="flex-1 md:ml-64 p-6 pb-20 md:pb-6 bg-gray-900">
         <Outlet />
       </main>
     </div>

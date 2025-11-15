@@ -9,7 +9,6 @@ import { Link } from 'react-router-dom';
 import unionLogo from "@/assets/UnionLogo.svg";
 
 function Register() {
-  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,7 +22,7 @@ function Register() {
     setError('');
     
     try {
-      const data = await register(fullName, email, password);
+      const data = await register(email, password);
       console.log(data)
       
       localStorage.setItem("access_token", data.token.access);
@@ -120,21 +119,6 @@ function Register() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Name
-              </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Enter your name"
-                className="w-full px-4 py-3 bg-gray-700 text-white border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
-                required
-                disabled={loading}
-              />
-            </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Email

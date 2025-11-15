@@ -99,7 +99,7 @@ export default function Contact() {
                 <div>
                   <h3 className="text-white font-semibold mb-1">Email Us</h3>
                   <p className="text-gray-400 text-sm mb-2">We usually reply within 24 hours (or during our next coffee break ☕)</p>
-                  <a href="mailto:hello@alivechecks.com" className="text-blue-400 hover:text-blue-300 transition">
+                  <a href="mailto:info@alivechecks.com" className="text-blue-400 hover:text-blue-300 transition">
                     info@alivechecks.com
                   </a>
                 </div>

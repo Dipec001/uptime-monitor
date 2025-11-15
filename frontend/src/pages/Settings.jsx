@@ -1,11 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 export default function SettingsPage() {
   const [formData, setFormData] = useState({
-    fullName: "Steve",
     email: "steve@example.com",
     timezone: "GMT+01:00 (Europe/Berlin)",
   });
+  
+  const [buttonPosition, setButtonPosition] = useState({ x: 0, y: 0 });
+  const [dodgeCount, setDodgeCount] = useState(0);
+  const [isPositioned, setIsPositioned] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [canDodge, setCanDodge] = useState(true);
+  const buttonRef = useRef(null);
+  const containerRef = useRef(null);
+  const lastDodgeTime = useRef(0);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleInputChange = (e) => {
     setFormData({
@@ -16,7 +33,6 @@ export default function SettingsPage() {
 
   const handleSave = () => {
     console.log("Saving:", formData);
-    // Add your API call here
   };
 
   const handleDeleteAccount = () => {
@@ -26,7 +42,48 @@ export default function SettingsPage() {
       )
     ) {
       console.log("Deleting account...");
-      // Add your delete account logic here
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (isMobile || !buttonRef.current || !containerRef.current || dodgeCount >= 10) return;
+
+    const now = Date.now();
+    if (now - lastDodgeTime.current < 400) return;
+
+    const button = buttonRef.current.getBoundingClientRect();
+    const container = containerRef.current.getBoundingClientRect();
+    
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    
+    const buttonCenterX = button.left + button.width / 2;
+    const buttonCenterY = button.top + button.height / 2;
+    
+    const distance = Math.sqrt(
+      Math.pow(mouseX - buttonCenterX, 2) + Math.pow(mouseY - buttonCenterY, 2)
+    );
+    
+    const triggerDistance = 130;
+    
+    if (distance < triggerDistance) {
+      lastDodgeTime.current = now;
+      
+      const angle = Math.random() * 2 * Math.PI;
+      const moveDistance = 200;
+      
+      let newX = buttonPosition.x + Math.cos(angle) * moveDistance;
+      let newY = buttonPosition.y + Math.sin(angle) * moveDistance;
+      
+      const maxX = container.width - button.width - 40;
+      const maxY = container.height - button.height - 40;
+      
+      newX = Math.max(-100, Math.min(newX, maxX));
+      newY = Math.max(-50, Math.min(newY, maxY));
+      
+      setButtonPosition({ x: newX, y: newY });
+      setDodgeCount(prev => prev + 1);
+      setIsPositioned(true);
     }
   };
 
@@ -37,20 +94,6 @@ export default function SettingsPage() {
           Edit your basic info
         </h2>
 
-        {/* Full Name */}
-        <div className="mb-4">
-          <label className="block text-gray-300 text-sm mb-2">Full Name</label>
-          <input
-            type="text"
-            name="fullName"
-            value={formData.fullName}
-            onChange={handleInputChange}
-            className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
-            placeholder="Enter your full name"
-          />
-        </div>
-
-        {/* Email Address */}
         <div className="mb-4">
           <label className="block text-gray-300 text-sm mb-2">
             Email Address
@@ -65,7 +108,6 @@ export default function SettingsPage() {
           />
         </div>
 
-        {/* Time Zone */}
         <div className="mb-6">
           <label className="block text-gray-300 text-sm mb-2">Time Zone</label>
           <select
@@ -92,7 +134,6 @@ export default function SettingsPage() {
           </select>
         </div>
 
-        {/* Save Button */}
         <button
           onClick={handleSave}
           className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium mb-8"
@@ -100,7 +141,6 @@ export default function SettingsPage() {
           Save
         </button>
 
-        {/* Delete Account Section */}
         <div className="border-t border-gray-700 pt-6">
           <h3 className="text-lg font-semibold text-white mb-2">
             Delete account
@@ -111,12 +151,63 @@ export default function SettingsPage() {
             delete your account, monitors, logs, and all settings. Once deleted,
             nothing can be recovered.
           </p>
-          <button
-            onClick={handleDeleteAccount}
-            className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium"
+          
+          {dodgeCount > 0 && dodgeCount < 10 && !isMobile && (
+            <p className="text-yellow-400 text-sm mb-2 animate-pulse">
+              🏃 Nice try! The button has dodged you {dodgeCount} time{dodgeCount > 1 ? 's' : ''}...
+            </p>
+          )}
+          
+          {dodgeCount >= 10 && !isMobile && (
+            <p className="text-green-400 text-sm mb-2 font-semibold">
+              🎉 Okay, you're persistent! You've earned the right to delete. Button will stay put now.
+            </p>
+          )}
+
+          <div 
+            ref={containerRef}
+            onMouseMove={handleMouseMove}
+            className="relative min-h-[150px]"
           >
-            Delete Account
-          </button>
+            <button
+              ref={buttonRef}
+              onClick={handleDeleteAccount}
+              style={{
+                transform: isPositioned && dodgeCount < 10 && !isMobile
+                  ? `translate(${buttonPosition.x}px, ${buttonPosition.y}px)`
+                  : 'none',
+                transition: dodgeCount < 10 && !isMobile ? 'transform 0.3s ease-out' : 'none',
+              }}
+              className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium cursor-pointer relative overflow-hidden"
+            >
+              {dodgeCount >= 10 && !isMobile ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="text-2xl animate-bounce" style={{ animationDuration: '0.5s' }}>
+                    😢
+                  </span>
+                  <span className="text-2xl relative inline-block">
+                    <span className="absolute inset-0 animate-pulse" style={{ animationDuration: '1s' }}>💔</span>
+                    <span>💔</span>
+                  </span>
+                  <span className="text-2xl" style={{ 
+                    animation: 'shake 0.5s infinite',
+                    display: 'inline-block'
+                  }}>
+                    💔
+                  </span>
+                  <style>{`
+                    @keyframes shake {
+                      0%, 100% { transform: translateX(0) rotate(0deg); }
+                      25% { transform: translateX(-3px) rotate(-5deg); }
+                      75% { transform: translateX(3px) rotate(5deg); }
+                    }
+                  `}</style>
+                </span>
+              ) : (
+                'Delete Account'
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
