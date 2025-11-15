@@ -45,15 +45,14 @@ ALLOWED_HOSTS = ["*"]  # for testing only, allow all hosts
 CORS_ALLOWED_ORIGINS = [
     "https://alivechecks.com",
     "https://www.alivechecks.com",
-    "https://api.alivechecks.com",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
 
 # Alternative: If you want to allow all subdomains
-# CORS_ALLOWED_ORIGIN_REGEXES = [
-#     r"^https://.*\.alivechecks\.com$",
-# ]
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.alivechecks\.com$",
+]
 
 # Allow credentials (cookies, authorization headers)
 CORS_ALLOW_CREDENTIALS = True
