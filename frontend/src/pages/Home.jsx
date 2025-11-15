@@ -64,7 +64,7 @@ function Home() {
             {/* Badge */}
             <div className="inline-flex items-center gap-2 bg-blue-600/10 border border-blue-500/20 rounded-full px-4 py-2 mb-6">
               <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-              <span className="text-gray-300 text-sm">Monitoring 1,000+ websites worldwide</span>
+              <span className="text-gray-300 text-sm">Monitoring 1,500+ websites worldwide</span>
             </div>
 
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-tight">
@@ -77,7 +77,7 @@ function Home() {
             
             <p className="text-gray-400 mb-10 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
               Stop worrying about angry customer emails at 3 AM. Get instant alerts 
-              the moment something breaks—before your users even notice.
+              the moment something breaks, before your users even notice.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -348,7 +348,7 @@ function Home() {
               </h4>
               <p className="text-gray-600 text-lg mb-8 leading-relaxed">
                 Downtime doesn't wait for you to check your dashboard. We'll alert you on 
-                Email, Slack, or WhatsApp—wherever you actually pay attention.
+                Email, Slack, or WhatsApp, wherever you actually pay attention.
               </p>
               <ul className="space-y-4 mb-8">
                 <li className="flex items-start gap-3">
