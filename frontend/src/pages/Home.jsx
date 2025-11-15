@@ -5,7 +5,7 @@ import website from "../assets/Website.svg";
 import tracking from "../assets/Tracking.svg";
 import ping from "../assets/Ping.svg";
 import frame from "../assets/Frame.svg";
-import hero from "../assets/Hero.jpg";
+import noti from "../assets/Notifications.png";
 import React, { useState, useEffect } from "react";
 
 function Home() {
@@ -39,7 +39,7 @@ function Home() {
           <div className="space-x-4">
             <a
               href="/dashboard"
-              className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-gray-100 transition"
+              className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-gray-700 transition"
             >
               Get Started
             </a>
@@ -171,19 +171,15 @@ function Home() {
           </a>
         </div>
       </div>
-      <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-10 my-20 px-4 sm:px-20">
+      <div className="flex flex-col md:flex-row items-center justify-center gap-10 my-15 px-4 sm:px-20 mt-10">
         <div className="flex-1 text-center md:text-left">
           <h4 className="text-2xl font-bold mb-3">Receive alerts straight to your favourite tools</h4>
           <p className="text-gray-600 text-lg">Downtimes happen even to the best of us. But it is important to know this before customers are affected</p>
         </div>
-        <div className="flex-1 flex justify-center md:justify-end">
-          <img src="{hero}" alt="alerting logos" className="max-w-xs md:max-w-sm" />
+        <div className="flex-1 flex">
+          <img src={noti} alt="alerting logos" className="" />
         </div>
       </div>
-      
-
-
-
 
       <div className="py-20 px-4 sm:px-20 bg-white">
         <h2 className="text-center text-3xl font-extrabold text-[#030D45] mb-3">
@@ -237,8 +233,6 @@ function Home() {
           </div>
         </div>
       </div>
-
-
 
       {/* Footer */}
       <footer className="bg-gray-200 text-center py-4 text-sm text-gray-600">

@@ -1,104 +1,215 @@
-// src/pages/MonitorsPage.jsx
 import React, { useState, useEffect } from "react";
-import { fetchWebsites, createWebsite } from "../services/api.js";
+import axios from "axios";
+import AddMonitorModal from "../components/MonitorModal";
 
-const MonitorsPage = () => {
+export default function MonitorsPage() {
+  const [activeTab, setActiveTab] = useState("websites"); // "websites" or "heartbeats"
+  const [showAddModal, setShowAddModal] = useState(false);
   const [websites, setWebsites] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [newWebsite, setNewWebsite] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [heartbeats, setHeartbeats] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch websites
   useEffect(() => {
-    const loadWebsites = async () => {
-      setLoading(true);
-      try {
-        const res = await fetchWebsites();
-        setWebsites(res.data.results || []);
-
-      } catch (err) {
-        console.error("Error fetching websites:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadWebsites();
+    fetchMonitors();
   }, []);
 
-  // Add new website
-  const handleAddWebsite = async (e) => {
-    e.preventDefault();
-    if (!newWebsite.trim()) return;
-
-    setSubmitting(true);
+  const fetchMonitors = async () => {
     try {
-      const res = await createWebsite({ url: newWebsite });
-      setWebsites((prev) => [...prev, res.data]);
-      setNewWebsite("");
+      const token = localStorage.getItem("access_token");
+      
+      // Fetch websites
+      const websitesResponse = await axios.get(
+        "http://127.0.0.1:8000/api/websites/",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setWebsites(websitesResponse.data);
+
+      // Fetch heartbeats
+      const heartbeatsResponse = await axios.get(
+        "http://127.0.0.1:8000/api/heartbeats/",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setHeartbeats(heartbeatsResponse.data);
     } catch (err) {
-      console.error("Error adding website:", err);
+      console.error("Failed to fetch monitors:", err);
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
+  const handleDelete = async (id, type) => {
+    if (!window.confirm(`Are you sure you want to delete this ${type}?`)) return;
+
+    try {
+      const token = localStorage.getItem("access_token");
+      const endpoint = type === "website" ? "websites" : "heartbeats";
+      
+      await axios.delete(
+        `http://127.0.0.1:8000/api/${endpoint}/${id}/`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      fetchMonitors(); // Refresh the list
+    } catch (err) {
+      console.error("Failed to delete:", err);
+    }
+  };
+
+  if (loading) return <p className="text-white">Loading monitors...</p>;
+
   return (
-    <div className="p-6">
-      <h1 className="text-xl font-semibold mb-4">Website Monitors</h1>
-
-      {/* Add website form */}
-      <form onSubmit={handleAddWebsite} className="flex gap-2 mb-6">
-        <input
-          type="url"
-          placeholder="https://example.com"
-          value={newWebsite}
-          onChange={(e) => setNewWebsite(e.target.value)}
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-        />
+    <div className="min-h-screen -m-6 p-6 bg-gray-900">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-white">Monitors</h1>
         <button
-          type="submit"
-          disabled={submitting}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          onClick={() => setShowAddModal(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
         >
-          {submitting ? (
-            <span className="animate-spin mr-2">⏳</span>
-          ) : (
-            <span className="mr-2">➕</span>
-          )}
-          Add
+          + Add Monitor
         </button>
-      </form>
+      </div>
 
-      {/* Websites list */}
-      {loading ? (
-        <p>Loading...</p>
-      ) : websites.length === 0 ? (
-        <p className="text-gray-500">No websites added yet.</p>
+      {/* Tabs */}
+      <div className="flex gap-4 mb-6 border-b border-gray-700">
+        <button
+          onClick={() => setActiveTab("websites")}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === "websites"
+              ? "text-blue-500 border-b-2 border-blue-500"
+              : "text-gray-400 hover:text-white"
+          }`}
+        >
+          Website Monitors ({websites.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("heartbeats")}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === "heartbeats"
+              ? "text-blue-500 border-b-2 border-blue-500"
+              : "text-gray-400 hover:text-white"
+          }`}
+        >
+          Heartbeats / Cron Jobs ({heartbeats.length})
+        </button>
+      </div>
+
+      {/* Content */}
+      {activeTab === "websites" ? (
+        <WebsiteMonitorsList websites={websites} onDelete={handleDelete} />
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {websites.map((site) => (
-            <div
-              key={site.id}
-              className="rounded-lg border shadow p-4 bg-white"
-            >
-              <h2 className="font-medium">{site.name || site.url}</h2>
-              <p className="text-sm text-gray-500">{site.url}</p>
-              <p className="mt-2 text-sm">
-                Status:{" "}
-                <span
-                  className={`font-medium ${
-                    site.is_active ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {site.is_active ? "Active" : "Inactive"}
-                </span>
-              </p>
-            </div>
-          ))}
-        </div>
+        <HeartbeatsList heartbeats={heartbeats} onDelete={handleDelete} />
+      )}
+
+      {/* Add Monitor Modal */}
+      {showAddModal && (
+        <AddMonitorModal
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => {
+            setShowAddModal(false);
+            fetchMonitors();
+          }}
+        />
       )}
     </div>
   );
-};
+}
 
-export default MonitorsPage;
+// Website Monitors List Component
+function WebsiteMonitorsList({ websites, onDelete }) {
+  if (websites.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-400">No website monitors yet. Add one to get started!</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {websites.map((site) => (
+        <div key={site.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+          <div className="flex justify-between items-start mb-3">
+            <h3 className="text-white font-semibold">{site.name}</h3>
+            <span
+              className={`px-2 py-1 text-xs rounded ${
+                site.status === "up"
+                  ? "bg-green-500/20 text-green-400"
+                  : "bg-red-500/20 text-red-400"
+              }`}
+            >
+              {site.status?.toUpperCase()}
+            </span>
+          </div>
+          <p className="text-gray-400 text-sm mb-2 truncate">{site.url}</p>
+          <p className="text-gray-500 text-xs mb-3">
+            Check every {site.check_interval} seconds
+          </p>
+          <div className="flex gap-2">
+            <button className="flex-1 bg-gray-700 text-white px-3 py-1 rounded text-sm hover:bg-gray-600">
+              View Details
+            </button>
+            <button
+              onClick={() => onDelete(site.id, "website")}
+              className="bg-red-600/20 text-red-400 px-3 py-1 rounded text-sm hover:bg-red-600/30"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Heartbeats List Component
+function HeartbeatsList({ heartbeats, onDelete }) {
+  if (heartbeats.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-400">No heartbeats yet. Add one to get started!</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {heartbeats.map((beat) => (
+        <div key={beat.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+          <div className="flex justify-between items-start mb-3">
+            <h3 className="text-white font-semibold">{beat.name}</h3>
+            <span
+              className={`px-2 py-1 text-xs rounded ${
+                beat.status === "up"
+                  ? "bg-green-500/20 text-green-400"
+                  : "bg-red-500/20 text-red-400"
+              }`}
+            >
+              {beat.status?.toUpperCase()}
+            </span>
+          </div>
+          <p className="text-gray-400 text-sm mb-1">
+            Interval: {beat.interval}s ({Math.floor(beat.interval / 3600)}h)
+          </p>
+          <p className="text-gray-400 text-sm mb-2">
+            Grace period: {beat.grace_period || 0}s
+          </p>
+          <p className="text-gray-500 text-xs mb-3 truncate">
+            Ping URL: {beat.ping_url}
+          </p>
+          <div className="flex gap-2">
+            <button className="flex-1 bg-gray-700 text-white px-3 py-1 rounded text-sm hover:bg-gray-600">
+              Copy URL
+            </button>
+            <button
+              onClick={() => onDelete(beat.id, "heartbeat")}
+              className="bg-red-600/20 text-red-400 px-3 py-1 rounded text-sm hover:bg-red-600/30"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

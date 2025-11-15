@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 import { loginWithGoogle, loginWithGithub } from '../utils/oauth';
 import googleIcon from "../assets/Google.svg";
 import githubIcon from "../assets/GitHub.svg";
+import { Link } from 'react-router-dom';
+import unionLogo from "@/assets/UnionLogo.svg";
 
 function Register() {
   const [fullName, setFullName] = useState("");
@@ -94,9 +96,16 @@ function Register() {
   return (
     <div className="min-h-screen bg-white p-6 flex justify-center">
       <div className="w-full max-w-md shadow-none md:shadow-md md:p-4">
+        <Link to="/">
+          <img
+            src={unionLogo}
+            alt="Alive Checks logo"
+            className="mb-2 w-10 h-10 mx-auto transition-transform duration-200 hover:scale-110 cursor-pointer"
+          />
+        </Link>
         <h2 className="mb-6 text-center font-bold text-2xl text-gray-800">
           <span className="block md:inline">Create Your</span>{" "}
-          <span>AliveChecks Account</span>
+          <span> <span className="text-blue-600">AliveChecks</span> Account</span>
         </h2>
 
         {error && (

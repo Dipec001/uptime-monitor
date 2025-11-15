@@ -12,6 +12,8 @@ import DashboardLayout from "./components/DashboardLayout";
 import MonitorsPage from "./pages/Monitor";
 import OAuthCallback from "./pages/OAuthCallback";
 import Onboarding from "./pages/onboarding/Onboarding";
+import SettingsPage from "./pages/Settings";
+import AlertsPage from "./pages/Alerts";
 
 function App() {
   return (
@@ -29,8 +31,11 @@ function App() {
 
           {/* All dashboard pages share sidebar */}
           <Route element={<DashboardLayout />}>
-            <Route path="dashboard" element={<PrivateRoute><Dashboard /> </PrivateRoute>} />
+            {/* <Route path="dashboard" element={<PrivateRoute><Dashboard /> </PrivateRoute>} /> */}
+            <Route path="dashboard" element={<Dashboard /> } />
             <Route path="monitors" element={<MonitorsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="alerts" element={<AlertsPage />} />
           </Route>
         
         </Routes>

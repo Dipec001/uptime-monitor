@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 import { loginWithGoogle, loginWithGithub } from '../utils/oauth';
 import googleIcon from '../assets/Google.svg';
 import githubIcon from '../assets/GitHub.svg';
+import unionLogo from "@/assets/UnionLogo.svg";
+import { Link } from 'react-router-dom';
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -80,7 +82,14 @@ function Login() {
   return (
     <div className="min-h-screen bg-white p-6 flex justify-center">
       <div className="w-full max-w-md shadow-none md:shadow-md md:p-4">
-        <h2 className="mb-6 mt-6 text-center font-bold text-2xl text-gray-800">
+        <Link to="/">
+          <img
+            src={unionLogo}
+            alt="Alive Checks logo"
+            className="mb-2 w-10 h-10 mx-auto transition-transform duration-200 hover:scale-110 cursor-pointer"
+          />
+        </Link>
+        <h2 className="mb-6 mt-3 text-center font-bold text-2xl text-gray-800">
           <span className="text-blue-600">Welcome</span> back!
         </h2>
         
