@@ -188,7 +188,6 @@ export const resetPasswordConfirm = async (uid, token, newPassword) => {
 };
 
 export const logout = () => {
-  console.log("Logging out...");
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
 };
@@ -197,12 +196,18 @@ export const isLoggedIn = () => {
   return !!localStorage.getItem("access_token");
 };
 
-// ============================================
-// WEBSITE APIs
-// ============================================
+// User profile
+export const getUserProfile = async () => {
+  try {
+    const response = await API.get("user/profile/");
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.detail || "Failed to fetch user profile");
+  }
+};
 
 // ============================================
-// MONITORS APIs
+// WEBSITE APIs
 // ============================================
 
 export const getWebsites = async () => {
@@ -223,12 +228,12 @@ export const fetchWebsites = async () => {
   }
 };
 
-export const createWebsite = async (data) => {
+export const createWebsite = async (websiteData) => {
   try {
-    const response = await API.post("websites/", data);
+    const response = await API.post("websites/", websiteData);
     return response.data;
   } catch (error) {
-    throw new Error("Failed to create website");
+    throw new Error(error.response?.data?.detail || "Failed to create website monitor");
   }
 };
 
@@ -290,12 +295,12 @@ export const fetchHeartbeat = async (id) => {
   }
 };
 
-export const createHeartbeat = async (id, data) => {
+export const createHeartbeat = async (heartbeatData) => {
   try {
-    const response = await API.post(`heartbeats/${id}/`, data);
+    const response = await API.post("heartbeats/", heartbeatData);
     return response.data;
   } catch (error) {
-    throw new Error("Failed to create heartbeat");
+    throw new Error(error.response?.data?.detail || "Failed to create heartbeat");
   }
 };
 
@@ -345,10 +350,6 @@ export const createBulkWebsites = async (websites) => {
   }
 };
 
-
-/**
- * Bulk create notification preferences for multiple websites on onboarding
- */
 /**
  * Bulk create notification preferences for multiple websites on onboarding
  */
@@ -400,6 +401,27 @@ export const testEmailOnly = async (email) => {
       throw new Error(errorData.error);
     }
     throw new Error("Failed to send test email. Please try again.");
+  }
+};
+
+// test general notification
+export const testNotification = async (channel, value) => {
+  try {
+    const response = await API.post("test-notification/", { channel, value });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.detail || "Failed to send test notification");
+  }
+};
+
+
+export const getDashboardMetrics = async () => {
+  try {
+    const response = await API.get("dashboard-metrics/");
+    return response.data;
+  } catch (error) {
+    console.error("Failed to fetch dashboard metrics:", error);
+    throw error;
   }
 };
 
