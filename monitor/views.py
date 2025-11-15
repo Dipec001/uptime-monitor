@@ -43,7 +43,6 @@ import requests
 from datetime import timedelta
 from django.utils.timezone import now
 from django.core.validators import validate_email
-from rest_framework.exceptions import ValidationError
 
 load_dotenv()
 
@@ -793,7 +792,6 @@ class SetPasswordView(APIView):
         })
 
 
-
 class BulkCreateWebsitesView(generics.GenericAPIView):
     """
     Bulk create websites for onboarding
@@ -893,4 +891,6 @@ class TestEmailNotificationView(APIView):
             return Response({"message": "Test email sent successfully!"}, status=200)
         except Exception as e:
             logger.error(f"Failed to send test email: {str(e)}")
-            return Response({"error": "Failed to send test email. Please try again."}, status=500)
+            return Response({
+                "error": "Failed to send test email. Please try again."
+            }, status=500)
