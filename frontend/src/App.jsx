@@ -32,10 +32,9 @@ function App() {
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/contact" element={<Contact />} />
 
-          {/* All dashboard pages share sidebar */}
-          <Route element={<DashboardLayout />}>
-            {/* <Route path="dashboard" element={<PrivateRoute><Dashboard /> </PrivateRoute>} /> */}
-            <Route path="dashboard" element={<Dashboard /> } />
+          {/* Protected dashboard pages - ALL wrapped in PrivateRoute */}
+          <Route element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="monitors" element={<MonitorsPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="alerts" element={<AlertsPage />} />
