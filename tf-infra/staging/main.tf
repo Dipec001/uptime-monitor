@@ -68,8 +68,11 @@ module "ecs" {
   private_subnets   = module.networking.private_subnet_ids
   ecr_repo_url      = var.ecr_repo_url
   database_url      = "postgres://${var.db_username}:${urlencode(var.db_password)}@${module.rds.db_endpoint}/${var.db_name}"
+  frontend_base_url = var.frontend_base_url
   redis_url         = "redis://${module.redis.redis_endpoint}:6379/0"
   ec2_instance_type = "t3.medium"
+  github_oauth_client_id     = var.github_oauth_client_id
+  github_oauth_client_secret = var.github_oauth_client_secret
   public_subnets    = module.networking.public_subnet_ids
   alert_email       = "dpecchukwu@gmail.com"
   db_identifier     = module.rds.db_identifier

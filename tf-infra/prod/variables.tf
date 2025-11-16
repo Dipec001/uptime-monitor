@@ -63,3 +63,17 @@ variable "grafana_admin_password" {
   type        = string
   sensitive   = true
 }
+
+variable "frontend_base_url" {
+  type        = string
+  description = "Base URL of the frontend app"
+}
+
+variable "github_oauth_client_id" {
+  type = string
+}
+
+variable "github_oauth_client_secret" {
+  type      = string
+  sensitive = true
+}

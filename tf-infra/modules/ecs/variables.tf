@@ -6,6 +6,7 @@ variable "domain" {
 variable "alert_email" { type = string}
 variable "ecr_repo_url" { type = string }
 variable "database_url" { type = string }
+variable "frontend_base_url" { type = string }
 variable "redis_url" { type = string }
 variable "ec2_instance_type" {
   type    = string
@@ -46,4 +47,14 @@ variable "grafana_admin_password" {
   type        = string
   description = "Admin password for Grafana"
   sensitive   = true
+}
+
+variable "github_oauth_client_id" {
+  type = string
+  sensitive = true
+}
+
+variable "github_oauth_client_secret" {
+  type      = string
+  sensitive = true
 }
