@@ -164,13 +164,22 @@ resource "aws_ecs_task_definition" "this" {
         {
           name      = "SUPPORT_EMAIL"
           valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:SUPPORT_EMAIL::"
+        },
+        {
+          name      = "GITHUB_OAUTH_CLIENT_ID"
+          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:GITHUB_OAUTH_CLIENT_ID::"
+        },
+        {
+          name      = "GITHUB_OAUTH_CLIENT_SECRET"
+          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:GITHUB_OAUTH_CLIENT_SECRET::"
         }
       ]
       environment = [
         { name = "DATABASE_URL", value = var.database_url },
         { name = "REDIS_URL", value = var.redis_url },
         { name = "CELERY_BROKER_URL", value = var.redis_url },
-        { name = "ENVIRONMENT", value = var.env }
+        { name = "ENVIRONMENT", value = var.env },
+        { name = "FRONTEND_BASE_URL", value = var.frontend_base_url }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -204,7 +213,8 @@ resource "aws_ecs_task_definition" "this" {
         { name = "DATABASE_URL", value = var.database_url },
         { name = "REDIS_URL", value = var.redis_url },
         { name = "CELERY_BROKER_URL", value = var.redis_url },
-        { name = "ENVIRONMENT", value = var.env }
+        { name = "ENVIRONMENT", value = var.env },
+        { name = "FRONTEND_BASE_URL", value = var.frontend_base_url }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -224,7 +234,8 @@ resource "aws_ecs_task_definition" "this" {
         { name = "DATABASE_URL", value = var.database_url },
         { name = "REDIS_URL", value = var.redis_url },
         { name = "CELERY_BROKER_URL", value = var.redis_url },
-        { name = "ENVIRONMENT", value = var.env }
+        { name = "ENVIRONMENT", value = var.env },
+        { name = "FRONTEND_BASE_URL", value = var.frontend_base_url }
       ]
       logConfiguration = {
         logDriver = "awslogs"

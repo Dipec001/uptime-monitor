@@ -15,6 +15,7 @@ resource "aws_secretsmanager_secret_version" "app_credentials" {
     SUPPORT_EMAIL      = "support@alivechecks.com"
     
     # Will add Other non-email secrets
-
+    GITHUB_OAUTH_CLIENT_ID     = var.github_oauth_client_id
+    GITHUB_OAUTH_CLIENT_SECRET = var.github_oauth_client_secret
   })
 }
