@@ -15,7 +15,13 @@ from monitor.serializers import (
     UserLoginSerializer,
     UserProfileSerializer
 )
-from .models import Website, NotificationPreference, HeartBeat, UptimeCheckResult
+from .models import (
+    Website,
+    NotificationPreference,
+    HeartBeat,
+    UptimeCheckResult,
+    PingLog
+)
 from .tasks import process_ping
 from .alerts import (
     send_test_website_notification,
@@ -337,7 +343,7 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
             )
 
 
-@api_view(['POST'])
+@api_view(['GET', 'POST'])
 @permission_classes([permissions.AllowAny])
 def ping_heartbeat(request, key):
     """Endpoint to receive heartbeat pings asynchronously."""
@@ -366,13 +372,17 @@ def ping_heartbeat(request, key):
         "ip": request.META.get("REMOTE_ADDR"),
         "user_agent": request.META.get("HTTP_USER_AGENT"),
     }
+    
+    # Extract runtime from POST body if provided
+    if request.method == 'POST' and request.data.get('runtime'):
+        metadata['runtime'] = request.data.get('runtime')
 
     try:
         process_ping.delay(str(uuid_key), metadata)
         logger.info(
             f"Ping queued for heartbeat {heartbeat.name} (User: {heartbeat.user.email})"
         )
-        return Response({"message": "Ping queued"})
+        return Response({"message": "Ping queued", "status": "ok"})
     except Exception as e:
         logger.error(f"Error queueing ping for heartbeat {heartbeat.name}: {e}")
         return Response(

@@ -14,6 +14,8 @@ import SettingsPage from "./pages/Settings";
 import AlertsPage from "./pages/Alerts";
 import Contact from './pages/Contact';
 import WebsiteDetail from './pages/WebsiteDetail';
+import HeartbeatDetail from './pages/HeartbeatDetail';
+
 
 function App() {
   return (
@@ -35,6 +37,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/monitors" element={<MonitorsPage />} />
             <Route path="/dashboard/monitors/:id" element={<WebsiteDetail />} />
+            <Route path="/dashboard/heartbeats/:id" element={<HeartbeatDetail />} />
             <Route path="/dashboard/alerts" element={<AlertsPage />} />
             <Route path="/dashboard/settings" element={<SettingsPage />} />
           </Route>

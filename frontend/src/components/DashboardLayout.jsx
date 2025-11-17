@@ -11,20 +11,23 @@ export default function DashboardLayout() {
     navigate("/login");
   };
 
-  // handle sub-routes
-  const isActive = (path) => {
+  const isActive = (path, alternatePaths = []) => {
     if (path === "/dashboard") {
-      // Dashboard only active on exact match
       return location.pathname === path;
     }
-    // Other routes active if path starts with them
-    return location.pathname.startsWith(path);
+    
+    // Check main path
+    if (location.pathname.startsWith(path)) return true;
+    
+    // Check alternate paths
+    return alternatePaths.some(altPath => location.pathname.startsWith(altPath));
   };
 
   const navItems = [
     {
       name: "Dashboard",
       path: "/dashboard",
+      alternatePaths: [],
       icon: (
         <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
           <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
@@ -34,6 +37,7 @@ export default function DashboardLayout() {
     {
       name: "Monitors",
       path: "/dashboard/monitors",
+      alternatePaths: ["/dashboard/heartbeats"], // ✅ Heartbeats also highlight Monitors
       icon: (
         <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
           <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z" />
@@ -43,6 +47,7 @@ export default function DashboardLayout() {
     {
       name: "Alerts",
       path: "/dashboard/alerts",
+      alternatePaths: [],
       icon: (
         <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
           <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
@@ -52,6 +57,7 @@ export default function DashboardLayout() {
     {
       name: "Settings",
       path: "/dashboard/settings",
+      alternatePaths: [],
       icon: (
         <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
           <path
@@ -78,7 +84,7 @@ export default function DashboardLayout() {
               key={item.path}
               to={item.path}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive(item.path)
+                isActive(item.path, item.alternatePaths)
                   ? "bg-blue-600 text-white font-semibold"
                   : "text-gray-300 hover:bg-gray-700 hover:text-white"
               }`}
@@ -106,7 +112,7 @@ export default function DashboardLayout() {
               key={item.path}
               to={item.path}
               className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                isActive(item.path)
+                isActive(item.path, item.alternatePaths)
                   ? "text-blue-600"
                   : "text-gray-500 hover:text-blue-600"
               }`}
