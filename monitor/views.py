@@ -15,7 +15,13 @@ from monitor.serializers import (
     UserLoginSerializer,
     UserProfileSerializer
 )
-from .models import Website, NotificationPreference, HeartBeat, UptimeCheckResult
+from .models import (
+    Website,
+    NotificationPreference,
+    HeartBeat,
+    UptimeCheckResult,
+    PingLog
+)
 from .tasks import process_ping
 from .alerts import (
     send_test_website_notification,
@@ -26,7 +32,7 @@ from django.http import Http404
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from rest_framework.exceptions import ValidationError
-from rest_framework.decorators import permission_classes, api_view
+from rest_framework.decorators import permission_classes, api_view, action
 import uuid
 import logging
 from django.db.models import OuterRef, Subquery
@@ -44,6 +50,7 @@ import requests
 from datetime import timedelta
 from django.utils.timezone import now
 from django.core.validators import validate_email
+from django.contrib.contenttypes.models import ContentType
 
 load_dotenv()
 
@@ -201,6 +208,92 @@ class WebsiteViewSet(viewsets.ModelViewSet):
             f"[!] Monitor deleted: {instance.url} by {self.request.user.email}"
         )
         return super().perform_destroy(instance)
+    
+    # ✅ NEW: Custom detail action with extended data
+    @action(detail=True, methods=['get'])
+    def detail_view(self, request, pk=None):
+        """Get extended detail view with stats and history"""
+        website = self.get_object()
+        
+        # Get latest check
+        latest_check = (
+            UptimeCheckResult.objects
+            .filter(website=website)
+            .order_by('-checked_at')
+            .first()
+        )
+
+        # Calculate uptime percentage (last 24 hours)
+        twenty_four_hours_ago = now() - timedelta(hours=24)
+        recent_checks = UptimeCheckResult.objects.filter(
+            website=website,
+            checked_at__gte=twenty_four_hours_ago
+        )
+        
+        total_checks = recent_checks.count()
+        successful_checks = recent_checks.filter(
+            status_code__gte=200,
+            status_code__lt=300
+        ).count()
+        
+        uptime_percentage = (
+            (successful_checks / total_checks * 100) 
+            if total_checks > 0 else 0
+        )
+
+        # Response time chart (last 24 hours)
+        response_time_data = []
+        for check in recent_checks.order_by('checked_at'):
+            response_time_data.append({
+                "time": check.checked_at.isoformat(),
+                "response_time": round(check.response_time_ms, 2),
+                "status_code": check.status_code,
+            })
+
+        # Recent check history (last 20)
+        recent_history = []
+        for check in UptimeCheckResult.objects.filter(website=website).order_by('-checked_at')[:20]:
+            recent_history.append({
+                "checked_at": check.checked_at,
+                "status_code": check.status_code,
+                "response_time": round(check.response_time_ms, 2),
+                "error_message": check.error_message,
+                "ip": check.ip,
+            })
+
+        # Get notification preferences
+        website_content_type = ContentType.objects.get_for_model(Website)
+        notifications = NotificationPreference.objects.filter(
+            user=request.user,
+            content_type=website_content_type,
+            object_id=website.id
+        )
+
+        notification_list = []
+        for notif in notifications:
+            notification_list.append({
+                "id": notif.id,
+                "method": notif.method,
+                "target": notif.target,
+            })
+
+        data = {
+            "website": WebsiteSerializer(website, context={'request': request}).data,
+            "latest_check": {
+                "status_code": latest_check.status_code if latest_check else None,
+                "response_time": round(latest_check.response_time_ms, 2) if latest_check else None,
+                "checked_at": latest_check.checked_at if latest_check else None,
+                "status": "up" if latest_check and 200 <= latest_check.status_code < 300 else "down" if latest_check else "unknown",
+            },
+            "uptime_percentage": round(uptime_percentage, 2),
+            "total_checks_24h": total_checks,
+            "successful_checks_24h": successful_checks,
+            "response_time_chart": response_time_data,
+            "recent_history": recent_history,
+            "notifications": notification_list,
+        }
+
+        return Response(data)
 
 
 class NotificationPreferenceViewSet(viewsets.ModelViewSet):
@@ -250,7 +343,7 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
             )
 
 
-@api_view(['POST'])
+@api_view(['GET', 'POST'])
 @permission_classes([permissions.AllowAny])
 def ping_heartbeat(request, key):
     """Endpoint to receive heartbeat pings asynchronously."""
@@ -279,13 +372,17 @@ def ping_heartbeat(request, key):
         "ip": request.META.get("REMOTE_ADDR"),
         "user_agent": request.META.get("HTTP_USER_AGENT"),
     }
+    
+    # Extract runtime from POST body if provided
+    if request.method == 'POST' and request.data.get('runtime'):
+        metadata['runtime'] = request.data.get('runtime')
 
     try:
         process_ping.delay(str(uuid_key), metadata)
         logger.info(
             f"Ping queued for heartbeat {heartbeat.name} (User: {heartbeat.user.email})"
         )
-        return Response({"message": "Ping queued"})
+        return Response({"message": "Ping queued", "status": "ok"})
     except Exception as e:
         logger.error(f"Error queueing ping for heartbeat {heartbeat.name}: {e}")
         return Response(
@@ -312,6 +409,76 @@ class HeartBeatViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         # Ensure user cannot change heartbeat ownership
         serializer.save(user=self.request.user)
+
+    # ✅ NEW: Custom detail action with extended data
+    @action(detail=True, methods=['get'])
+    def detail_view(self, request, pk=None):
+        """Get extended detail view with ping history"""
+        heartbeat = self.get_object()
+        
+        # Get recent pings (last 24 hours)
+        twenty_four_hours_ago = now() - timedelta(hours=24)
+        recent_pings = PingLog.objects.filter(
+            heartbeat=heartbeat,
+            timestamp__gte=twenty_four_hours_ago
+        ).order_by('timestamp')
+
+        # Ping history chart
+        ping_history_chart = []
+        for ping in recent_pings:
+            ping_history_chart.append({
+                "time": ping.timestamp.isoformat(),
+                "status": ping.status,
+                "runtime": ping.runtime,
+            })
+
+        # Recent ping logs (last 20)
+        recent_logs = []
+        for ping in PingLog.objects.filter(heartbeat=heartbeat).order_by('-timestamp')[:20]:
+            recent_logs.append({
+                "timestamp": ping.timestamp,
+                "status": ping.status,
+                "runtime": ping.runtime,
+                "notes": ping.notes,
+                "ip": ping.ip,
+                "user_agent": ping.user_agent,
+            })
+
+        # Calculate uptime
+        total_pings = recent_pings.count()
+        successful_pings = recent_pings.filter(status='success').count()
+        uptime_percentage = (
+            (successful_pings / total_pings * 100) 
+            if total_pings > 0 else 0
+        )
+
+        # Get notification preferences
+        heartbeat_content_type = ContentType.objects.get_for_model(HeartBeat)
+        notifications = NotificationPreference.objects.filter(
+            user=request.user,
+            content_type=heartbeat_content_type,
+            object_id=heartbeat.id
+        )
+
+        notification_list = []
+        for notif in notifications:
+            notification_list.append({
+                "id": notif.id,
+                "method": notif.method,
+                "target": notif.target,
+            })
+
+        data = {
+            "heartbeat": HeartBeatSerializer(heartbeat, context={'request': request}).data,
+            "uptime_percentage": round(uptime_percentage, 2),
+            "total_pings_24h": total_pings,
+            "successful_pings_24h": successful_pings,
+            "ping_history_chart": ping_history_chart,
+            "recent_logs": recent_logs,
+            "notifications": notification_list,
+        }
+
+        return Response(data)
 
 
 class TestNotificationView(generics.GenericAPIView):

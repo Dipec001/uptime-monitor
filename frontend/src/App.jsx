@@ -1,6 +1,4 @@
-// import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-// import NavBar from "./components/NavBar";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -15,12 +13,14 @@ import Onboarding from "./pages/onboarding/Onboarding";
 import SettingsPage from "./pages/Settings";
 import AlertsPage from "./pages/Alerts";
 import Contact from './pages/Contact';
+import WebsiteDetail from './pages/WebsiteDetail';
+import HeartbeatDetail from './pages/HeartbeatDetail';
 
 
 function App() {
   return (
     <Router>
-      <div style={{  }}>
+      <div>
         <Routes>
           {/* Public pages */}
           <Route path="/" element={<Home />} />
@@ -32,15 +32,15 @@ function App() {
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/contact" element={<Contact />} />
 
-          {/* All dashboard pages share sidebar */}
-          <Route element={<DashboardLayout />}>
-            {/* <Route path="dashboard" element={<PrivateRoute><Dashboard /> </PrivateRoute>} /> */}
-            <Route path="dashboard" element={<Dashboard /> } />
-            <Route path="monitors" element={<MonitorsPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route path="alerts" element={<AlertsPage />} />
+          {/* Protected dashboard pages */}
+          <Route element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/monitors" element={<MonitorsPage />} />
+            <Route path="/dashboard/monitors/:id" element={<WebsiteDetail />} />
+            <Route path="/dashboard/heartbeats/:id" element={<HeartbeatDetail />} />
+            <Route path="/dashboard/alerts" element={<AlertsPage />} />
+            <Route path="/dashboard/settings" element={<SettingsPage />} />
           </Route>
-        
         </Routes>
       </div>
     </Router>
