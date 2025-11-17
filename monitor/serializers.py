@@ -172,8 +172,15 @@ class WebsiteSerializer(serializers.ModelSerializer):
             netloc=parsed.netloc.lower()
         ))
 
+        # Exclude current instance from duplicate check
+        existing_query = Website.objects.filter(user=user, url=normalized_url)
+        
+        # If this is an update (instance exists), exclude the current instance
+        if self.instance:
+            existing_query = existing_query.exclude(pk=self.instance.pk)
+
         # Check for duplicate with normalized URL
-        if Website.objects.filter(user=user, url=normalized_url).exists():
+        if existing_query.exists():
             raise serializers.ValidationError(
                 "You already have a monitor for this URL."
             )

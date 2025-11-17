@@ -264,6 +264,25 @@ export const deleteWebsite = async (id) => {
   }
 };
 
+// ✅ Get extended website detail
+export const getWebsiteDetail = async (id) => {
+  try {
+    const response = await API.get(`websites/${id}/detail_view/`);
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to fetch website detail");
+  }
+};
+
+// Keep your existing functions and add:
+export const patchWebsite = async (id, data) => {
+  try {
+    const response = await API.patch(`websites/${id}/`, data);
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to update website");
+  }
+};
 // ============================================
 // HEARTBEAT APIs
 // ============================================
@@ -321,6 +340,30 @@ export const deleteHeartbeat = async (id) => {
     throw new Error(error.response?.data?.detail || "Failed to delete heartbeat");
   }
 };
+
+// ✅ Get extended heartbeat detail
+export const getHeartbeatDetail = async (id) => {
+  try {
+    const response = await API.get(`heartbeats/${id}/detail_view/`);
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to fetch heartbeat detail");
+  }
+};
+
+// Keep your existing functions and add:
+export const patchHeartbeat = async (id, data) => {
+  try {
+    const response = await API.patch(`heartbeats/${id}/`, data);
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to update heartbeat");
+  }
+};
+
+// ============================================
+// BULK OPERATIONS
+// ============================================
 
 export const createBulkWebsites = async (websites) => {
   try {
@@ -422,6 +465,47 @@ export const getDashboardMetrics = async () => {
   } catch (error) {
     console.error("Failed to fetch dashboard metrics:", error);
     throw error;
+  }
+};
+
+
+// ============================================
+// NOTIFICATION PREFERENCE APIs
+// ============================================
+
+export const getNotificationPreferences = async () => {
+  try {
+    const response = await API.get("preferences/");  // ✅ matches your backend
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to fetch notification preferences");
+  }
+};
+
+export const createNotificationPreference = async (data) => {
+  try {
+    const response = await API.post("preferences/", data);  // ✅ matches
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.detail || "Failed to create notification preference");
+  }
+};
+
+export const updateNotificationPreference = async (id, data) => {
+  try {
+    const response = await API.patch(`preferences/${id}/`, data);  // ✅ matches
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to update notification preference");
+  }
+};
+
+export const deleteNotificationPreference = async (id) => {
+  try {
+    const response = await API.delete(`preferences/${id}/`);  // ✅ matches
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to delete notification preference");
   }
 };
 

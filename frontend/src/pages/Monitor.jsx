@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { getWebsites, getHeartbeats, deleteWebsite, deleteHeartbeat } from "../services/api";
+import { useNavigate } from "react-router-dom";
+import { getWebsites, getHeartbeats } from "../services/api";
 import AddMonitorModal from "../components/MonitorModal";
 
 export default function MonitorsPage() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("websites");
   const [showAddModal, setShowAddModal] = useState(false);
   const [websites, setWebsites] = useState([]);
@@ -21,35 +23,16 @@ export default function MonitorsPage() {
       
       // Fetch websites
       const websitesData = await getWebsites();
-      // Handle both array and paginated response
       setWebsites(Array.isArray(websitesData) ? websitesData : websitesData.results || []);
 
       // Fetch heartbeats
       const heartbeatsData = await getHeartbeats();
-      // Handle both array and paginated response
       setHeartbeats(Array.isArray(heartbeatsData) ? heartbeatsData : heartbeatsData.results || []);
     } catch (err) {
       console.error("Failed to fetch monitors:", err);
       setError("Failed to load monitors. Please try again.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDelete = async (id, type) => {
-    if (!window.confirm(`Are you sure you want to delete this ${type}?`)) return;
-
-    try {
-      if (type === "website") {
-        await deleteWebsite(id);
-      } else {
-        await deleteHeartbeat(id);
-      }
-      
-      fetchMonitors(); // Refresh the list
-    } catch (err) {
-      console.error("Failed to delete:", err);
-      alert("Failed to delete. Please try again.");
     }
   };
 
@@ -110,9 +93,9 @@ export default function MonitorsPage() {
 
       {/* Content */}
       {activeTab === "websites" ? (
-        <WebsiteMonitorsList websites={websites} onDelete={handleDelete} />
+        <WebsiteMonitorsList websites={websites} />
       ) : (
-        <HeartbeatsList heartbeats={heartbeats} onDelete={handleDelete} />
+        <HeartbeatsList heartbeats={heartbeats} />
       )}
 
       {/* Add Monitor Modal */}
@@ -130,7 +113,9 @@ export default function MonitorsPage() {
 }
 
 // Website Monitors List Component
-function WebsiteMonitorsList({ websites, onDelete }) {
+function WebsiteMonitorsList({ websites }) {
+  const navigate = useNavigate();
+
   if (!websites || websites.length === 0) {
     return (
       <div className="text-center py-12 bg-gray-800/50 rounded-lg border border-gray-700">
@@ -142,7 +127,10 @@ function WebsiteMonitorsList({ websites, onDelete }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {websites.map((site) => (
-        <div key={site.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition">
+        <div 
+          key={site.id} 
+          className="bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-blue-500/50 transition group"
+        >
           <div className="flex justify-between items-start mb-3">
             <h3 className="text-white font-semibold truncate flex-1">{site.name || site.url}</h3>
             <span
@@ -159,17 +147,13 @@ function WebsiteMonitorsList({ websites, onDelete }) {
           <p className="text-gray-500 text-xs mb-3">
             Check every {site.check_interval} minute{site.check_interval !== 1 ? 's' : ''}
           </p>
-          <div className="flex gap-2">
-            <button className="flex-1 bg-gray-700 text-white px-3 py-1 rounded text-sm hover:bg-gray-600 transition">
-              View Details
-            </button>
-            <button
-              onClick={() => onDelete(site.id, "website")}
-              className="bg-red-600/20 text-red-400 px-3 py-1 rounded text-sm hover:bg-red-600/30 transition"
-            >
-              Delete
-            </button>
-          </div>
+          
+          <button 
+            onClick={() => navigate(`/dashboard/monitors/${site.id}`)}
+            className="w-full bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition font-medium"
+          >
+            View Details →
+          </button>
         </div>
       ))}
     </div>
@@ -177,7 +161,9 @@ function WebsiteMonitorsList({ websites, onDelete }) {
 }
 
 // Heartbeats List Component
-function HeartbeatsList({ heartbeats, onDelete }) {
+function HeartbeatsList({ heartbeats }) {
+  const navigate = useNavigate();
+
   if (!heartbeats || heartbeats.length === 0) {
     return (
       <div className="text-center py-12 bg-gray-800/50 rounded-lg border border-gray-700">
@@ -189,7 +175,10 @@ function HeartbeatsList({ heartbeats, onDelete }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {heartbeats.map((beat) => (
-        <div key={beat.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition">
+        <div 
+          key={beat.id} 
+          className="bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-purple-500/50 transition group"
+        >
           <div className="flex justify-between items-start mb-3">
             <h3 className="text-white font-semibold truncate flex-1">{beat.name}</h3>
             <span
@@ -211,23 +200,25 @@ function HeartbeatsList({ heartbeats, onDelete }) {
             Grace: {beat.grace_period}s
           </p>
           <p className="text-gray-500 text-xs mb-3 truncate">
-            Ping URL: {beat.ping_url}
+            Key: {beat.key}
           </p>
+          
           <div className="flex gap-2">
             <button 
+              onClick={() => navigate(`/dashboard/heartbeats/${beat.id}`)}
+              className="flex-1 bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition font-medium"
+            >
+              View Details →
+            </button>
+            <button
               onClick={() => {
                 navigator.clipboard.writeText(beat.ping_url);
                 alert("Ping URL copied to clipboard!");
               }}
-              className="flex-1 bg-gray-700 text-white px-3 py-1 rounded text-sm hover:bg-gray-600 transition"
+              className="bg-gray-700 text-white px-3 py-2 rounded text-sm hover:bg-gray-600 transition"
+              title="Copy ping URL"
             >
-              Copy URL
-            </button>
-            <button
-              onClick={() => onDelete(beat.id, "heartbeat")}
-              className="bg-red-600/20 text-red-400 px-3 py-1 rounded text-sm hover:bg-red-600/30 transition"
-            >
-              Delete
+              📋
             </button>
           </div>
         </div>
