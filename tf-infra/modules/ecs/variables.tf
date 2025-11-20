@@ -62,4 +62,5 @@ variable "github_oauth_client_secret" {
 variable "resend_api_key" {
   type      = string
   sensitive = true
+  default   = null
 }
