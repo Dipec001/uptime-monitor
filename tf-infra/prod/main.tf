@@ -101,3 +101,19 @@ module "ecs" {
 
   depends_on = [module.certificate]
 }
+
+# ========================= 
+# Grafana DNS Record
+# ========================= 
+resource "cloudflare_record" "grafana" {
+  zone_id = var.cloudflare_zone_id
+  name    = "grafana"
+  type    = "CNAME"
+  content = module.ecs.alb_dns_name
+  ttl     = 1
+  proxied = false
+  
+  comment = "Grafana observability dashboard"
+  
+  depends_on = [module.ecs]
+}

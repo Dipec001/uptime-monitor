@@ -17,3 +17,8 @@ output "ecs_tasks_security_group_id" {
 output "alb_sg_id" {
   value = aws_security_group.alb_sg.id
 }
+
+output "alb_dns_name" {
+  description = "DNS name of the Application Load Balancer"
+  value       = aws_lb.this.dns_name
+}
