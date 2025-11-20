@@ -135,7 +135,7 @@ alerts_sent_total = Counter(
     'uptime_alerts_sent_total',
     'Total number of alerts sent',
     ['alert_type', 'channel', 'status'],  # alert_type: downtime, recovery, missed_heartbeat
-    registry=REGISTRY                      # channel: email, slack, whatsapp, webhook
+    registry=REGISTRY                      # channel: email, slack, whatsapp
 )                                          # status: success, failed
 
 alerts_failed_total = Counter(

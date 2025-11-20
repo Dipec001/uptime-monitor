@@ -70,10 +70,16 @@ variable "frontend_base_url" {
 }
 
 variable "github_oauth_client_id" {
-  type = string
+  type      = string
+  sensitive = true
 }
 
 variable "github_oauth_client_secret" {
+  type      = string
+  sensitive = true
+}
+
+variable "resend_api_key" {
   type      = string
   sensitive = true
 }

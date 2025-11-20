@@ -385,7 +385,7 @@ export default function WebsiteDetail() {
                   <span className={`px-3 py-1 rounded text-xs font-semibold ${
                     notif.method === 'email' ? 'bg-blue-500/20 text-blue-400' :
                     notif.method === 'slack' ? 'bg-purple-500/20 text-purple-400' :
-                    notif.method === 'webhook' ? 'bg-green-500/20 text-green-400' :
+                    notif.method === 'whatsapp' ? 'bg-green-500/20 text-green-400' :
                     'bg-gray-500/20 text-gray-400'
                   }`}>
                     {notif.method.toUpperCase()}
@@ -586,7 +586,7 @@ export default function WebsiteDetail() {
                 >
                   <option value="email">Email</option>
                   <option value="slack">Slack</option>
-                  <option value="webhook">Webhook</option>
+                  
                   <option value="whatsapp">WhatsApp</option>
                 </select>
               </div>
@@ -595,7 +595,7 @@ export default function WebsiteDetail() {
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   {notifForm.method === 'email' ? 'Email Address' :
                    notifForm.method === 'slack' ? 'Slack Webhook URL' :
-                   notifForm.method === 'webhook' ? 'Webhook URL' :
+                   
                    'WhatsApp Number'}
                 </label>
                 <input
@@ -606,7 +606,7 @@ export default function WebsiteDetail() {
                   placeholder={
                     notifForm.method === 'email' ? 'you@example.com' :
                     notifForm.method === 'slack' ? 'https://hooks.slack.com/...' :
-                    notifForm.method === 'webhook' ? 'https://your-webhook.com/...' :
+                    
                     '+1234567890'
                   }
                   required

@@ -114,7 +114,6 @@ CRON_STATUS_CHOICES = [
 METHOD_CHOICES = [
     ("email", "Email"),
     ("slack", "Slack"),
-    ("webhook", "Webhook"),
     ("whatsapp", "WhatsApp"),
 ]
 

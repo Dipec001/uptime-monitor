@@ -21,11 +21,6 @@ urlpatterns = [
     path('auth/set-password/', views.SetPasswordView.as_view(), name='set_password'),
     path('user/profile/', views.UserProfileView.as_view(), name='user-profile'),
     path(
-        'notifications/test/',
-        views.TestNotificationView.as_view(),
-        name='test-notification'
-    ),
-    path(
         'notifications/test_email/',
         views.TestEmailNotificationView.as_view(),
         name='test-email-notification'

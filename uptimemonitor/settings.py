@@ -295,26 +295,34 @@ ENV = os.getenv('ENVIRONMENT', 'dev')
 
 if ENV == "prod":
 
-    EMAIL_BACKEND = 'django_ses.SESBackend'
-    AWS_SES_REGION_NAME = 'us-east-1'
-    AWS_SES_REGION_ENDPOINT = 'email.us-east-1.amazonaws.com'
-    USE_SES_V2 = True  # Use newer API
+    # EMAIL_BACKEND = 'django_ses.SESBackend'
+    # AWS_SES_REGION_NAME = 'us-east-1'
+    # AWS_SES_REGION_ENDPOINT = 'email.us-east-1.amazonaws.com'
+    # USE_SES_V2 = True  # Use newer API
+
+    # Resend configuration
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.resend.com'
+    EMAIL_PORT = 465
+    EMAIL_USE_SSL = True
+    EMAIL_HOST_USER = 'resend'
+    EMAIL_HOST_PASSWORD = os.getenv('RESEND_API_KEY')
 
     # Email addresses
     DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'alerts@alivechecks.com')
     NOREPLY_EMAIL = os.getenv('NOREPLY_EMAIL', 'noreply@alivechecks.com')
     SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', 'support@alivechecks.com')
-    AWS_SES_CONFIGURATION_SET = 'prod-alivechecks'
+    # AWS_SES_CONFIGURATION_SET = 'prod-alivechecks'
 
-    # Add retry configuration
-    AWS_SES_BOTO3_CONFIG = botocore.config.Config(
-        retries={
-            'max_attempts': 3,
-            'mode': 'adaptive'
-        },
-        connect_timeout=5,
-        read_timeout=5,
-    )
+    # # Add retry configuration
+    # AWS_SES_BOTO3_CONFIG = botocore.config.Config(
+    #     retries={
+    #         'max_attempts': 3,
+    #         'mode': 'adaptive'
+    #     },
+    #     connect_timeout=5,
+    #     read_timeout=5,
+    # )
 else:
     # EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

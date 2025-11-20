@@ -1,14 +1,31 @@
 import requests
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMultiAlternatives
 from django.conf import settings
 from celery import shared_task
 from monitor.models import Alert, NotificationPreference, Website, HeartBeat
 from django.utils.timezone import now
 from datetime import timedelta
-from .whatsapp_utils import send_whatsapp_message
+from .whatsapp_utils import (
+    send_website_down_alert,
+    send_website_recovered_alert,
+    send_heartbeat_missed_alert,
+    send_heartbeat_recovered_alert,
+    format_interval
+)
 from django.contrib.contenttypes.models import ContentType
 from celery.exceptions import MaxRetriesExceededError
 import logging
+
+# Import email templates
+from .email_templates import (
+    website_downtime_email,
+    website_recovery_email,
+    heartbeat_missed_email,
+    heartbeat_recovery_email,
+    test_notification_email,
+    welcome_email,
+    password_reset_email
+)
 
 logger = logging.getLogger('monitor')
 
@@ -17,16 +34,29 @@ RETRY_INTERVAL_MINUTES = 10
 MAX_RETRIES = 3
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=30)
-def send_email_alert_task(self, to_email, subject, message):
+def send_html_email(to_email, subject, html_content, text_content=None):
+    """
+    Send HTML email with plain text fallback
+    """
     try:
-        send_mail(
+        email = EmailMultiAlternatives(
             subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,  # alerts@alivechecks.com
-            recipient_list=[to_email],
-            fail_silently=False,
+            body=text_content or "Please view this email in an HTML-capable email client.",
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[to_email]
         )
+        email.attach_alternative(html_content, "text/html")
+        email.send(fail_silently=False)
+        return True
+    except Exception as e:
+        logger.error(f"[EMAIL] Error sending HTML email to {to_email}: {str(e)}")
+        raise
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def send_email_alert_task(self, to_email, subject, html_content, text_content=None):
+    try:
+        send_html_email(to_email, subject, html_content, text_content)
         logger.info(f"[EMAIL] Sent to {to_email}")
     except Exception as e:
         logger.error(f"[EMAIL] Error sending to {to_email}: {str(e)}")
@@ -49,16 +79,19 @@ def send_email_alert_task(self, to_email, subject, message):
 # =======================
 
 @shared_task(bind=True, max_retries=3)
-def send_password_reset_email(self, user_email, reset_link):
+def send_password_reset_email_task(self, user_email, reset_link, user_name="there"):
     """Send password reset email"""
     try:
-        subject = 'Reset your AliveChecks password'
-        message = f"""
+        subject = 'Reset your Alive Checks password'
+        html_content = password_reset_email(user_name, reset_link)
+        
+        # Plain text fallback
+        text_content = f"""
 Password Reset Request
 
-We received a request to reset your password.
+Hi {user_name},
 
-Click the link below to reset your password:
+We received a request to reset your password. Click the link below to reset:
 {reset_link}
 
 This link will expire in 24 hours.
@@ -66,18 +99,11 @@ This link will expire in 24 hours.
 If you didn't request this, you can safely ignore this email.
 
 ---
-AliveChecks - Keeping your sites alive
+Alive Checks - Keeping your sites alive
 https://alivechecks.com
         """
 
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.NOREPLY_EMAIL,  # noreply@alivechecks.com
-            recipient_list=[user_email],
-            fail_silently=False,
-        )
-
+        send_html_email(user_email, subject, html_content, text_content)
         logger.info(f"[PASSWORD_RESET] Email sent to {user_email}")
 
     except Exception as e:
@@ -86,37 +112,33 @@ https://alivechecks.com
 
 
 @shared_task(bind=True, max_retries=3)
-def send_welcome_email(self, user_email, user_name):
+def send_welcome_email_task(self, user_email, user_name="there"):
     """Send welcome email to new users"""
     try:
-        subject = 'Welcome to AliveChecks! 🎉'
-        message = f"""
+        subject = 'Welcome to Alive Checks! 🎉'
+        html_content = welcome_email(user_name)
+        
+        # Plain text fallback
+        text_content = f"""
 Hi {user_name},
 
-Welcome to AliveChecks!
+Welcome to Alive Checks!
 
 You're now set up to monitor your websites and get instant alerts when they go down.
 
-Here's how to get started:
+Getting Started:
 1. Add your first website to monitor
-2. Choose your alert preferences
-3. Relax - we'll watch your sites for you
+2. Configure your alert preferences
+3. Relax - we'll watch your sites 24/7
 
-Questions? Just reply to this email.
+Questions? Reply to this email.
 
 ---
-AliveChecks - Keeping your sites alive
+Alive Checks - Keeping your sites alive
 https://alivechecks.com
         """
 
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.NOREPLY_EMAIL,
-            recipient_list=[user_email],
-            fail_silently=False,
-        )
-
+        send_html_email(user_email, subject, html_content, text_content)
         logger.info(f"[WELCOME] Email sent to {user_email}")
 
     except Exception as e:
@@ -126,107 +148,28 @@ https://alivechecks.com
             self.retry(exc=e, countdown=60)
 
 
+# =======================
+# TEST NOTIFICATIONS
+# =======================
+
 @shared_task(bind=True, max_retries=3)
-def send_test_website_notification(self, email, user_name, website_name, website_url):
-    """Send test notification for a website monitor"""
+def send_test_notification(self, email, monitor_name, user_name="there"):
+    """Send simple test notification email"""
     try:
-        subject = f'🔔 Test Alert: {website_name}'
-        message = f"""
-Hi {user_name},
-
-This is a TEST notification for your website monitor.
-
-Monitor: {website_name}
-URL: {website_url}
-Type: Website Uptime Monitor
-
-✅ If you're reading this, alerts for this monitor are working!
-
-When this website goes down, you'll receive an alert at this email address with:
-- Downtime detection time
-- Response status code or error
-- Immediate notification
-
-You can manage notification settings for this monitor in your dashboard.
-
----
-AliveChecks - Keeping your sites alive
-https://alivechecks.com
-        """
-
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            fail_silently=False,
-        )
-
-        logger.info(f"[TEST_WEBSITE] Sent to {email} for {website_name}")
+        subject = f'🔔 Test Alert: {monitor_name}'
+        html_content = test_notification_email(user_name, monitor_name)
+        
+        send_html_email(email, subject, html_content)
+        logger.info(f"[TEST] Email sent to {email} for {monitor_name}")
 
     except Exception as e:
-        logger.error(f"[TEST_WEBSITE] Failed for {email}: {str(e)}")
+        logger.error(f"[TEST] Failed for {email}: {str(e)}")
         self.retry(exc=e, countdown=10)
 
 
-@shared_task(bind=True, max_retries=3)
-def send_test_heartbeat_notification(
-    self,
-    email,
-    user_name,
-    heartbeat_name,
-    heartbeat_interval
-):
-    """Send test notification for a heartbeat/cron monitor"""
-    try:
-        # Format interval nicely
-        if heartbeat_interval >= 86400:
-            interval_str = f"{heartbeat_interval // 86400} day(s)"
-        elif heartbeat_interval >= 3600:
-            interval_str = f"{heartbeat_interval // 3600} hour(s)"
-        elif heartbeat_interval >= 60:
-            interval_str = f"{heartbeat_interval // 60} minute(s)"
-        else:
-            interval_str = f"{heartbeat_interval} second(s)"
-
-        subject = f'🔔 Test Alert: {heartbeat_name}'
-        message = f"""
-Hi {user_name},
-
-This is a TEST notification for your heartbeat monitor.
-
-Monitor: {heartbeat_name}
-Expected Interval: {interval_str}
-Type: Heartbeat/Cron Monitor
-
-✅ If you're reading this, alerts for this monitor are working!
-
-When this heartbeat misses a check-in, you'll receive an alert at this email address with:
-- Time of missed ping
-- Expected vs actual interval
-- Grace period information
-
-You can manage notification settings for this monitor in your dashboard.
-
----
-AliveChecks - Keeping your sites alive
-https://alivechecks.com
-        """
-
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            fail_silently=False,
-        )
-
-        logger.info(f"[TEST_HEARTBEAT] Sent to {email} for {heartbeat_name}")
-
-    except Exception as e:
-        logger.error(f"[TEST_HEARTBEAT] Failed for {email}: {str(e)}")
-        self.retry(exc=e, countdown=10)
-
+# =======================
+# ACTUAL DOWNTIME/RECOVERY ALERTS
+# =======================
 
 @shared_task(bind=True, max_retries=3)
 def send_slack_alert_task(self, webhook_url, message):
@@ -240,21 +183,45 @@ def send_slack_alert_task(self, webhook_url, message):
 
 
 @shared_task(bind=True, max_retries=3)
-def send_webhook_alert_task(self, webhook_url, payload):
+def send_whatsapp_alert_task(self, phone_number, alert_type, target_data):
+    """
+    Send WhatsApp alert using appropriate template
+    target_data should contain all necessary fields for the template
+    """
     try:
-        response = requests.post(webhook_url, json=payload)
-        response.raise_for_status()
-        logger.info(f"[WEBHOOK] Sent to {webhook_url}")
-    except requests.RequestException as e:
-        logger.error(f"[WEBHOOK] Error sending: {e}")
-        self.retry(exc=e, countdown=10)
-
-
-@shared_task(bind=True, max_retries=3)
-def send_whatsapp_alert_task(self, phone_number, message):
-    try:
-        send_whatsapp_message()
-        logger.info(f"[WHATSAPP] Sent to {phone_number}")
+        if alert_type == "website_downtime":
+            send_website_down_alert(
+                to_number=phone_number,
+                website_name=target_data['name'],
+                website_url=target_data['url'],
+                status_code=target_data.get('status_code'),
+                downtime_start=target_data['downtime_start']
+            )
+        elif alert_type == "website_recovery":
+            send_website_recovered_alert(
+                to_number=phone_number,
+                website_name=target_data['name'],
+                website_url=target_data['url'],
+                downtime_duration=target_data['downtime_duration'],
+                recovered_at=target_data['recovered_at']
+            )
+        elif alert_type == "heartbeat_downtime":
+            send_heartbeat_missed_alert(
+                to_number=phone_number,
+                heartbeat_name=target_data['name'],
+                expected_interval=target_data['expected_interval'],
+                last_ping=target_data.get('last_ping'),
+                missed_at=target_data['missed_at']
+            )
+        elif alert_type == "heartbeat_recovery":
+            send_heartbeat_recovered_alert(
+                to_number=phone_number,
+                heartbeat_name=target_data['name'],
+                missed_duration=target_data['missed_duration'],
+                recovered_at=target_data['recovered_at']
+            )
+        
+        logger.info(f"[WHATSAPP] Sent {alert_type} to {phone_number}")
     except Exception as e:
         logger.error(f"[WHATSAPP] Error sending to {phone_number}: {str(e)}")
         self.retry(exc=e, countdown=10)
@@ -264,7 +231,6 @@ def notify_users(target, alert_type):
     """
     Notify users based on their preferences for a given target (Website or HeartBeat).
     """
-
     content_type = ContentType.objects.get_for_model(target)
     preferences = NotificationPreference.objects.filter(
         content_type=content_type,
@@ -273,28 +239,23 @@ def notify_users(target, alert_type):
 
     for pref in preferences:
         if pref.method == "email":
-            subject = f"[{alert_type.upper()}] {target}"
-            message = build_alert_message(target, alert_type, method="email")
-            send_email_alert_task.delay(pref.target, subject, message)
+            subject, html_content = build_email_alert(target, alert_type)
+            send_email_alert_task.delay(pref.target, subject, html_content)
 
         elif pref.method == "slack":
-            message = build_alert_message(target, alert_type, method="slack")
+            message = build_slack_message(target, alert_type)
             send_slack_alert_task.delay(pref.target, message)
 
-        elif pref.method == "webhook":
-            payload = {"status": alert_type, "target": str(target)}
-            send_webhook_alert_task.delay(pref.target, payload)
-
         elif pref.method == "whatsapp":
-            message = build_alert_message(target, alert_type, method="whatsapp")
-            send_whatsapp_alert_task.delay(pref.target, message)
+            target_data = prepare_whatsapp_data(target, alert_type)
+            whatsapp_alert_type = get_whatsapp_alert_type(target, alert_type)
+            send_whatsapp_alert_task.delay(pref.target, whatsapp_alert_type, target_data)
 
 
 def handle_alert(target, alert_type):
     """
     Generic alert handler for Website or HeartBeat.
     """
-
     content_type = ContentType.objects.get_for_model(target)
 
     if alert_type == "downtime":
@@ -314,7 +275,7 @@ def handle_alert(target, alert_type):
                 time_since_last = now() - existing_alert.last_sent_at
                 if time_since_last < timedelta(minutes=RETRY_INTERVAL_MINUTES):
                     logger.info(
-                        f"[!] Last alert for {target} sent recently,"
+                        f"[!] Last alert for {target} sent recently, "
                         f"skipping retry for now."
                     )
                     return
@@ -324,7 +285,7 @@ def handle_alert(target, alert_type):
             existing_alert.last_sent_at = now()
             existing_alert.save(update_fields=["retry_count", "last_sent_at"])
             logger.warning(
-                f"[!] Retried alert for {target}"
+                f"[!] Retried alert for {target} "
                 f"(attempt {existing_alert.retry_count})"
             )
             return
@@ -363,53 +324,152 @@ def handle_alert(target, alert_type):
             logger.info(f"[✓] Recovery alert sent for {target}")
 
 
-def build_alert_message(target, alert_type, method="email"):
+def build_email_alert(target, alert_type):
     """
-    Build alert messages depending on whether target is Website or HeartBeat.
+    Build HTML email alerts for Website or HeartBeat
+    Returns tuple of (subject, html_content)
     """
     if isinstance(target, Website):
-        if method == "email":
-            return f"""
-                🚨 Website {alert_type.upper()}!
-
-                URL: {target.url}
-                Time: {now().strftime('%Y-%m-%d %H:%M:%S')}
-            """
-        elif method == "slack":
-            return f"*Website {alert_type.upper()}!* {target.url} at {now()}"
-        elif method == "whatsapp":
-            ts = now().strftime("%Y-%m-%d %H:%M:%S")
-            return f"""🚨 Website {alert_type.upper()}!
-            URL: {target.url}
-            Time: {ts}"""
-        elif method == "webhook":
-            return {
-                "alert_type": alert_type,
-                "url": target.url,
-                "timestamp": now().isoformat()
-            }
+        if alert_type == "downtime":
+            # Get the last check result for status code and error
+            last_check = target.checks.order_by('-checked_at').first()
+            status_code = last_check.status_code if last_check else None
+            error_message = last_check.error_message if last_check else ""
+            
+            subject = f"🚨 Website DOWN: {target.name or target.url}"
+            html_content = website_downtime_email(
+                website_name=target.name or target.url,
+                website_url=target.url,
+                status_code=status_code,
+                error_message=error_message,
+                downtime_start=target.last_downtime_at.strftime("%Y-%m-%d %H:%M:%S UTC") if target.last_downtime_at else now().strftime("%Y-%m-%d %H:%M:%S UTC")
+            )
+            return subject, html_content
+            
+        elif alert_type == "recovery":
+            downtime_duration = ""
+            if target.last_downtime_at and target.last_recovered_at:
+                duration = target.last_recovered_at - target.last_downtime_at
+                downtime_duration = str(duration).split('.')[0]  # Remove microseconds
+            
+            subject = f"✅ Website RECOVERED: {target.name or target.url}"
+            html_content = website_recovery_email(
+                website_name=target.name or target.url,
+                website_url=target.url,
+                downtime_duration=downtime_duration or "Unknown",
+                recovered_at=target.last_recovered_at.strftime("%Y-%m-%d %H:%M:%S UTC") if target.last_recovered_at else now().strftime("%Y-%m-%d %H:%M:%S UTC")
+            )
+            return subject, html_content
 
     elif isinstance(target, HeartBeat):
-        if method == "email":
-            return f"""
-                🚨 Heartbeat {alert_type.upper()}!
+        if alert_type == "downtime":
+            subject = f"💔 Heartbeat MISSED: {target.name}"
+            html_content = heartbeat_missed_email(
+                heartbeat_name=target.name,
+                expected_interval=format_interval(target.interval),
+                last_ping=target.last_ping.strftime("%Y-%m-%d %H:%M:%S UTC") if target.last_ping else None,
+                missed_at=now().strftime("%Y-%m-%d %H:%M:%S UTC")
+            )
+            return subject, html_content
+            
+        elif alert_type == "recovery":
+            # Calculate missed duration from ping logs
+            missed_duration = ""
+            last_fail = target.pings.filter(status="fail").order_by('-timestamp').first()
+            if last_fail and target.last_ping:
+                duration = target.last_ping - last_fail.timestamp
+                missed_duration = str(duration).split('.')[0]
+            
+            subject = f"💚 Heartbeat RECOVERED: {target.name}"
+            html_content = heartbeat_recovery_email(
+                heartbeat_name=target.name,
+                missed_duration=missed_duration or "Unknown",
+                recovered_at=now().strftime("%Y-%m-%d %H:%M:%S UTC")
+            )
+            return subject, html_content
 
-                Service: {target.name}
-                Time: {now().strftime('%Y-%m-%d %H:%M:%S')}
-            """
-        elif method == "slack":
-            return f"*Heartbeat {alert_type.upper()}!* {target.name} at {now()}"
-        elif method == "whatsapp":
-            ts = now().strftime("%Y-%m-%d %H:%M:%S")
-            return f"""🚨 Heartbeat {alert_type.upper()}!
-            Service: {target.name}
-            Time: {ts}"""
+    return "Alert", "<p>Alert notification</p>"
 
-        elif method == "webhook":
+
+def prepare_whatsapp_data(target, alert_type):
+    """
+    Prepare structured data for WhatsApp template
+    """
+    if isinstance(target, Website):
+        if alert_type == "downtime":
+            # Get the last check result for status code
+            last_check = target.checks.order_by('-checked_at').first()
+            status_code = last_check.status_code if last_check else None
+            
             return {
-                "alert_type": alert_type,
-                "service": target.name,
-                "timestamp": now().isoformat()
+                'name': target.name or target.url,
+                'url': target.url,
+                'status_code': status_code,
+                'downtime_start': target.last_downtime_at.strftime("%Y-%m-%d %H:%M:%S UTC") if target.last_downtime_at else now().strftime("%Y-%m-%d %H:%M:%S UTC")
             }
+        elif alert_type == "recovery":
+            downtime_duration = ""
+            if target.last_downtime_at and target.last_recovered_at:
+                duration = target.last_recovered_at - target.last_downtime_at
+                downtime_duration = str(duration).split('.')[0]
+            
+            return {
+                'name': target.name or target.url,
+                'url': target.url,
+                'downtime_duration': downtime_duration or "Unknown",
+                'recovered_at': target.last_recovered_at.strftime("%Y-%m-%d %H:%M:%S UTC") if target.last_recovered_at else now().strftime("%Y-%m-%d %H:%M:%S UTC")
+            }
+    
+    elif isinstance(target, HeartBeat):
+        if alert_type == "downtime":
+            return {
+                'name': target.name,
+                'expected_interval': format_interval(target.interval),
+                'last_ping': target.last_ping.strftime("%Y-%m-%d %H:%M:%S UTC") if target.last_ping else None,
+                'missed_at': now().strftime("%Y-%m-%d %H:%M:%S UTC")
+            }
+        elif alert_type == "recovery":
+            # Calculate missed duration from ping logs
+            missed_duration = ""
+            last_fail = target.pings.filter(status="fail").order_by('-timestamp').first()
+            if last_fail and target.last_ping:
+                duration = target.last_ping - last_fail.timestamp
+                missed_duration = str(duration).split('.')[0]
+            
+            return {
+                'name': target.name,
+                'missed_duration': missed_duration or "Unknown",
+                'recovered_at': now().strftime("%Y-%m-%d %H:%M:%S UTC")
+            }
+    
+    return {}
+
+
+def get_whatsapp_alert_type(target, alert_type):
+    """
+    Map target and alert_type to WhatsApp template name
+    """
+    if isinstance(target, Website):
+        return f"website_{alert_type}"
+    elif isinstance(target, HeartBeat):
+        return f"heartbeat_{alert_type}"
+    return alert_type
+
+
+def build_slack_message(target, alert_type):
+    """
+    Build Slack messages for alerts
+    """
+    if isinstance(target, Website):
+        if alert_type == "downtime":
+            return f"*🚨 Website DOWN!*\n{target.url}\nTime: {now().strftime('%Y-%m-%d %H:%M:%S UTC')}"
+        elif alert_type == "recovery":
+            return f"*✅ Website RECOVERED!*\n{target.url}\nTime: {now().strftime('%Y-%m-%d %H:%M:%S UTC')}"
+
+    elif isinstance(target, HeartBeat):
+        if alert_type == "downtime":
+            return f"*💔 Heartbeat MISSED!*\n{target.name}\nTime: {now().strftime('%Y-%m-%d %H:%M:%S UTC')}"
+        elif alert_type == "recovery":
+            return f"*💚 Heartbeat RECOVERED!*\n{target.name}\nTime: {now().strftime('%Y-%m-%d %H:%M:%S UTC')}"
 
     return f"Alert: {target} is {alert_type}"

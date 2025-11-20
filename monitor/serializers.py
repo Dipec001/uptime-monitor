@@ -13,7 +13,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from .alerts import send_password_reset_email
+from .alerts import send_password_reset_email_task
 from django.conf import settings
 
 User = get_user_model()
@@ -388,7 +388,10 @@ class ForgotPasswordSerializer(serializers.Serializer):
             reset_link = f"{settings.FRONTEND_BASE_URL}/reset-password/{uid}/{token}/"
 
             # Send via Celery
-            send_password_reset_email.delay(email, reset_link)
+            send_password_reset_email_task.delay(
+                user_email=email,
+                reset_link=reset_link
+            )
 
         # Always act as if it worked
         return {

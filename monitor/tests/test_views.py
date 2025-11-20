@@ -265,7 +265,6 @@ def test_create_duplicate_preference(api_client, website):
 @pytest.mark.parametrize("method,target", [
     ("email", "not-an-email"),
     ("slack", "not-a-url"),
-    ("webhook", "ftp://invalid.com")
 ])
 def test_create_invalid_target(api_client, website, method, target):
     """Test validation errors for invalid email or URL targets."""

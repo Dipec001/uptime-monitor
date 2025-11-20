@@ -99,6 +99,7 @@ jobs:
             -var "grafana_admin_password=${{ secrets.GRAFANA_ADMIN_PASSWORD }}" \
             -var "github_oauth_client_id=${{ secrets.GH_OAUTH_CLIENT_ID }}" \
             -var "github_oauth_client_secret=${{ secrets.GH_OAUTH_CLIENT_SECRET }}" \
+            -var "resend_api_key=${{ secrets.RESEND_API_KEY }}" \
             -out=tfplan
 
       - name: Terraform Apply

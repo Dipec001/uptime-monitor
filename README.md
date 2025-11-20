@@ -25,7 +25,7 @@ For now, swagger docs available [Here](https://alivechecks.com/swagger)
 
 - ✅ **Website & API Uptime Monitoring** – HTTP/HTTPS checks with configurable intervals
 - 💓 **Heartbeat Monitoring** – Track cron jobs and scheduled tasks via ping URLs
-- 🚨 **Multi-Channel Alerts** – Email (AWS SES), Slack webhooks, WhatsApp, custom webhooks
+- 🚨 **Multi-Channel Alerts** – Email (AWS SES), Slack webhooks, WhatsApp
 - 📊 **40+ Prometheus Metrics** – Comprehensive observability with Grafana dashboards
 - ⚡ **Real-Time Dashboards** – Uptime percentages, latency trends, incident history
 - 🔒 **Secure Authentication** – JWT-based auth with role-based access control
@@ -72,7 +72,7 @@ For now, swagger docs available [Here](https://alivechecks.com/swagger)
 - **CheckResult** – Historical uptime data with response times
 - **PingLog** – Heartbeat ping history and missed beat tracking
 - **Alert** – Downtime/recovery notifications with delivery status
-- **AlertChannel** – Email, Slack, WhatsApp, webhook configurations
+- **AlertChannel** – Email, Slack, WhatsApp configurations
 
 ---
 

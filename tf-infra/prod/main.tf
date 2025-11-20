@@ -89,6 +89,7 @@ module "ecs" {
   ec2_instance_type = "t3.medium"
   github_oauth_client_id     = var.github_oauth_client_id
   github_oauth_client_secret = var.github_oauth_client_secret
+  resend_api_key    = var.resend_api_key
   public_subnets    = module.networking.public_subnet_ids
   alert_email       = "dpecchukwu@gmail.com"
   db_identifier     = module.rds.db_identifier
