@@ -264,14 +264,6 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
-        # Write only to console since cloudwatch can capture stdout
-        # 'file': {
-        #     'level': 'DEBUG',
-        #     'class': 'logging.FileHandler',
-        #     'filename': str(BASE_DIR / 'monitor.log'),
-        #     'formatter': 'verbose',
-        #     'encoding': 'utf-8',
-        # },
     },
     'loggers': {
         'monitor': {
