@@ -27,7 +27,7 @@ The **Uptime Monitor** is a production-grade distributed monitoring platform tha
 - 🌐 **Website uptime** through periodic HTTP/HTTPS checks  
 - 💓 **Heartbeat signals** from cron jobs and background services  
 
-It automatically detects downtime, triggers multi-channel alerts (Email, Slack, WhatsApp, webhooks), and provides comprehensive observability through Prometheus and Grafana.
+It automatically detects downtime, triggers multi-channel alerts (Email, Slack, WhatsApp), and provides comprehensive observability through Prometheus and Grafana.
 
 ### Key Architectural Decisions
 
@@ -328,7 +328,7 @@ datasource_url = "http://prometheus.uptimemonitor.local:9090"
    ↓
 9. Create Alert record → handle_alert task
    ↓
-10. Send notification via Email/Slack/WhatsApp/Webhook
+10. Send notification via Email/Slack/WhatsApp
     ↓
 11. Log alert delivery status
     ↓

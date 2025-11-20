@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Website uptime checks with customizable intervals.
 - Heartbeat monitoring for periodic tasks.
-- Alert notifications via Email, Slack, and Webhooks.
+- Alert notifications via Email, Slack.
 - Real-time metrics dashboards (Prometheus + Grafana).
 
 ### Changed

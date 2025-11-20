@@ -6,7 +6,7 @@ The Uptime Monitor is a Django-based system for monitoring websites and heartbea
 It supports:  
 - Periodic website checks (status, response time)  
 - Heartbeat monitoring for cronjobs or services  
-- Alerts and notification preferences (email, Slack, webhook)  
+- Alerts and notification preferences (email, Slack, whatsapp)  
 - Scalable background tasks via Celery  
 
 This document explains how to **set up, run, and test** the system locally or using Docker.

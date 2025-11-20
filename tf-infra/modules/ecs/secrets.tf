@@ -17,5 +17,6 @@ resource "aws_secretsmanager_secret_version" "app_credentials" {
     # Will add Other non-email secrets
     GITHUB_OAUTH_CLIENT_ID     = var.github_oauth_client_id
     GITHUB_OAUTH_CLIENT_SECRET = var.github_oauth_client_secret
+    RESEND_API_KEY             = var.resend_api_key
   })
 }

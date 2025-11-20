@@ -172,7 +172,11 @@ resource "aws_ecs_task_definition" "this" {
         {
           name      = "GITHUB_OAUTH_CLIENT_SECRET"
           valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:GITHUB_OAUTH_CLIENT_SECRET::"
-        }
+        },
+        {
+          name      = "RESEND_API_KEY"
+          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:RESEND_API_KEY::"
+        },
       ]
       environment = [
         { name = "DATABASE_URL", value = var.database_url },
@@ -207,6 +211,10 @@ resource "aws_ecs_task_definition" "this" {
         {
           name      = "SUPPORT_EMAIL"
           valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:SUPPORT_EMAIL::"
+        },
+        {
+          name      = "RESEND_API_KEY"
+          valueFrom = "${data.aws_secretsmanager_secret.app_credentials.arn}:RESEND_API_KEY::"
         }
       ]
       environment = [
