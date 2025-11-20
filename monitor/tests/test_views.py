@@ -6,12 +6,14 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from monitor.models import Website, NotificationPreference
 from django.contrib.contenttypes.models import ContentType
+from unittest.mock import patch
 
 User = get_user_model()
 
 
 @pytest.mark.django_db
-def test_register_view_success():
+@patch('monitor.views.send_welcome_email_task.delay')
+def test_register_view_success(mock_email_task):
     """
     Test that a user can successfully register via RegisterView.
     """
@@ -39,6 +41,8 @@ def test_register_view_success():
     assert "token" in response.data
     assert "access" in response.data["token"]
     assert "refresh" in response.data["token"]
+    # Verify the task was called
+    mock_email_task.assert_called_once_with("test@example.com")
 
 
 @pytest.mark.django_db
