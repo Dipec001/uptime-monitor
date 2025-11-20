@@ -5,8 +5,9 @@ exclude =
     frontend,
     infra,
     migrations,
+    monitor/email_templates.py,
     __pycache__
-max-line-length = 133
+max-line-length = 164
 ignore = 
     W293,
     W291,

@@ -16,7 +16,6 @@ from datetime import timedelta
 from dotenv import load_dotenv
 import dj_database_url
 from celery.schedules import crontab
-import botocore.config
 
 load_dotenv()
 
