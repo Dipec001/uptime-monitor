@@ -65,6 +65,7 @@ function Home() {
             <div className="inline-flex items-center gap-2 bg-blue-600/10 border border-blue-500/20 rounded-full px-4 py-2 mb-6">
               <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
               <span className="text-gray-300 text-sm">Monitoring 1,500+ websites worldwide</span>
+              
             </div>
 
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-tight">
@@ -524,6 +525,85 @@ function Home() {
           </div>
         </div>
       </div>
+
+      {/* Pricing Section - Simple & Free */}
+      <div className="bg-gray-50 py-20 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Simple, Transparent Pricing
+            </h2>
+            <p className="text-gray-600 text-lg">
+              Currently FREE while we build and improve. Pay later only if you love it.
+            </p>
+          </div>
+
+          <div className="max-w-md mx-auto">
+            <div className="bg-white border-2 border-blue-500 rounded-2xl p-8 shadow-xl">
+              <div className="text-center">
+                <div className="inline-block bg-green-500 text-white text-sm font-semibold px-4 py-1 rounded-full mb-4">
+                  EARLY ACCESS
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Free Beta</h3>
+                <div className="mb-6">
+                  <span className="text-5xl font-extrabold text-gray-900">₦0</span>
+                  <span className="text-gray-600">/month</span>
+                </div>
+                
+                <ul className="text-left space-y-3 mb-8">
+                  <li className="flex items-start gap-3">
+                    <svg className="w-6 h-6 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-gray-700">Unlimited website monitors</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <svg className="w-6 h-6 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-gray-700">1-minute check intervals</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <svg className="w-6 h-6 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-gray-700">Email & Slack alerts</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <svg className="w-6 h-6 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-gray-700">Heartbeat/cron monitoring</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <svg className="w-6 h-6 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-gray-700">Performance tracking</span>
+                  </li>
+                </ul>
+                <a
+                
+                  href="/register"
+                  className="block w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition text-center"
+                >
+                  Start Monitoring Free →
+                </a>
+
+                <p className="text-gray-500 text-sm mt-4">
+                  No credit card required. Cancel anytime.
+                </p>
+              </div>
+            </div>
+
+            <p className="text-center text-gray-600 mt-8 text-sm">
+              💡 <strong>Early Bird Perk:</strong> Join now and get grandfathered into 
+              discounted pricing when we launch paid plans.
+            </p>
+          </div>
+        </div>
+      </div>
+      
 
       {/* Final CTA - Bold Gradient */}
       <div className="bg-gradient-to-br from-blue-600 to-blue-700 py-20 px-6">
