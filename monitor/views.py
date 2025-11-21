@@ -24,7 +24,8 @@ from .models import (
 )
 from .tasks import process_ping
 from .alerts import (
-    send_welcome_email_task
+    send_welcome_email_task,
+    send_contact_form_email_task
 )
 from django.http import Http404
 from django.contrib.auth import get_user_model
@@ -997,3 +998,72 @@ class TestEmailNotificationView(APIView):
             return Response({
                 "error": "Failed to send test email. Please try again."
             }, status=500)
+
+
+class ContactFormView(APIView):
+    """
+    Handle contact form submissions
+    No authentication required
+    """
+    permission_classes = []  # Public endpoint
+    
+    def post(self, request):
+        try:
+            # Get form data
+            name = request.data.get('name', '').strip()
+            email = request.data.get('email', '').strip()
+            subject = request.data.get('subject', '').strip()
+            message = request.data.get('message', '').strip()
+            
+            # Validate required fields
+            if not all([name, email, subject, message]):
+                return Response(
+                    {"error": "All fields are required"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Basic email validation
+            if '@' not in email or '.' not in email:
+                return Response(
+                    {"error": "Please provide a valid email address"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Length validation
+            if len(name) > 100:
+                return Response(
+                    {"error": "Name is too long (max 100 characters)"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            if len(subject) > 200:
+                return Response(
+                    {"error": "Subject is too long (max 200 characters)"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            if len(message) > 5000:
+                return Response(
+                    {"error": "Message is too long (max 5000 characters)"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Send email via Celery
+            send_contact_form_email_task.delay(name, email, subject, message)
+            
+            logger.info(f"[CONTACT] Form submitted by {name} ({email})")
+            
+            return Response(
+                {
+                    "success": True,
+                    "message": "Thanks for reaching out! We'll get back to you soon."
+                },
+                status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            logger.error(f"[CONTACT] Error processing form: {str(e)}")
+            return Response(
+                {"error": "Something went wrong. Please try again later."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

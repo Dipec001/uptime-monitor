@@ -510,5 +510,54 @@ export const deleteNotificationPreference = async (id) => {
 };
 
 
+// ============================================
+// CONTACT FORM API
+// ============================================
+
+export const submitContactForm = async (formData) => {
+  try {
+    // Use axios without authentication for public contact form
+    // Note: Using axios directly here instead of API instance
+    // because contact form is public and doesn't need auth token
+    const response = await axios.post(`${BASE_URL}/contact/`, {
+      name: formData.name,
+      email: formData.email,
+      subject: formData.subject,
+      message: formData.message,
+    });
+    return response.data;
+  } catch (error) {
+    const errorData = error.response?.data;
+    
+    if (errorData) {
+      // Check for specific error message from backend
+      if (errorData.error) {
+        throw new Error(errorData.error);
+      }
+      if (errorData.detail) {
+        throw new Error(errorData.detail);
+      }
+      
+      // Check for field-specific errors
+      if (errorData.name) {
+        throw new Error(Array.isArray(errorData.name) ? errorData.name[0] : errorData.name);
+      }
+      if (errorData.email) {
+        throw new Error(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
+      }
+      if (errorData.subject) {
+        throw new Error(Array.isArray(errorData.subject) ? errorData.subject[0] : errorData.subject);
+      }
+      if (errorData.message) {
+        throw new Error(Array.isArray(errorData.message) ? errorData.message[0] : errorData.message);
+      }
+    }
+    
+    // Fallback to generic message
+    throw new Error("Failed to send message. Please try again later.");
+  }
+};
+
+
 
 export default API;

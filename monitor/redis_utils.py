@@ -1,4 +1,3 @@
-# redis_utils.py
 import time
 import redis
 import logging

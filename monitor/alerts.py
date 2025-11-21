@@ -24,7 +24,8 @@ from .email_templates import (
     heartbeat_recovery_email,
     test_notification_email,
     welcome_email,
-    password_reset_email
+    password_reset_email,
+    contact_form_email
 )
 
 logger = logging.getLogger('monitor')
@@ -146,6 +147,41 @@ https://alivechecks.com
         # Don't retry welcome emails aggressively
         if self.request.retries < 1:
             self.retry(exc=e, countdown=60)
+
+
+@shared_task(bind=True, max_retries=3)
+def send_contact_form_email_task(self, name, email, subject, message):
+    """Send contact form submission to support email"""
+    try:
+        email_subject = f'💬 Contact Form: {subject}'
+        html_content = contact_form_email(name, email, subject, message)
+        
+        # Plain text fallback
+        text_content = f"""
+New Contact Form Message
+
+From: {name} ({email})
+Subject: {subject}
+
+Message:
+{message}
+
+---
+Reply to: {email}
+        """
+
+        # Send to my support email
+        send_html_email(
+            settings.SUPPORT_EMAIL,
+            email_subject,
+            html_content,
+            text_content
+        )
+        logger.info(f"[CONTACT] Form submission from {email}")
+
+    except Exception as e:
+        logger.error(f"[CONTACT] Failed for {email}: {str(e)}")
+        self.retry(exc=e, countdown=10)
 
 
 # =======================
@@ -375,16 +411,16 @@ def build_email_alert(target, alert_type):
         elif alert_type == "recovery":
             # Calculate missed duration from ping logs
             missed_duration = ""
-            last_fail = target.pings.filter(status="fail").order_by('-timestamp').first()
-            if last_fail and target.last_ping:
-                duration = target.last_ping - last_fail.timestamp
-                missed_duration = str(duration).split('.')[0]
+
+            if target.last_downtime_at and target.last_recovered_at:
+                duration = target.last_recovered_at - target.last_downtime_at
+                missed_duration = str(duration).split('.')[0]  # Remove microseconds
             
             subject = f"💚 Heartbeat RECOVERED: {target.name}"
             html_content = heartbeat_recovery_email(
                 heartbeat_name=target.name,
                 missed_duration=missed_duration or "Unknown",
-                recovered_at=now().strftime("%Y-%m-%d %H:%M:%S UTC")
+                recovered_at=target.last_recovered_at.strftime("%Y-%m-%d %H:%M:%S UTC") if target.last_recovered_at else now().strftime("%Y-%m-%d %H:%M:%S UTC")
             )
             return subject, html_content
 

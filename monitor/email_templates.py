@@ -494,3 +494,64 @@ def password_reset_email(user_name, reset_link):
     </div>
     """
     return get_base_template(content)
+
+
+def contact_form_email(name, email, subject, message):
+    """Email template for contact form submissions"""
+    content = f"""
+    <div style="padding: 40px 30px;">
+        <!-- Contact Badge -->
+        <div style="text-align: center; margin-bottom: 30px;">
+            <div style="display: inline-block; background: rgba(139, 92, 246, 0.1); border: 2px solid #8b5cf6; border-radius: 50%; padding: 20px;">
+                <span style="font-size: 48px;">💬</span>
+            </div>
+        </div>
+        
+        <!-- Main Message -->
+        <h2 style="color: #8b5cf6; text-align: center; margin: 0 0 10px 0; font-size: 28px; font-weight: 700;">
+            New Contact Form Message
+        </h2>
+        <p style="color: #94a3b8; text-align: center; font-size: 15px; margin: 0 0 30px 0;">
+            Someone just reached out via alivechecks.com
+        </p>
+        
+        <!-- Sender Details Card -->
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; border-radius: 12px; padding: 25px; margin-bottom: 25px;">
+            <div style="margin-bottom: 20px;">
+                <p style="color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px 0;">FROM</p>
+                <p style="color: #ffffff; font-size: 18px; font-weight: 600; margin: 0;">{name}</p>
+                <p style="color: #3b82f6; font-size: 14px; margin: 8px 0 0 0;">
+                    <a href="mailto:{email}" style="color: #3b82f6; text-decoration: none;">{email}</a>
+                </p>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <p style="color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px 0;">SUBJECT</p>
+                <p style="color: #e2e8f0; font-size: 16px; font-weight: 600; margin: 0;">{subject}</p>
+            </div>
+            
+            <div>
+                <p style="color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px 0;">MESSAGE</p>
+                <div style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 8px; border-left: 3px solid #8b5cf6;">
+                    <p style="color: #e2e8f0; font-size: 15px; margin: 0; line-height: 1.6; white-space: pre-wrap;">{message}</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Reply Button -->
+        <div style="text-align: center; margin-bottom: 20px;">
+            <a href="mailto:{email}?subject=Re: {subject}" style="display: inline-block; background: #8b5cf6; color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(139, 92, 246, 0.3);">
+                Reply to {name} →
+            </a>
+        </div>
+        
+        <!-- Info Box -->
+        <div style="background: rgba(59, 130, 246, 0.05); border-left: 3px solid #3b82f6; padding: 15px 20px; border-radius: 6px;">
+            <p style="color: #94a3b8; font-size: 13px; margin: 0; line-height: 1.6;">
+                <strong style="color: #e2e8f0;">Quick Tip</strong><br>
+                Click the button above to reply directly from your email client, or copy their email: {email}
+            </p>
+        </div>
+    </div>
+    """
+    return get_base_template(content)

@@ -47,5 +47,6 @@ urlpatterns = [
         views.BulkCreateAlertsView.as_view(),
         name='bulk-create-alerts'
     ),
+    path('contact/', views.ContactFormView.as_view(), name='contact-form'),
     path('', include(router.urls)),
 ]
