@@ -83,7 +83,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     
     @property
     def auth_methods(self):
-        """Return list of authentication methods user has linked"""
+        """Return list of authentication methods  user has linked"""
         methods = []
         if self.has_usable_password():
             methods.append('email_password')
@@ -277,6 +277,8 @@ class HeartBeat(models.Model):
         "If disabled, the website will not be checked."
     )
     last_ping = models.DateTimeField(null=True, blank=True, db_index=True)
+    last_downtime_at = models.DateTimeField(null=True, blank=True)
+    last_recovered_at = models.DateTimeField(null=True, blank=True)
     next_due = models.DateTimeField(null=True, blank=True, db_index=True)
     status = models.CharField(
         max_length=20,

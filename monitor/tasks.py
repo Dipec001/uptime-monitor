@@ -153,8 +153,13 @@ def process_ping(key, metadata=None):
     with transaction.atomic():
         hb.last_ping = now()
         hb.status = "up"
+
+        # If recovering from downtime, track recovery time
+        if previous_status == "down":
+            hb.last_recovered_at = now()
+
         hb.update_next_due()  # update next_due automatically
-        hb.save(update_fields=["last_ping", "status", "next_due", "updated_at"])
+        hb.save(update_fields=["last_ping", "status", "last_recovered_at", "next_due", "updated_at"])
 
     # Log the successful ping
     try:
@@ -184,13 +189,20 @@ def check_single_heartbeat(self, heartbeat_id):
         hb = HeartBeat.objects.get(pk=heartbeat_id)
 
         if not hb.is_active:
-            logger.info(f"⏸️ Skipped paused heartbeat {heartbeat_id}")
+            logger.info(f"Skipped paused heartbeat {heartbeat_id}")
             return
 
         current_time = now()
         if hb.next_due and current_time > hb.next_due:
-            hb.status = "down"
-            hb.save(update_fields=["status", "updated_at"])
+            # Only update last_downtime_at on FIRST detection
+            if hb.status != "down":
+                hb.last_downtime_at = current_time
+                hb.status = "down"
+                hb.save(update_fields=["status", "last_downtime_at", "updated_at"])
+            else:
+                # Already down - DON'T touch last_downtime_at
+                hb.save(update_fields=["updated_at"])
+
             logger.warning(
                 f"[!] Heartbeat {hb.name} missed ping"
                 f"at {current_time}, marked DOWN"

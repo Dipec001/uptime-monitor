@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import unionLogo from "@/assets/UnionLogo.svg";
+import { submitContactForm } from "../services/api.js";
 
 export default function Contact() {
   const navigate = useNavigate();
@@ -12,31 +13,23 @@ export default function Contact() {
   });
   const [status, setStatus] = useState("idle"); // idle, sending, success, error
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setStatus("sending");
+    setErrorMessage("");
 
     try {
-      // Replace with your actual API endpoint
-      const response = await fetch("http://127.0.0.1:8000/api/contact/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        setStatus("success");
-        setFormData({ name: "", email: "", subject: "", message: "" });
-      } else {
-        setStatus("error");
-      }
+      const data = await submitContactForm(formData);
+      
+      setStatus("success");
+      setFormData({ name: "", email: "", subject: "", message: "" });
     } catch (error) {
       console.error("Contact form error:", error);
       setStatus("error");
+      setErrorMessage(error.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -48,6 +41,7 @@ export default function Contact() {
       [e.target.name]: e.target.value,
     });
     if (status !== "idle") setStatus("idle");
+    if (errorMessage) setErrorMessage(""); // Clear error on input change
   };
 
   return (
