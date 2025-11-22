@@ -110,10 +110,10 @@ function Home() {
             Trusted by developers at
           </p>
           <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12 opacity-50">
-            <div className="text-gray-700 text-2xl font-bold">TechCorp</div>
+            <div className="text-gray-700 text-2xl font-bold">Nanocodes</div>
             <div className="text-gray-700 text-2xl font-bold">Y-Queue?</div>
             <div className="text-gray-700 text-2xl font-bold">TraviMobile</div>
-            <div className="text-gray-700 text-2xl font-bold">CloudNet</div>
+            <div className="text-gray-700 text-2xl font-bold">Kira</div>
           </div>
         </div>
       </div>
