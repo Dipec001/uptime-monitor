@@ -16,8 +16,7 @@ A **production-grade uptime and heartbeat monitoring platform** built with Djang
 
 ## 🚀 Live Demo
 
-**Coming Soon** - Early demos and beta access launching Q4 2025
-For now, swagger docs available [Here](https://alivechecks.com/swagger)
+View it Live [Here](https://alivechecks.com/)
 
 ---
 
