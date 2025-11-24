@@ -102,7 +102,7 @@ View it Live [Here](https://alivechecks.com/)
   - **VPC** – Network isolation (public/private subnets)
 - **GitHub Actions** – Automated CI/CD pipeline
 
-### Frontend *(Coming Soon)*
+### Frontend
 - **React 18** – Modern UI framework
 - **Tailwind CSS** – Utility-first styling
 - **Chart.js / Recharts** – Data visualization
