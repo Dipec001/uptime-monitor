@@ -176,7 +176,7 @@ export default function Contact() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Your Name <span className="text-gray-500">(We promise not to steal it)</span>
+                  Your Name
                 </label>
                 <input
                   type="text"
@@ -191,7 +191,7 @@ export default function Contact() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Email <span className="text-gray-500">(So we can reply, duh)</span>
+                  Email
                 </label>
                 <input
                   type="email"
@@ -221,7 +221,7 @@ export default function Contact() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Message <span className="text-gray-500">(Spill the tea ☕)</span>
+                  Message
                 </label>
                 <textarea
                   name="message"
@@ -250,7 +250,6 @@ export default function Contact() {
                 ) : (
                   <>
                     Send Message
-                    <span className="text-xl">🚀</span>
                   </>
                 )}
               </button>
