@@ -314,19 +314,17 @@ Every push to `main` or `dev` triggers:
 ### Manual Deployment (Terraform)
 
 ```bash
-cd tf-infra/prod/
+cd tf-infra/staging/
 
 # Initialize Terraform
 terraform init
 
 # Plan infrastructure changes
-terraform plan -var-file="prod.tfvars"
+terraform plan -var-file="dev.tfvars"
 
 # Apply changes
-terraform apply -var-file="prod.tfvars"
+terraform apply -var-file="dev.tfvars"
 ```
-
-For detailed deployment instructions, see [DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
 ---
 
@@ -341,7 +339,7 @@ For detailed deployment instructions, see [DEPLOYMENT.md](docs/DEPLOYMENT.md)
 - [x] AWS ECS deployment with Terraform
 
 ### Phase 2: Enhanced Features
-- [ ] React frontend dashboard
+- [x] React frontend dashboard
 - [ ] Public status pages
 - [ ] Incident timelines and root cause tracking
 - [ ] Team collaboration features
