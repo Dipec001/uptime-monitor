@@ -64,6 +64,54 @@ resource "aws_iam_role_policy" "ecs_task_ses" {
 }
 
 # =========================
+# ECS Exec Policy for Task Role
+# =========================
+resource "aws_iam_role_policy" "ecs_exec_task_role" {
+  name = "${var.env}-ecs-exec-task-policy"
+  role = aws_iam_role.django_task_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# =========================
+# ECS Exec Policy for Task Execution Role
+# =========================
+resource "aws_iam_role_policy" "ecs_exec_execution_role" {
+  name = "${var.env}-ecs-exec-execution-policy"
+  role = aws_iam_role.ecs_task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# =========================
 # ECS tasks SG (for awsvpc tasks)
 # =========================
 resource "aws_security_group" "ecs_tasks_sg" {
