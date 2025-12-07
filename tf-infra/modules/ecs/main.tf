@@ -267,6 +267,8 @@ resource "aws_ecs_service" "this" {
   desired_count   = 1
   launch_type     = "EC2"
 
+  enable_execute_command = true
+
   # DEPLOYMENT SETTINGS
   deployment_maximum_percent         = 200
   deployment_minimum_healthy_percent = 100
