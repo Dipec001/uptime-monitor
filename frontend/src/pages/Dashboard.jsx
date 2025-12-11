@@ -74,13 +74,17 @@ function Dashboard() {
     const diffHours = diffMs / (1000 * 60 * 60);
     const diffDays = diffHours / 24;
     
-    // Optimized for readability: all ranges produce < 200 data points
-    if (diffHours <= 6) return 5;      // 5-min intervals (max 72 points)
-    if (diffHours <= 24) return 15;    // 15-min intervals (max 96 points)
-    if (diffHours <= 72) return 30;    // 30-min intervals (max 144 points)
-    if (diffDays <= 7) return 60;      // 1-hour intervals (max 168 points)
-    if (diffDays <= 30) return 240;    // 4-hour intervals (max 180 points)
-    return 1440;                        // 1-day intervals (90 days = 90 points)
+    // Detect mobile for extra aggregation
+    const isMobile = window.innerWidth < 768;
+    const mobileFactor = isMobile ? 2 : 1;
+    
+    // AGGRESSIVE aggregation for clean charts (max 50-100 points)
+    if (diffHours <= 6) return 10 * mobileFactor;     // Desktop: ~36 pts, Mobile: ~18 pts
+    if (diffHours <= 24) return 30 * mobileFactor;    // Desktop: ~48 pts, Mobile: ~24 pts
+    if (diffHours <= 72) return 120 * mobileFactor;   // Desktop: ~36 pts, Mobile: ~18 pts (2hr/4hr)
+    if (diffDays <= 7) return 240 * mobileFactor;     // Desktop: ~42 pts, Mobile: ~21 pts (4hr/8hr)
+    if (diffDays <= 30) return 720 * mobileFactor;    // Desktop: ~60 pts, Mobile: ~30 pts (12hr/24hr)
+    return 1440;                                       // Both: ~90 points (1-day)
   };
 
   const fetchDashboard = async () => {
@@ -120,6 +124,14 @@ function Dashboard() {
     return Math.floor(dataLength / 12); // Show ~12 ticks maximum
   };
 
+  // Smart dot config - hide dots when too many points to avoid clutter
+  const getDotConfig = () => {
+    const pointCount = responseTimeData.length;
+    if (pointCount <= 30) return { fill: '#3B82F6', r: 5 };     // Big dots for sparse data
+    if (pointCount <= 60) return { fill: '#3B82F6', r: 3 };     // Medium dots
+    return false;                                                // No dots for dense data
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-900">
@@ -137,14 +149,25 @@ function Dashboard() {
 
   // Get aggregation info for display
   const diffHours = (dateRange[1] - dateRange[0]) / (1000 * 60 * 60);
+  const diffDays = diffHours / 24;
+  const isMobile = window.innerWidth < 768;
   const aggregationInterval = getAggregationInterval();
-  const aggregationLabel = 
-    aggregationInterval === 5 ? '5-min' : 
-    aggregationInterval === 15 ? '15-min' :
-    aggregationInterval === 30 ? '30-min' : 
-    aggregationInterval === 60 ? '1-hour' :
-    aggregationInterval === 240 ? '4-hour' :
-    '1-day';
+  
+  // Determine label based on interval
+  const getAggregationLabel = () => {
+    if (aggregationInterval === 10) return isMobile ? '20-min' : '10-min';
+    if (aggregationInterval === 20) return '20-min';
+    if (aggregationInterval === 30) return isMobile ? '1-hour' : '30-min';
+    if (aggregationInterval === 60) return '1-hour';
+    if (aggregationInterval === 120) return isMobile ? '4-hour' : '2-hour';
+    if (aggregationInterval === 240) return isMobile ? '8-hour' : '4-hour';
+    if (aggregationInterval === 480) return '8-hour';
+    if (aggregationInterval === 720) return isMobile ? '1-day' : '12-hour';
+    if (aggregationInterval === 1440) return '1-day';
+    return `${Math.round(aggregationInterval / 60)}h`;
+  };
+  
+  const aggregationLabel = getAggregationLabel();
 
   return (
     <div className="min-h-screen -m-6 p-6 bg-gray-900">
@@ -357,7 +380,7 @@ function Dashboard() {
                 dataKey="response_time" 
                 stroke="#3B82F6" 
                 strokeWidth={2}
-                dot={{ fill: '#3B82F6', r: 3 }}
+                dot={getDotConfig()}
                 activeDot={{ r: 5, fill: '#60A5FA' }}
               />
             </LineChart>
