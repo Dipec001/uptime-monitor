@@ -29,6 +29,7 @@ export default function WebsiteDetail() {
   const [saving, setSaving] = useState(false);
   const [urlChanged, setUrlChanged] = useState(false);
   const [showUrlWarning, setShowUrlWarning] = useState(false);
+  const [processedChartData, setProcessedChartData] = useState([]);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -47,6 +48,66 @@ export default function WebsiteDetail() {
   useEffect(() => {
     fetchWebsiteDetail();
   }, [id, dateRange]); // Refetch when date range changes
+
+  // Aggregate data based on date range to improve readability
+  const aggregateData = (data, intervalMinutes) => {
+    if (!data || data.length === 0) return [];
+    
+    const aggregated = [];
+    const groupedData = {};
+    
+    data.forEach(point => {
+      const date = new Date(point.time);
+      // Round down to nearest interval
+      const roundedTime = new Date(
+        Math.floor(date.getTime() / (intervalMinutes * 60 * 1000)) * (intervalMinutes * 60 * 1000)
+      );
+      const key = roundedTime.toISOString();
+      
+      if (!groupedData[key]) {
+        groupedData[key] = {
+          time: key,
+          response_times: [],
+          count: 0
+        };
+      }
+      
+      groupedData[key].response_times.push(point.response_time);
+      groupedData[key].count++;
+    });
+    
+    // Calculate average for each group
+    Object.keys(groupedData).forEach(key => {
+      const group = groupedData[key];
+      const avg = group.response_times.reduce((a, b) => a + b, 0) / group.count;
+      aggregated.push({
+        time: group.time,
+        response_time: Math.round(avg),
+        count: group.count
+      });
+    });
+    
+    return aggregated.sort((a, b) => new Date(a.time) - new Date(b.time));
+  };
+
+  // Determine aggregation interval based on date range
+  const getAggregationInterval = () => {
+    const diffMs = dateRange[1] - dateRange[0];
+    const diffHours = diffMs / (1000 * 60 * 60);
+    const diffDays = diffHours / 24;
+    
+    // Detect mobile for extra aggregation
+    const isMobile = window.innerWidth < 768;
+    const mobileFactor = isMobile ? 2 : 1;
+    
+    // AGGRESSIVE aggregation for clean charts (max 50-100 points)
+    if (diffHours <= 6) return 10 * mobileFactor;     // Desktop: ~36 pts, Mobile: ~18 pts
+    if (diffHours <= 24) return 30 * mobileFactor;    // Desktop: ~48 pts, Mobile: ~24 pts
+    if (diffHours <= 72) return 120 * mobileFactor;   // Desktop: ~36 pts, Mobile: ~18 pts (2hr/4hr)
+    if (diffDays <= 7) return 240 * mobileFactor;     // Desktop: ~42 pts, Mobile: ~21 pts (4hr/8hr)
+    if (diffDays <= 30) return 720 * mobileFactor;    // Desktop: ~60 pts, Mobile: ~30 pts (12hr/24hr)
+    return 1440;                                       // Both: ~90 points (1-day)
+  };
 
   const fetchWebsiteDetail = async () => {
     try {
@@ -67,6 +128,12 @@ export default function WebsiteDetail() {
         is_active: response.website.is_active,
       });
       setOriginalUrl(response.website.url);
+
+      // Aggregate response time data for better readability
+      const rawData = response.response_time_chart || [];
+      const interval = getAggregationInterval();
+      const aggregatedData = aggregateData(rawData, interval);
+      setProcessedChartData(aggregatedData);
     } catch (error) {
       console.error("Failed to fetch website detail:", error);
     } finally {
@@ -151,6 +218,24 @@ export default function WebsiteDetail() {
     }
   };
 
+  // Smart tick formatter that shows fewer labels based on data density
+  const getTickInterval = () => {
+    const dataLength = processedChartData.length;
+    if (dataLength <= 12) return 0; // Show all ticks
+    if (dataLength <= 24) return 1; // Show every other tick
+    if (dataLength <= 48) return 3; // Show every 4th tick
+    if (dataLength <= 96) return 7; // Show every 8th tick
+    return Math.floor(dataLength / 12); // Show ~12 ticks maximum
+  };
+
+  // Smart dot config - hide dots when too many points to avoid clutter
+  const getDotConfig = () => {
+    const pointCount = processedChartData.length;
+    if (pointCount <= 30) return { fill: '#3B82F6', r: 5 };     // Big dots for sparse data
+    if (pointCount <= 60) return { fill: '#3B82F6', r: 3 };     // Medium dots
+    return false;                                                // No dots for dense data
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-900">
@@ -178,8 +263,30 @@ export default function WebsiteDetail() {
     );
   }
 
-  const { website, latest_check, uptime_percentage, response_time_chart, recent_history, notifications } = data;
+  const { website, latest_check, uptime_percentage, recent_history, notifications } = data;
   const statusColor = latest_check.status === "up" ? "green" : latest_check.status === "down" ? "red" : "gray";
+
+  // Get aggregation info for display
+  const diffHours = (dateRange[1] - dateRange[0]) / (1000 * 60 * 60);
+  const diffDays = diffHours / 24;
+  const isMobile = window.innerWidth < 768;
+  const aggregationInterval = getAggregationInterval();
+  
+  // Determine label based on interval
+  const getAggregationLabel = () => {
+    if (aggregationInterval === 10) return isMobile ? '20-min' : '10-min';
+    if (aggregationInterval === 20) return '20-min';
+    if (aggregationInterval === 30) return isMobile ? '1-hour' : '30-min';
+    if (aggregationInterval === 60) return '1-hour';
+    if (aggregationInterval === 120) return isMobile ? '4-hour' : '2-hour';
+    if (aggregationInterval === 240) return isMobile ? '8-hour' : '4-hour';
+    if (aggregationInterval === 480) return '8-hour';
+    if (aggregationInterval === 720) return isMobile ? '1-day' : '12-hour';
+    if (aggregationInterval === 1440) return '1-day';
+    return `${Math.round(aggregationInterval / 60)}h`;
+  };
+  
+  const aggregationLabel = getAggregationLabel();
 
   return (
     <div className="min-h-screen bg-gray-900 -m-6 p-6">
@@ -430,24 +537,52 @@ export default function WebsiteDetail() {
 
       {/* Response Time Chart */}
       <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold text-white mb-4">
-          Response Time ({dateRange[0].toLocaleDateString()} - {dateRange[1].toLocaleDateString()})
-        </h2>
-        {response_time_chart.length > 0 ? (
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-white">
+            Response Time ({dateRange[0].toLocaleDateString()} - {dateRange[1].toLocaleDateString()})
+          </h2>
+          {processedChartData.length > 0 && (
+            <span className="text-xs text-gray-400 bg-gray-700 px-3 py-1 rounded-full">
+              {aggregationLabel} averages • {processedChartData.length} data points
+            </span>
+          )}
+        </div>
+        {processedChartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={response_time_chart}>
+            <LineChart data={processedChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis
                 dataKey="time"
                 stroke="#9CA3AF"
-                style={{ fontSize: "12px" }}
+                style={{ fontSize: "11px" }}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+                interval={getTickInterval()}
                 tickFormatter={(value) => {
                   const date = new Date(value);
-                  return date.toLocaleTimeString("en-US", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                  });
+                  // Format based on time range for optimal readability
+                  if (diffHours <= 24) {
+                    // For daily view, show time only
+                    return date.toLocaleTimeString("en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
+                    });
+                  } else if (diffHours <= 168) { // <= 7 days
+                    // For weekly view, show day + time
+                    return date.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit"
+                    });
+                  } else {
+                    // For monthly/quarterly view, show date only
+                    return date.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric"
+                    });
+                  }
                 }}
               />
               <YAxis
@@ -455,10 +590,10 @@ export default function WebsiteDetail() {
                   value: "Response Time (ms)",
                   angle: -90,
                   position: "insideLeft",
-                  style: { fill: "#9CA3AF" },
+                  style: { fill: "#9CA3AF", fontSize: "12px" },
                 }}
                 stroke="#9CA3AF"
-                style={{ fontSize: "12px" }}
+                style={{ fontSize: "11px" }}
               />
               <Tooltip
                 contentStyle={{
@@ -467,20 +602,26 @@ export default function WebsiteDetail() {
                   borderRadius: "0.5rem",
                   color: "#fff",
                 }}
-                labelStyle={{ color: "#9CA3AF" }}
+                labelStyle={{ color: "#9CA3AF", marginBottom: "4px" }}
                 labelFormatter={(value) => {
                   const date = new Date(value);
                   return date.toLocaleString();
                 }}
-                formatter={(value) => [`${value} ms`, "Response Time"]}
+                formatter={(value, name, props) => {
+                  const count = props.payload.count;
+                  return [
+                    `${value} ms${count > 1 ? ` (avg of ${count})` : ''}`, 
+                    'Response Time'
+                  ];
+                }}
               />
               <Line
                 type="monotone"
                 dataKey="response_time"
                 stroke="#3B82F6"
                 strokeWidth={2}
-                dot={{ fill: "#3B82F6", r: 3 }}
-                activeDot={{ r: 5 }}
+                dot={getDotConfig()}
+                activeDot={{ r: 5, fill: "#60A5FA" }}
               />
             </LineChart>
           </ResponsiveContainer>
