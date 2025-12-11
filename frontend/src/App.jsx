@@ -15,6 +15,8 @@ import AlertsPage from "./pages/Alerts";
 import Contact from './pages/Contact';
 import WebsiteDetail from './pages/WebsiteDetail';
 import HeartbeatDetail from './pages/HeartbeatDetail';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 
 
 function App() {
@@ -31,6 +33,8 @@ function App() {
           <Route path="/oauth/callback" element={<OAuthCallback />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
 
           {/* Protected dashboard pages */}
           <Route element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
