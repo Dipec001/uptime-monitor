@@ -9,19 +9,26 @@ import {
 } from "../services/api";
 import { Line } from "recharts";
 import { LineChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import DateRangePicker from "../components/DateRangePicker";
 
 export default function WebsiteDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   
+  // Date range state - default to last 24 hours
+  const [dateRange, setDateRange] = useState([
+    new Date(Date.now() - 24 * 60 * 60 * 1000),
+    new Date()
+  ]);
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [showNotifModal, setShowNotifModal] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [urlChanged, setUrlChanged] = useState(false); // ✅ Track if URL changed
-  const [showUrlWarning, setShowUrlWarning] = useState(false); // ✅ Show warning modal
+  const [urlChanged, setUrlChanged] = useState(false);
+  const [showUrlWarning, setShowUrlWarning] = useState(false);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -30,7 +37,7 @@ export default function WebsiteDetail() {
     is_active: true,
   });
 
-  const [originalUrl, setOriginalUrl] = useState(""); // ✅ Store original URL
+  const [originalUrl, setOriginalUrl] = useState("");
 
   const [notifForm, setNotifForm] = useState({
     method: "email",
@@ -39,12 +46,19 @@ export default function WebsiteDetail() {
 
   useEffect(() => {
     fetchWebsiteDetail();
-  }, [id]);
+  }, [id, dateRange]); // Refetch when date range changes
 
   const fetchWebsiteDetail = async () => {
     try {
-      setLoading(true);
-      const response = await getWebsiteDetail(id);
+      // setLoading(true);
+      
+      // ✅ Pass date range params to API
+      const params = {
+        start_date: dateRange[0].toISOString(),
+        end_date: dateRange[1].toISOString()
+      };
+      
+      const response = await getWebsiteDetail(id, params);
       setData(response);
       setFormData({
         name: response.website.name || "",
@@ -52,7 +66,7 @@ export default function WebsiteDetail() {
         check_interval: response.website.check_interval,
         is_active: response.website.is_active,
       });
-      setOriginalUrl(response.website.url); // ✅ Store original URL
+      setOriginalUrl(response.website.url);
     } catch (error) {
       console.error("Failed to fetch website detail:", error);
     } finally {
@@ -60,7 +74,6 @@ export default function WebsiteDetail() {
     }
   };
 
-  // ✅ Check if URL changed
   const handleFormChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
     
@@ -74,7 +87,6 @@ export default function WebsiteDetail() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     
-    // ✅ Show warning if URL changed
     if (urlChanged) {
       setShowUrlWarning(true);
       return;
@@ -277,7 +289,6 @@ export default function WebsiteDetail() {
         <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
           <h2 className="text-xl font-bold text-white mb-4">Edit Website Monitor</h2>
           
-          {/* ✅ URL Change Warning Banner */}
           {urlChanged && (
             <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-lg flex items-start gap-3">
               <svg className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -408,10 +419,19 @@ export default function WebsiteDetail() {
         )}
       </div>
 
+      {/* Date Range Picker */}
+      <div className="mb-6">
+        <DateRangePicker
+          startDate={dateRange[0]}
+          endDate={dateRange[1]}
+          onDateChange={setDateRange}
+        />
+      </div>
+
       {/* Response Time Chart */}
       <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
         <h2 className="text-lg font-semibold text-white mb-4">
-          Response Time (Last 24 Hours)
+          Response Time ({dateRange[0].toLocaleDateString()} - {dateRange[1].toLocaleDateString()})
         </h2>
         {response_time_chart.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
@@ -469,8 +489,8 @@ export default function WebsiteDetail() {
             <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
-            <p className="text-gray-500">No data available yet</p>
-            <p className="text-gray-600 text-sm mt-2">Check back after a few monitoring cycles</p>
+            <p className="text-gray-500">No data available for this period</p>
+            <p className="text-gray-600 text-sm mt-2">Try selecting a different date range</p>
           </div>
         )}
       </div>
@@ -523,7 +543,7 @@ export default function WebsiteDetail() {
         </div>
       </div>
 
-      {/* ✅ URL Change Confirmation Modal */}
+      {/* URL Change Confirmation Modal */}
       {showUrlWarning && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 border border-yellow-500/50 rounded-2xl p-6 max-w-md w-full">
@@ -586,7 +606,6 @@ export default function WebsiteDetail() {
                 >
                   <option value="email">Email</option>
                   <option value="slack">Slack</option>
-                  
                   <option value="whatsapp">WhatsApp</option>
                 </select>
               </div>
@@ -595,7 +614,6 @@ export default function WebsiteDetail() {
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   {notifForm.method === 'email' ? 'Email Address' :
                    notifForm.method === 'slack' ? 'Slack Webhook URL' :
-                   
                    'WhatsApp Number'}
                 </label>
                 <input
@@ -606,7 +624,6 @@ export default function WebsiteDetail() {
                   placeholder={
                     notifForm.method === 'email' ? 'you@example.com' :
                     notifForm.method === 'slack' ? 'https://hooks.slack.com/...' :
-                    
                     '+1234567890'
                   }
                   required
