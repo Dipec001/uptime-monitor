@@ -27,6 +27,62 @@ function Dashboard() {
     fetchDashboard();
   }, [dateRange]); // Refetch when date range changes
 
+  // Aggregate data based on date range to improve readability
+  const aggregateData = (data, intervalMinutes) => {
+    if (!data || data.length === 0) return [];
+    
+    const aggregated = [];
+    const groupedData = {};
+    
+    data.forEach(point => {
+      const date = new Date(point.time);
+      // Round down to nearest interval
+      const roundedTime = new Date(
+        Math.floor(date.getTime() / (intervalMinutes * 60 * 1000)) * (intervalMinutes * 60 * 1000)
+      );
+      const key = roundedTime.toISOString();
+      
+      if (!groupedData[key]) {
+        groupedData[key] = {
+          time: key,
+          response_times: [],
+          count: 0
+        };
+      }
+      
+      groupedData[key].response_times.push(point.response_time);
+      groupedData[key].count++;
+    });
+    
+    // Calculate average for each group
+    Object.keys(groupedData).forEach(key => {
+      const group = groupedData[key];
+      const avg = group.response_times.reduce((a, b) => a + b, 0) / group.count;
+      aggregated.push({
+        time: group.time,
+        response_time: Math.round(avg),
+        count: group.count
+      });
+    });
+    
+    return aggregated.sort((a, b) => new Date(a.time) - new Date(b.time));
+  };
+
+  // Determine aggregation interval based on date range
+  const getAggregationInterval = () => {
+    const diffMs = dateRange[1] - dateRange[0];
+    const diffHours = diffMs / (1000 * 60 * 60);
+    const diffDays = diffHours / 24;
+    
+    // Optimized for readability: all ranges produce < 200 data points
+    if (diffHours <= 6) return 5;      // 5-min intervals (max 72 points)
+    if (diffHours <= 24) return 15;    // 15-min intervals (max 96 points)
+    if (diffHours <= 72) return 30;    // 30-min intervals (max 144 points)
+    if (diffDays <= 7) return 60;      // 1-hour intervals (max 168 points)
+    if (diffDays <= 30) return 240;    // 4-hour intervals (max 180 points)
+    return 1440;                        // 1-day intervals (90 days = 90 points)
+  };
+
   const fetchDashboard = async () => {
     try {
       // Format dates for API
@@ -41,12 +97,27 @@ function Dashboard() {
       setRecentMonitors(data.recent_monitors || []);
       setRecentHeartbeats(data.recent_heartbeats || []);
       setRecentIncidents(data.recent_incidents || []);
-      setResponseTimeData(data.response_time_chart || []);
+      
+      // Aggregate response time data for better readability
+      const rawData = data.response_time_chart || [];
+      const interval = getAggregationInterval();
+      const aggregatedData = aggregateData(rawData, interval);
+      setResponseTimeData(aggregatedData);
     } catch (err) {
       console.error("Failed to fetch dashboard:", err);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Smart tick formatter that shows fewer labels based on data density
+  const getTickInterval = () => {
+    const dataLength = responseTimeData.length;
+    if (dataLength <= 12) return 0; // Show all ticks
+    if (dataLength <= 24) return 1; // Show every other tick
+    if (dataLength <= 48) return 3; // Show every 4th tick
+    if (dataLength <= 96) return 7; // Show every 8th tick
+    return Math.floor(dataLength / 12); // Show ~12 ticks maximum
   };
 
   if (loading) {
@@ -63,6 +134,17 @@ function Dashboard() {
   const uptime = stats.total_websites > 0 
     ? ((stats.active_websites / stats.total_websites) * 100).toFixed(1)
     : 0;
+
+  // Get aggregation info for display
+  const diffHours = (dateRange[1] - dateRange[0]) / (1000 * 60 * 60);
+  const aggregationInterval = getAggregationInterval();
+  const aggregationLabel = 
+    aggregationInterval === 5 ? '5-min' : 
+    aggregationInterval === 15 ? '15-min' :
+    aggregationInterval === 30 ? '30-min' : 
+    aggregationInterval === 60 ? '1-hour' :
+    aggregationInterval === 240 ? '4-hour' :
+    '1-day';
 
   return (
     <div className="min-h-screen -m-6 p-6 bg-gray-900">
@@ -192,9 +274,16 @@ function Dashboard() {
 
       {/* Response Time Chart */}
       <div className="bg-gray-800 border border-gray-700 rounded-lg shadow p-6 mb-6 hover:border-blue-500/30 transition-all">
-        <h2 className="text-lg font-semibold text-white mb-4">
-          Response Time ({dateRange[0].toLocaleDateString()} - {dateRange[1].toLocaleDateString()})
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-white">
+            Response Time ({dateRange[0].toLocaleDateString()} - {dateRange[1].toLocaleDateString()})
+          </h2>
+          {responseTimeData.length > 0 && (
+            <span className="text-xs text-gray-400 bg-gray-700 px-3 py-1 rounded-full">
+              {aggregationLabel} averages • {responseTimeData.length} data points
+            </span>
+          )}
+        </div>
         {responseTimeData.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={responseTimeData}>
@@ -202,20 +291,46 @@ function Dashboard() {
               <XAxis 
                 dataKey="time" 
                 stroke="#9CA3AF"
-                style={{ fontSize: '12px' }}
+                style={{ fontSize: '11px' }}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+                interval={getTickInterval()}
                 tickFormatter={(value) => {
                   const date = new Date(value);
-                  return date.toLocaleTimeString('en-US', { 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    hour12: false 
-                  });
+                  // Format based on time range for optimal readability
+                  if (diffHours <= 24) {
+                    // For daily view, show time only
+                    return date.toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit',
+                      hour12: false 
+                    });
+                  } else if (diffHours <= 168) { // <= 7 days
+                    // For weekly view, show day + time
+                    return date.toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit'
+                    });
+                  } else {
+                    // For monthly/quarterly view, show date only
+                    return date.toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric'
+                    });
+                  }
                 }}
               />
               <YAxis 
-                label={{ value: 'Response Time (ms)', angle: -90, position: 'insideLeft', style: { fill: '#9CA3AF' } }} 
+                label={{ 
+                  value: 'Response Time (ms)', 
+                  angle: -90, 
+                  position: 'insideLeft', 
+                  style: { fill: '#9CA3AF', fontSize: '12px' } 
+                }} 
                 stroke="#9CA3AF"
-                style={{ fontSize: '12px' }}
+                style={{ fontSize: '11px' }}
               />
               <Tooltip 
                 contentStyle={{ 
@@ -224,12 +339,18 @@ function Dashboard() {
                   borderRadius: '0.5rem',
                   color: '#fff'
                 }}
-                labelStyle={{ color: '#9CA3AF' }}
+                labelStyle={{ color: '#9CA3AF', marginBottom: '4px' }}
                 labelFormatter={(value) => {
                   const date = new Date(value);
                   return date.toLocaleString();
                 }}
-                formatter={(value) => [`${value} ms`, 'Response Time']}
+                formatter={(value, name, props) => {
+                  const count = props.payload.count;
+                  return [
+                    `${value} ms${count > 1 ? ` (avg of ${count})` : ''}`, 
+                    'Response Time'
+                  ];
+                }}
               />
               <Line 
                 type="monotone" 
@@ -237,7 +358,7 @@ function Dashboard() {
                 stroke="#3B82F6" 
                 strokeWidth={2}
                 dot={{ fill: '#3B82F6', r: 3 }}
-                activeDot={{ r: 5 }}
+                activeDot={{ r: 5, fill: '#60A5FA' }}
               />
             </LineChart>
           </ResponsiveContainer>
