@@ -8,9 +8,11 @@ import frame from "../assets/Frame.svg";
 import noti from "../assets/Notifications.png";
 import React, { useState, useEffect } from "react";
 import { Link } from 'react-router-dom';
+import FeatureModal from '../components/FeatureModal';
 
 function Home() {
   const [scrolled, setScrolled] = useState(false);
+  const [activeModal, setActiveModal] = useState(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -64,8 +66,7 @@ function Home() {
             {/* Badge */}
             <div className="inline-flex items-center gap-2 bg-blue-600/10 border border-blue-500/20 rounded-full px-4 py-2 mb-6">
               <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-              <span className="text-gray-300 text-sm">Monitoring 1,500+ websites worldwide</span>
-              
+              <span className="text-gray-300 text-sm">Currently in Early Access Beta</span>
             </div>
 
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-tight">
@@ -97,7 +98,7 @@ function Home() {
             </div>
 
             <p className="text-gray-500 text-sm mt-6">
-              ✓ No credit card required  &nbsp;•&nbsp;  ✓ 2-minute setup  &nbsp;•&nbsp;  ✓ Cancel anytime
+              ✓ 2-minute setup  ✓ Cancel anytime
             </p>
           </div>
         </div>
@@ -107,13 +108,13 @@ function Home() {
       <div className="bg-gray-100 border-y border-gray-200 py-12">
         <div className="max-w-6xl mx-auto px-6">
           <p className="text-center text-gray-500 mb-8 text-sm uppercase tracking-wider font-semibold">
-            Trusted by developers at
+            Built by developers, for developers
           </p>
           <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12 opacity-50">
             <div className="text-gray-700 text-2xl font-bold">Nanocodes</div>
-            <div className="text-gray-700 text-2xl font-bold">Y-Queue?</div>
             <div className="text-gray-700 text-2xl font-bold">TraviMobile</div>
             <div className="text-gray-700 text-2xl font-bold">Kira</div>
+            <div className="text-gray-700 text-2xl font-bold">YQueue?</div>
           </div>
         </div>
       </div>
@@ -135,7 +136,9 @@ function Home() {
             {/* Before */}
             <div className="bg-gray-800/50 backdrop-blur border border-red-500/30 rounded-xl p-6 hover:border-red-500/60 transition-all">
               <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center mb-4">
-                <span className="text-2xl">😰</span>
+                <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
               </div>
               <h3 className="text-white font-semibold text-lg mb-3">Before Alive Checks</h3>
               <ul className="text-gray-300 space-y-2 text-sm">
@@ -149,7 +152,9 @@ function Home() {
             {/* With - Highlighted */}
             <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 transform md:scale-105 shadow-2xl shadow-blue-500/30">
               <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mb-4">
-                <span className="text-2xl">✨</span>
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
               </div>
               <h3 className="text-white font-semibold text-lg mb-3">With Alive Checks</h3>
               <ul className="text-blue-50 space-y-2 text-sm">
@@ -163,7 +168,9 @@ function Home() {
             {/* After */}
             <div className="bg-gray-800/50 backdrop-blur border border-green-500/30 rounded-xl p-6 hover:border-green-500/60 transition-all">
               <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mb-4">
-                <span className="text-2xl">😌</span>
+                <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
               <h3 className="text-white font-semibold text-lg mb-3">After Alive Checks</h3>
               <ul className="text-gray-300 space-y-2 text-sm">
@@ -204,7 +211,7 @@ function Home() {
                   Create Free Account
                 </h4>
                 <p className="text-gray-600 text-center">
-                  Just your email and password. No credit card, no BS.
+                  Just your email and password. No credit card required.
                 </p>
               </div>
             </div>
@@ -251,7 +258,7 @@ function Home() {
       </div>
 
       {/* Features - Dark with VISIBLE Icons */}
-      <div className="bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900 py-20 px-6">
+      <div id="features" className="bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900 py-20 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -277,7 +284,14 @@ function Home() {
               <p className="text-gray-300 mb-6 leading-relaxed">
                 We check your site every minute. 1440 checks per day. If it's down for even 60 seconds, you'll know.
               </p>
-              <a href="#" className="inline-flex items-center text-blue-400 font-medium group-hover:gap-2 transition-all">
+              <a 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveModal('website');
+                }}
+                className="inline-flex items-center text-blue-400 font-medium group-hover:gap-2 transition-all"
+              >
                 Learn More 
                 <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -294,12 +308,19 @@ function Home() {
                 />
               </div>
               <h4 className="font-semibold text-white text-xl mb-3">
-                Cron Job Monitoring
+                Heartbeat Monitoring
               </h4>
               <p className="text-gray-300 mb-6 leading-relaxed">
                 Your background jobs matter too. Know immediately if your backups, imports, or scheduled tasks fail.
               </p>
-              <a href="#" className="inline-flex items-center text-purple-400 font-medium group-hover:gap-2 transition-all">
+              <a 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveModal('heartbeat');
+                }}
+                className="inline-flex items-center text-purple-400 font-medium group-hover:gap-2 transition-all"
+              >
                 Learn More 
                 <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -321,7 +342,14 @@ function Home() {
               <p className="text-gray-300 mb-6 leading-relaxed">
                 Slow is the new down. Track response times and catch performance issues before they kill conversions.
               </p>
-              <a href="#" className="inline-flex items-center text-green-400 font-medium group-hover:gap-2 transition-all">
+              <a 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveModal('performance');
+                }}
+                className="inline-flex items-center text-green-400 font-medium group-hover:gap-2 transition-all"
+              >
                 Learn More 
                 <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -349,7 +377,7 @@ function Home() {
               </h4>
               <p className="text-gray-600 text-lg mb-8 leading-relaxed">
                 Downtime doesn't wait for you to check your dashboard. We'll alert you on 
-                Email, Slack, or WhatsApp, wherever you actually pay attention.
+                Email or Slack, wherever you actually pay attention.
               </p>
               <ul className="space-y-4 mb-8">
                 <li className="flex items-start gap-3">
@@ -371,12 +399,12 @@ function Home() {
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
-                  <svg className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  <svg className="w-6 h-6 text-gray-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                   </svg>
                   <div>
-                    <span className="text-gray-900 font-semibold">WhatsApp Messages</span>
-                    <p className="text-gray-600 text-sm">Get pinged on your phone immediately</p>
+                    <span className="text-gray-900 font-semibold">More Integrations Coming Soon</span>
+                    <p className="text-gray-600 text-sm">WhatsApp, Discord, Teams, and more</p>
                   </div>
                 </li>
               </ul>
@@ -392,13 +420,13 @@ function Home() {
       </div>
 
       {/* Testimonials - Dark for Contrast */}
-      <div className="bg-gray-900 py-20 px-6">
+      <div className="bg-gray-900 py-20">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-center text-3xl md:text-4xl font-bold text-white mb-4">
-            Don't Just Take Our Word For It
+            Trusted by Growing Teams
           </h2>
           <p className="text-center text-gray-400 mb-12 text-lg">
-            Join 1,000+ developers who sleep better at night
+            Real feedback from our early access users
           </p>
 
           {/* Carousel Wrapper */}
@@ -432,7 +460,7 @@ function Home() {
                   role: "Startup CTO",
                 },
                 {
-                  text: `Best $0/month I've ever spent. Started free, upgraded because I love it so much.`,
+                  text: `Started on the free beta, upgraded because I love it so much. Simple and reliable.`,
                   name: "Robert M.",
                   role: "IT Manager",
                 },
@@ -491,7 +519,7 @@ function Home() {
                   role: "Startup CTO",
                 },
                 {
-                  text: `Best $0/month I've ever spent. Started free, upgraded because I love it so much.`,
+                  text: `Started on the free beta, upgraded because I love it so much. Simple and reliable.`,
                   name: "Robert M.",
                   role: "IT Manager",
                 },
@@ -534,7 +562,7 @@ function Home() {
               Simple, Transparent Pricing
             </h2>
             <p className="text-gray-600 text-lg">
-              Currently FREE while we build and improve. Pay later only if you love it.
+              Currently FREE while we build and improve. Premium features coming soon.
             </p>
           </div>
 
@@ -542,7 +570,7 @@ function Home() {
             <div className="bg-white border-2 border-blue-500 rounded-2xl p-8 shadow-xl">
               <div className="text-center">
                 <div className="inline-block bg-green-500 text-white text-sm font-semibold px-4 py-1 rounded-full mb-4">
-                  EARLY ACCESS
+                  EARLY ACCESS BETA
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">Free Beta</h3>
                 <div className="mb-6">
@@ -555,7 +583,7 @@ function Home() {
                     <svg className="w-6 h-6 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
-                    <span className="text-gray-700">Unlimited website monitors</span>
+                    <span className="text-gray-700">Up to 10 website monitors</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <svg className="w-6 h-6 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -583,7 +611,6 @@ function Home() {
                   </li>
                 </ul>
                 <a
-                
                   href="/register"
                   className="block w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition text-center"
                 >
@@ -597,13 +624,12 @@ function Home() {
             </div>
 
             <p className="text-center text-gray-600 mt-8 text-sm">
-              💡 <strong>Early Bird Perk:</strong> Join now and get grandfathered into 
-              discounted pricing when we launch paid plans.
+              <strong>Early Access Benefit:</strong> Join now and get special pricing 
+              when we launch premium plans.
             </p>
           </div>
         </div>
       </div>
-      
 
       {/* Final CTA - Bold Gradient */}
       <div className="bg-gradient-to-br from-blue-600 to-blue-700 py-20 px-6">
@@ -622,7 +648,7 @@ function Home() {
             Get Started Free →
           </a>
           <p className="text-blue-200 text-sm mt-6">
-            Join 1,000+ developers who sleep better at night
+            Join developers who monitor their sites with confidence
           </p>
         </div>
       </div>
@@ -639,13 +665,20 @@ function Home() {
               © {new Date().getFullYear()} Alive Checks. Keeping the internet online.
             </p>
             <div className="flex gap-6 text-gray-400 text-sm">
-              <Link to="#" className="hover:text-white transition">Privacy</Link>
-              <Link to="#" className="hover:text-white transition">Terms</Link>
+              <Link to="/privacy" className="hover:text-white transition">Privacy Policy</Link>
+              <Link to="/terms" className="hover:text-white transition">Terms of Service</Link>
               <Link to="/contact" className="hover:text-white transition">Contact</Link>
             </div>
           </div>
         </div>
       </footer>
+
+      {/* Feature Modal */}
+      <FeatureModal 
+        isOpen={activeModal !== null}
+        onClose={() => setActiveModal(null)}
+        feature={activeModal}
+      />
     </>
   );
 }

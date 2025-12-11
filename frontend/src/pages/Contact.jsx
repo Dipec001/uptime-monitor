@@ -74,7 +74,6 @@ export default function Contact() {
           </h1>
           <p className="text-gray-400 text-lg max-w-2xl mx-auto">
             Got questions? Found a bug? Just wanna say hi? We're all ears! 
-            (Well, technically we're all code, but you get the idea)
           </p>
         </div>
 
@@ -92,27 +91,9 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="text-white font-semibold mb-1">Email Us</h3>
-                  <p className="text-gray-400 text-sm mb-2">We usually reply within 24 hours (or during our next coffee break ☕)</p>
+                  <p className="text-gray-400 text-sm mb-2">We usually reply within 24 hours</p>
                   <a href="mailto:info@alivechecks.com" className="text-blue-400 hover:text-blue-300 transition">
                     info@alivechecks.com
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            {/* Phone Card */}
-            <div className="bg-gray-800/50 backdrop-blur border border-gray-700 rounded-2xl p-6 hover:border-green-500/50 transition-all group">
-              <div className="flex items-start gap-4">
-                <div className="bg-green-500/20 p-3 rounded-lg group-hover:scale-110 transition-transform">
-                  <svg className="w-6 h-6 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold mb-1">Call Us</h3>
-                  <p className="text-gray-400 text-sm mb-2">Ring ring! We promise not to put you on hold for eternity 📞</p>
-                  <a href="tel:+2348012345678" className="text-green-400 hover:text-green-300 transition">
-                    +234 8147250442
                   </a>
                 </div>
               </div>
@@ -149,7 +130,7 @@ export default function Contact() {
             <div className="bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur border border-blue-500/30 rounded-2xl p-6">
               <p className="text-blue-300 text-sm">
                 <span className="text-2xl">💡</span> <strong>Fun fact:</strong> Our servers have 99.9% uptime. 
-                The 0.1% is when we're teaching them to make coffee. They're still learning ☕
+                The 0.1% is when we're teaching them to make coffee. They're still learning
               </p>
             </div>
           </div>
@@ -157,7 +138,6 @@ export default function Contact() {
           {/* Contact Form */}
           <div className="bg-gray-800/50 backdrop-blur border border-gray-700 rounded-2xl p-8 shadow-2xl">
             <h2 className="text-2xl font-bold text-white mb-2">Send Us a Message</h2>
-            <p className="text-gray-400 text-sm mb-6">Or as we like to call it: "Shoot us a digital paper airplane ✈️"</p>
 
             {status === "success" && (
               <div className="mb-6 bg-green-500/10 border border-green-500/50 text-green-400 p-4 rounded-lg animate-fade-in">
@@ -184,7 +164,6 @@ export default function Contact() {
                   value={formData.name}
                   onChange={handleChange}
                   className="w-full bg-gray-700 text-white border border-gray-600 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
-                  placeholder="John Doe"
                   required
                 />
               </div>
@@ -199,7 +178,6 @@ export default function Contact() {
                   value={formData.email}
                   onChange={handleChange}
                   className="w-full bg-gray-700 text-white border border-gray-600 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
-                  placeholder="you@awesome.com"
                   required
                 />
               </div>
@@ -214,7 +192,6 @@ export default function Contact() {
                   value={formData.subject}
                   onChange={handleChange}
                   className="w-full bg-gray-700 text-white border border-gray-600 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
-                  placeholder="My website is more alive than ever!"
                   required
                 />
               </div>
@@ -229,7 +206,6 @@ export default function Contact() {
                   onChange={handleChange}
                   rows="5"
                   className="w-full bg-gray-700 text-white border border-gray-600 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500 resize-none"
-                  placeholder="Tell us everything... or just what's important. We're cool either way 😎"
                   required
                 ></textarea>
               </div>
