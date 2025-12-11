@@ -2,8 +2,15 @@ import React, { useEffect, useState } from "react";
 import { getDashboardMetrics } from "../services/api";
 import { Line } from "recharts";
 import { LineChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import DateRangePicker from "../components/DateRangePicker";
 
 function Dashboard() {
+  // Date range state - default to last 24 hours
+  const [dateRange, setDateRange] = useState([
+    new Date(Date.now() - 24 * 60 * 60 * 1000),
+    new Date()
+  ]);
+
   const [stats, setStats] = useState({
     total_websites: 0,
     active_websites: 0,
@@ -17,24 +24,30 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const data = await getDashboardMetrics(); 
-        
-        setStats(data.stats);
-        setRecentMonitors(data.recent_monitors || []);
-        setRecentHeartbeats(data.recent_heartbeats || []);
-        setRecentIncidents(data.recent_incidents || []);
-        setResponseTimeData(data.response_time_chart || []);
-      } catch (err) {
-        console.error("Failed to fetch dashboard:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchDashboard();
-  }, []);
+  }, [dateRange]); // Refetch when date range changes
+
+  const fetchDashboard = async () => {
+    try {
+      // Format dates for API
+      const params = {
+        start_date: dateRange[0].toISOString(),
+        end_date: dateRange[1].toISOString()
+      };
+
+      const data = await getDashboardMetrics(params); 
+      
+      setStats(data.stats);
+      setRecentMonitors(data.recent_monitors || []);
+      setRecentHeartbeats(data.recent_heartbeats || []);
+      setRecentIncidents(data.recent_incidents || []);
+      setResponseTimeData(data.response_time_chart || []);
+    } catch (err) {
+      console.error("Failed to fetch dashboard:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -168,10 +181,19 @@ function Dashboard() {
         </div>
       </div>
 
+      {/* Date Range Picker */}
+      <div className="mb-6">
+        <DateRangePicker
+          startDate={dateRange[0]}
+          endDate={dateRange[1]}
+          onDateChange={setDateRange}
+        />
+      </div>
+
       {/* Response Time Chart */}
       <div className="bg-gray-800 border border-gray-700 rounded-lg shadow p-6 mb-6 hover:border-blue-500/30 transition-all">
         <h2 className="text-lg font-semibold text-white mb-4">
-          Response Time (Last 24 Hours)
+          Response Time ({dateRange[0].toLocaleDateString()} - {dateRange[1].toLocaleDateString()})
         </h2>
         {responseTimeData.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
@@ -182,7 +204,6 @@ function Dashboard() {
                 stroke="#9CA3AF"
                 style={{ fontSize: '12px' }}
                 tickFormatter={(value) => {
-                  // ✅ Convert ISO string to local time
                   const date = new Date(value);
                   return date.toLocaleTimeString('en-US', { 
                     hour: '2-digit', 
@@ -205,7 +226,6 @@ function Dashboard() {
                 }}
                 labelStyle={{ color: '#9CA3AF' }}
                 labelFormatter={(value) => {
-                  // ✅ Format tooltip time to local timezone
                   const date = new Date(value);
                   return date.toLocaleString();
                 }}
@@ -226,8 +246,8 @@ function Dashboard() {
             <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
-            <p className="text-gray-500">No response time data available yet</p>
-            <p className="text-gray-600 text-sm mt-2">Add monitors to start tracking response times</p>
+            <p className="text-gray-500">No response time data available for this period</p>
+            <p className="text-gray-600 text-sm mt-2">Try selecting a different date range or add monitors</p>
           </div>
         )}
       </div>

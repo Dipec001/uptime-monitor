@@ -5,6 +5,11 @@ on:
     branches:
       - main
       - dev
+    paths-ignore:
+        - 'tf-infra/**'
+        - '**/*.md'
+        - 'docs/**'
+        - 'frontend/**'  # Ignore frontend changes for backend CI/CD
 
 env:
   PROJECT_NAME: "uptime-monitor"

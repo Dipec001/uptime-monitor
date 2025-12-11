@@ -46,8 +46,9 @@ from django.conf import settings
 import os
 from dotenv import load_dotenv
 import requests
-from datetime import timedelta
+from datetime import timedelta, datetime
 from django.utils.timezone import now
+from django.utils import timezone
 from django.core.validators import validate_email
 from django.contrib.contenttypes.models import ContentType
 
@@ -211,12 +212,39 @@ class WebsiteViewSet(viewsets.ModelViewSet):
         )
         return super().perform_destroy(instance)
     
-    # ✅ NEW: Custom detail action with extended data
     @action(detail=True, methods=['get'])
     def detail_view(self, request, pk=None):
-        """Get extended detail view with stats and history"""
+        """
+        Get extended detail view with stats and history.
+        NOW SUPPORTS DATE RANGE FILTERING via query params.
+        """
         website = self.get_object()
-        
+
+        # ✅ Get date range from query params
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
+
+        # ✅ Parse dates or use defaults (24 hours)
+        if start_date_str:
+            try:
+                start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+                if timezone.is_naive(start_date):
+                    start_date = timezone.make_aware(start_date)
+            except ValueError:
+                start_date = now() - timedelta(hours=24)
+        else:
+            start_date = now() - timedelta(hours=24)
+
+        if end_date_str:
+            try:
+                end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+                if timezone.is_naive(end_date):
+                    end_date = timezone.make_aware(end_date)
+            except ValueError:
+                end_date = now()
+        else:
+            end_date = now()
+
         # Get latest check
         latest_check = (
             UptimeCheckResult.objects
@@ -225,11 +253,11 @@ class WebsiteViewSet(viewsets.ModelViewSet):
             .first()
         )
 
-        # Calculate uptime percentage (last 24 hours)
-        twenty_four_hours_ago = now() - timedelta(hours=24)
+        # ✅ Calculate uptime for selected date range (not hardcoded 24h)
         recent_checks = UptimeCheckResult.objects.filter(
             website=website,
-            checked_at__gte=twenty_four_hours_ago
+            checked_at__gte=start_date,
+            checked_at__lte=end_date
         )
         
         total_checks = recent_checks.count()
@@ -243,7 +271,7 @@ class WebsiteViewSet(viewsets.ModelViewSet):
             if total_checks > 0 else 0
         )
 
-        # Response time chart (last 24 hours)
+        # ✅ Response time chart - filtered by date range
         response_time_data = []
         for check in recent_checks.order_by('checked_at'):
             response_time_data.append({
@@ -252,7 +280,7 @@ class WebsiteViewSet(viewsets.ModelViewSet):
                 "status_code": check.status_code,
             })
 
-        # Recent check history (last 20)
+        # Recent check history (last 20, regardless of date range)
         recent_history = []
         for check in UptimeCheckResult.objects.filter(website=website).order_by('-checked_at')[:20]:
             recent_history.append({
@@ -288,11 +316,15 @@ class WebsiteViewSet(viewsets.ModelViewSet):
                 "status": "up" if latest_check and 200 <= latest_check.status_code < 300 else "down" if latest_check else "unknown",
             },
             "uptime_percentage": round(uptime_percentage, 2),
-            "total_checks_24h": total_checks,
-            "successful_checks_24h": successful_checks,
+            "total_checks_24h": total_checks,  # Actually for selected range
+            "successful_checks_24h": successful_checks,  # Actually for selected range
             "response_time_chart": response_time_data,
             "recent_history": recent_history,
             "notifications": notification_list,
+            "date_range": {  # ✅ Return the date range used
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat()
+            }
         }
 
         return Response(data)
@@ -524,11 +556,35 @@ class DashboardMetricsView(APIView):
     def get(self, request):
         user = request.user
 
-        # Stats
+        # Get date range from query params
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
+
+        # Parse dates or use defaults (24 hours)
+        if start_date_str:
+            try:
+                start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+                if timezone.is_naive(start_date):
+                    start_date = timezone.make_aware(start_date)
+            except ValueError:
+                start_date = now() - timedelta(hours=24)  # Default to 24 hours
+        else:
+            start_date = now() - timedelta(hours=24)
+
+        if end_date_str:
+            try:
+                end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+                if timezone.is_naive(end_date):
+                    end_date = timezone.make_aware(end_date)
+            except ValueError:
+                end_date = now()
+        else:
+            end_date = now()
+
+        # Stats (overall, not date-filtered)
         total_websites = Website.objects.filter(user=user, is_active=True).count()
         
-        # ✅ Count websites that are actually UP (not down)
-        # A website is "up" if its last check had a successful status code
+        # Count websites that are currently UP
         latest_check = UptimeCheckResult.objects.filter(
             website=OuterRef("pk")
         ).order_by("-checked_at")
@@ -588,13 +644,12 @@ class DashboardMetricsView(APIView):
                 "uptime": 100 if hb.status == "up" else 0
             })
 
-        # Response Time Chart Data (Last 24 Hours)
-        twenty_four_hours_ago = now() - timedelta(hours=24)
-        
+        # Response Time Chart Data - FILTERED BY DATE RANGE
         response_time_checks = (
             UptimeCheckResult.objects.filter(
                 website__user=user,
-                checked_at__gte=twenty_four_hours_ago
+                checked_at__gte=start_date,
+                checked_at__lte=end_date
             )
             .values('checked_at', 'response_time_ms')
             .order_by('checked_at')
@@ -603,16 +658,18 @@ class DashboardMetricsView(APIView):
         response_time_chart = []
         for check in response_time_checks:
             response_time_chart.append({
-                "time": check['checked_at'].isoformat(),  # Send full datetime
+                "time": check['checked_at'].isoformat(),
                 "response_time": round(check['response_time_ms'], 2)
             })
 
-        # Recent Incidents
+        # Recent Incidents - FILTERED BY DATE RANGE
         recent_incidents = []
         failed_checks = (
             UptimeCheckResult.objects.filter(
                 website__user=user,
-                status_code__gte=400
+                status_code__gte=400,
+                checked_at__gte=start_date,
+                checked_at__lte=end_date
             )
             .select_related('website')
             .order_by('-checked_at')[:10]
@@ -629,7 +686,7 @@ class DashboardMetricsView(APIView):
         data = {
             "stats": {
                 "total_websites": total_websites,
-                "active_websites": active_websites,  # ✅ Now accurate
+                "active_websites": active_websites,
                 "total_heartbeats": total_heartbeats,
                 "active_heartbeats": active_heartbeats
             },
@@ -637,6 +694,10 @@ class DashboardMetricsView(APIView):
             "recent_heartbeats": recent_heartbeats_list,
             "response_time_chart": response_time_chart,
             "recent_incidents": recent_incidents,
+            "date_range": {
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat()
+            }
         }
 
         return Response(data)

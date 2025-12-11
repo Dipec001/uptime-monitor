@@ -265,14 +265,15 @@ export const deleteWebsite = async (id) => {
 };
 
 // ✅ Get extended website detail
-export const getWebsiteDetail = async (id) => {
+export const getWebsiteDetail = async (id, params = {}) => {
   try {
-    const response = await API.get(`websites/${id}/detail_view/`);
+    const response = await API.get(`websites/${id}/detail_view/`, { params });
     return response.data;
   } catch (error) {
     throw new Error("Failed to fetch website detail");
   }
 };
+
 
 // Keep your existing functions and add:
 export const patchWebsite = async (id, data) => {
@@ -458,16 +459,31 @@ export const testNotification = async (channel, value) => {
 };
 
 
-export const getDashboardMetrics = async () => {
+export const getDashboardMetrics = async (params = {}) => {
   try {
-    const response = await API.get("dashboard-metrics/");
+    // Build query string from params if they exist
+    let url = "dashboard-metrics/";
+    
+    if (params.start_date || params.end_date) {
+      const queryParams = new URLSearchParams();
+      
+      if (params.start_date) {
+        queryParams.append('start_date', params.start_date);
+      }
+      if (params.end_date) {
+        queryParams.append('end_date', params.end_date);
+      }
+      
+      url += `?${queryParams.toString()}`;
+    }
+
+    const response = await API.get(url);
     return response.data;
   } catch (error) {
     console.error("Failed to fetch dashboard metrics:", error);
     throw error;
   }
 };
-
 
 // ============================================
 // NOTIFICATION PREFERENCE APIs
