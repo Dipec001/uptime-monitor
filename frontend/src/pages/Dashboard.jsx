@@ -79,8 +79,11 @@ function Dashboard() {
     const mobileFactor = isMobile ? 2 : 1;
     
     // AGGRESSIVE aggregation for clean charts (max 50-100 points)
-    if (diffHours <= 6) return 10 * mobileFactor;     // Desktop: ~36 pts, Mobile: ~18 pts
-    if (diffHours <= 24) return 30 * mobileFactor;    // Desktop: ~48 pts, Mobile: ~24 pts
+    if (diffHours <= 1) return 2 * mobileFactor;      // Desktop: ~30 pts, Mobile: ~15 pts (2-min/4-min)
+    if (diffHours <= 3) return 5 * mobileFactor;      // Desktop: ~36 pts, Mobile: ~18 pts (5-min/10-min)
+    if (diffHours <= 6) return 10 * mobileFactor;     // Desktop: ~36 pts, Mobile: ~18 pts (10-min/20-min)
+    if (diffHours <= 12) return 20 * mobileFactor;    // Desktop: ~36 pts, Mobile: ~18 pts (20-min/40-min)
+    if (diffHours <= 24) return 30 * mobileFactor;    // Desktop: ~48 pts, Mobile: ~24 pts (30-min/1-hour)
     if (diffHours <= 72) return 120 * mobileFactor;   // Desktop: ~36 pts, Mobile: ~18 pts (2hr/4hr)
     if (diffDays <= 7) return 240 * mobileFactor;     // Desktop: ~42 pts, Mobile: ~21 pts (4hr/8hr)
     if (diffDays <= 30) return 720 * mobileFactor;    // Desktop: ~60 pts, Mobile: ~30 pts (12hr/24hr)
@@ -155,9 +158,13 @@ function Dashboard() {
   
   // Determine label based on interval
   const getAggregationLabel = () => {
+    if (aggregationInterval === 2) return isMobile ? '4-min' : '2-min';
+    if (aggregationInterval === 4) return '4-min';
+    if (aggregationInterval === 5) return isMobile ? '10-min' : '5-min';
     if (aggregationInterval === 10) return isMobile ? '20-min' : '10-min';
-    if (aggregationInterval === 20) return '20-min';
+    if (aggregationInterval === 20) return isMobile ? '40-min' : '20-min';
     if (aggregationInterval === 30) return isMobile ? '1-hour' : '30-min';
+    if (aggregationInterval === 40) return '40-min';
     if (aggregationInterval === 60) return '1-hour';
     if (aggregationInterval === 120) return isMobile ? '4-hour' : '2-hour';
     if (aggregationInterval === 240) return isMobile ? '8-hour' : '4-hour';
@@ -307,6 +314,36 @@ function Dashboard() {
             </span>
           )}
         </div>
+        
+        {/* Smart Data Warning */}
+        {responseTimeData.length > 0 && responseTimeData.length < 10 && (
+          <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/50 rounded-lg flex items-start gap-3">
+            <svg className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <p className="text-yellow-400 font-semibold text-sm">Limited Data Points</p>
+              <p className="text-yellow-300 text-xs mt-1">
+                Only {responseTimeData.length} data point{responseTimeData.length !== 1 ? 's' : ''} available for this range. 
+                {responseTimeData.length < 5 ? ' Consider selecting a longer date range for better trend visualization.' : ' Chart may appear sparse.'}
+              </p>
+            </div>
+          </div>
+        )}
+        {responseTimeData.length > 0 && responseTimeData.length >= 10 && responseTimeData.length < 20 && (
+          <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/50 rounded-lg flex items-start gap-3">
+            <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <p className="text-blue-400 font-semibold text-sm">Sparse Data</p>
+              <p className="text-blue-300 text-xs mt-1">
+                Showing {responseTimeData.length} data points. You can select a longer range for more detailed trends.
+              </p>
+            </div>
+          </div>
+        )}
+        
         {responseTimeData.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={responseTimeData}>

@@ -14,7 +14,19 @@ const DateRangePicker = ({ startDate, endDate, onDateChange }) => {
     const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
     // Check if it matches any preset ranges (with some tolerance for time drift)
-    if (Math.abs(diffHours - 24) < 1) {
+    if (Math.abs(diffHours - 1) < 0.1) {
+      setSelectedRange('1h');
+      setShowCustomDates(false);
+    } else if (Math.abs(diffHours - 3) < 0.2) {
+      setSelectedRange('3h');
+      setShowCustomDates(false);
+    } else if (Math.abs(diffHours - 6) < 0.3) {
+      setSelectedRange('6h');
+      setShowCustomDates(false);
+    } else if (Math.abs(diffHours - 12) < 0.5) {
+      setSelectedRange('12h');
+      setShowCustomDates(false);
+    } else if (Math.abs(diffHours - 24) < 1) {
       setSelectedRange('24h');
       setShowCustomDates(false);
     } else if (Math.abs(diffDays - 7) < 0.5) {
@@ -47,6 +59,18 @@ const DateRangePicker = ({ startDate, endDate, onDateChange }) => {
     const start = new Date();
 
     switch (value) {
+      case '1h':
+        start.setHours(start.getHours() - 1);
+        break;
+      case '3h':
+        start.setHours(start.getHours() - 3);
+        break;
+      case '6h':
+        start.setHours(start.getHours() - 6);
+        break;
+      case '12h':
+        start.setHours(start.getHours() - 12);
+        break;
       case '24h':
         start.setHours(start.getHours() - 24);
         break;
@@ -90,6 +114,10 @@ const DateRangePicker = ({ startDate, endDate, onDateChange }) => {
           onChange={handleRangeSelect}
           className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 focus:outline-none cursor-pointer hover:bg-gray-600 transition"
         >
+          <option value="1h">Last 1 Hour</option>
+          <option value="3h">Last 3 Hours</option>
+          <option value="6h">Last 6 Hours</option>
+          <option value="12h">Last 12 Hours</option>
           <option value="24h">Last 24 Hours</option>
           <option value="7d">Last 7 Days</option>
           <option value="30d">Last 30 Days</option>
