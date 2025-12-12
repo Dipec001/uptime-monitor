@@ -22,10 +22,11 @@ function Dashboard() {
   const [recentIncidents, setRecentIncidents] = useState([]);
   const [responseTimeData, setResponseTimeData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [aggregationMode, setAggregationMode] = useState('auto'); // 'auto' or interval in minutes
 
   useEffect(() => {
     fetchDashboard();
-  }, [dateRange]); // Refetch when date range changes
+  }, [dateRange, aggregationMode]); // Watch BOTH dateRange and aggregationMode!
 
   // Aggregate data based on date range to improve readability
   const aggregateData = (data, intervalMinutes) => {
@@ -70,6 +71,11 @@ function Dashboard() {
 
   // Determine aggregation interval based on date range
   const getAggregationInterval = () => {
+    // If user selected manual aggregation, use that
+    if (aggregationMode !== 'auto') {
+      return parseInt(aggregationMode);
+    }
+    
     const diffMs = dateRange[1] - dateRange[0];
     const diffHours = diffMs / (1000 * 60 * 60);
     const diffDays = diffHours / 24;
@@ -158,20 +164,27 @@ function Dashboard() {
   
   // Determine label based on interval
   const getAggregationLabel = () => {
-    if (aggregationInterval === 2) return isMobile ? '4-min' : '2-min';
-    if (aggregationInterval === 4) return '4-min';
-    if (aggregationInterval === 5) return isMobile ? '10-min' : '5-min';
-    if (aggregationInterval === 10) return isMobile ? '20-min' : '10-min';
-    if (aggregationInterval === 20) return isMobile ? '40-min' : '20-min';
-    if (aggregationInterval === 30) return isMobile ? '1-hour' : '30-min';
-    if (aggregationInterval === 40) return '40-min';
-    if (aggregationInterval === 60) return '1-hour';
-    if (aggregationInterval === 120) return isMobile ? '4-hour' : '2-hour';
-    if (aggregationInterval === 240) return isMobile ? '8-hour' : '4-hour';
-    if (aggregationInterval === 480) return '8-hour';
-    if (aggregationInterval === 720) return isMobile ? '1-day' : '12-hour';
-    if (aggregationInterval === 1440) return '1-day';
-    return `${Math.round(aggregationInterval / 60)}h`;
+    // Show if manual mode is active
+    const prefix = aggregationMode !== 'auto' ? '' : '';
+    
+    if (aggregationInterval === 1) return prefix + 'Raw (1-min)';
+    if (aggregationInterval === 2) return prefix + (isMobile ? '4-min' : '2-min');
+    if (aggregationInterval === 4) return prefix + '4-min';
+    if (aggregationInterval === 5) return prefix + (isMobile ? '10-min' : '5-min');
+    if (aggregationInterval === 10) return prefix + (isMobile ? '20-min' : '10-min');
+    if (aggregationInterval === 15) return prefix + '15-min';
+    if (aggregationInterval === 20) return prefix + (isMobile ? '40-min' : '20-min');
+    if (aggregationInterval === 30) return prefix + (isMobile ? '1-hour' : '30-min');
+    if (aggregationInterval === 40) return prefix + '40-min';
+    if (aggregationInterval === 60) return prefix + '1-hour';
+    if (aggregationInterval === 120) return prefix + (isMobile ? '4-hour' : '2-hour');
+    if (aggregationInterval === 180) return prefix + '3-hour';
+    if (aggregationInterval === 240) return prefix + (isMobile ? '8-hour' : '4-hour');
+    if (aggregationInterval === 360) return prefix + '6-hour';
+    if (aggregationInterval === 480) return prefix + '8-hour';
+    if (aggregationInterval === 720) return prefix + (isMobile ? '1-day' : '12-hour');
+    if (aggregationInterval === 1440) return prefix + '1-day';
+    return prefix + `${Math.round(aggregationInterval / 60)}h`;
   };
   
   const aggregationLabel = getAggregationLabel();
@@ -302,6 +315,49 @@ function Dashboard() {
         />
       </div>
 
+      {/* Aggregation Control */}
+      <div className="mb-6">
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 shrink-0">
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <span className="text-gray-400 text-sm font-medium">Data Aggregation:</span>
+            </div>
+            
+            <select
+              value={aggregationMode}
+              onChange={(e) => setAggregationMode(e.target.value)}
+              className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 focus:outline-none cursor-pointer hover:bg-gray-600 transition"
+            >
+              <option value="auto">Auto (Recommended)</option>
+              <option value="1">Raw Data (1-minute)</option>
+              <option value="5">5-minute intervals</option>
+              <option value="10">10-minute intervals</option>
+              <option value="15">15-minute intervals</option>
+              <option value="30">30-minute intervals</option>
+              <option value="60">1-hour intervals</option>
+              <option value="120">2-hour intervals</option>
+              <option value="180">3-hour intervals</option>
+              <option value="240">4-hour intervals</option>
+              <option value="360">6-hour intervals</option>
+              <option value="720">12-hour intervals</option>
+              <option value="1440">Daily intervals</option>
+            </select>
+
+            {aggregationMode !== 'auto' && (
+              <div className="flex items-center gap-2 text-xs text-blue-400 bg-blue-500/10 px-3 py-1 rounded-lg">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                <span>Manual mode active</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Response Time Chart */}
       <div className="bg-gray-800 border border-gray-700 rounded-lg shadow p-6 mb-6 hover:border-blue-500/30 transition-all">
         <div className="flex items-center justify-between mb-4">
@@ -316,6 +372,19 @@ function Dashboard() {
         </div>
         
         {/* Smart Data Warning */}
+        {aggregationMode !== 'auto' && responseTimeData.length > 200 && (
+          <div className="mb-4 p-3 bg-orange-500/10 border border-orange-500/50 rounded-lg flex items-start gap-3">
+            <svg className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <p className="text-orange-400 font-semibold text-sm">High Data Density</p>
+              <p className="text-orange-300 text-xs mt-1">
+                Showing {responseTimeData.length} data points. Chart may appear cluttered. Consider using "Auto" mode or a larger aggregation interval for better visualization.
+              </p>
+            </div>
+          </div>
+        )}
         {responseTimeData.length > 0 && responseTimeData.length < 10 && (
           <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/50 rounded-lg flex items-start gap-3">
             <svg className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
