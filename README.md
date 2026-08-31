@@ -16,7 +16,9 @@ A **production-grade uptime and heartbeat monitoring platform** built with Djang
 
 ## 🚀 Live Demo
 
-View it Live [Here](https://alivechecks.com/)
+Frontend Live [Here](https://alivechecks.com/)
+
+Infrastructure archived to control running costs. The full environment is redeployable from tf-infra/ via the Terraform apply pipeline.
 
 ---
 
@@ -386,10 +388,10 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 **Divine Ekene-Pascal Chukwu**  
 Backend & DevOps Engineer
 
-- 🌐 Website: [buildwithdivine.xyz](https://buildwithdivine.xyz)
+- 🌐 Website: [divinechukwu.com](https://divinechukwu.com)
 - 💼 LinkedIn: [divine-chukwu-63bb04145](https://www.linkedin.com/in/divine-chukwu-63bb04145/)
 - 🐙 GitHub: [@Dipec001](https://github.com/Dipec001)
-- 📧 Email: dpecchukwu@gmail.com
+- 📧 Email: divine@divinechukwu.com
 
 ---
 
